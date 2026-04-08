@@ -1,0 +1,35 @@
+{
+  "nav": {
+    "home": "Главная",
+    "settings": "Настройки",
+    "hero": "Hero",
+    "products": "Продукты",
+    "about": "О нас",
+    "price": "Цены",
+    "contacts": "Контакты"
+  },
+  "home": {
+    "title": "Пользователи",
+    "loading": "Загрузка...",
+    "error": "Не удалось загрузить пользователей",
+    "empty": "Пользователи не найдены"
+  },
+  "settings": {
+    "title": "Настройки",
+    "darkMode": "Тёмная тема",
+    "darkModeOn": "Включена",
+    "darkModeOff": "Выключена",
+    "darkModeSystem": "Системная",
+    "language": "Язык",
+    "languageRu": "Русский",
+    "languageEn": "English"
+  },
+  "user": {
+    "memberSince": "Участник с {{date}}"
+  },
+  "notFound": {
+    "title": "Страница не найдена",
+    "goHome": "На главную"
+  }
+}
+

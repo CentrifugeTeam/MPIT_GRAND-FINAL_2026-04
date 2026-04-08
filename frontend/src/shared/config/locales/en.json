@@ -1,0 +1,34 @@
+{
+  "nav": {
+    "home": "Home",
+    "settings": "Settings",
+    "hero": "Hero",
+    "products": "Products",
+    "about": "About",
+    "price": "Price",
+    "contacts": "Contacts"
+  },
+  "home": {
+    "title": "Users",
+    "loading": "Loading...",
+    "error": "Failed to load users",
+    "empty": "No users found"
+  },
+  "settings": {
+    "title": "Settings",
+    "darkMode": "Dark Mode",
+    "darkModeOn": "On",
+    "darkModeOff": "Off",
+    "darkModeSystem": "Following system",
+    "language": "Language",
+    "languageRu": "Russian",
+    "languageEn": "English"
+  },
+  "user": {
+    "memberSince": "Member since {{date}}"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "goHome": "Go home"
+  }
+}
