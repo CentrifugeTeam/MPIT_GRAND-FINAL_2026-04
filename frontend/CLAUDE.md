@@ -14,10 +14,22 @@ React 19 веб-приложение на Vite.
 - **Хранилище**: localStorage (токены — через Zustand persist)
 - **Пакетный менеджер**: bun
 
+## UI-компоненты — обязательные правила
+
+- **Все** интерактивные и структурные элементы — только через **HeroUI React v3**. Нативные HTML-теги запрещены:
+  - Вместо `<button>` → `<Button>` из `@heroui/react`
+  - Вместо `<input>` → `<Input>` из `@heroui/react`
+  - Вместо `<select>` → `<Select>` из `@heroui/react`
+  - Вместо `<div>` как карточка → `<Card>` из `@heroui/react`
+  - Вместо `<img>` → `<Image>` из `@heroui/react`
+  - Вместо `<a>` / `<Link>` для навигации → `<Link>` из `react-router` (или `<Button as={Link}>`)
+- Tailwind — только для **layout и spacing** (`flex`, `gap-4`, `p-8`, `min-h-screen` и т.д.).
+- Стилизация HeroUI-компонентов — через их пропсы (`variant`, `color`, `size`, `radius`) и `className` для Tailwind.
+- HeroUI v3 использует compound components: `Card.Header`, `Card.Body`, `Card.Footer`, `Select.Option` и т.д.
+
 ## Стилизация
 
-- Использовать **Tailwind CSS v4** (utility-first классы через `className`) — основной способ стилизации.
-- Компоненты **HeroUI React v3** использовать как основу для UI — compound components (например `Card.Header`, `Card.Content`).
+- Использовать **Tailwind CSS v4** (utility-first классы через `className`) — для layout, spacing, positioning.
 - Inline `style={{}}` — только когда Tailwind не покрывает (анимации, динамические значения).
 - Тема и токены: использовать переменные HeroUI (`--color-accent`, `--radius-md` и т.д.), не хардкодить цвета.
 - HeroUI v3 **не требует Provider** — стили подключаются через `@import "@heroui/styles"` в CSS.
@@ -103,6 +115,15 @@ src/
 - **Глобальный UI-стейт** (тема, auth-статус, модалки) → Zustand (`shared/lib/` или отдельные сторы).
 - **Локальный стейт** (формы, toggle, временные значения) → `useState` / React Hook Form.
 - Правило: если данные приходят с сервера — это React Query. Если это клиентский стейт — Zustand или useState.
+
+## Интернационализация (i18n)
+
+- **Весь видимый текст** в компонентах — только через хук `useTranslation` из `react-i18next`.
+- Хардкод строк в JSX **запрещён**: вместо `<h1>Заголовок</h1>` писать `<h1>{t("section.key")}</h1>`.
+- Переводы хранятся в `shared/config/locales/ru.json` и `shared/config/locales/en.json`.
+- При добавлении новой страницы или компонента — **сначала** добавить ключи в оба файла, затем использовать `t()`.
+- Ключи организовывать по страницам/секциям: `auth.login.title`, `nav.home`, `user.memberSince`.
+- Дефолтный язык — `ru`, fallback — `en`.
 
 ## Path Aliases
 

@@ -30,5 +30,31 @@
   "notFound": {
     "title": "Page not found",
     "goHome": "Go home"
+  },
+  "public": {
+    "title": "Public page",
+    "login": "Sign in",
+    "register": "Sign up"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "login": {
+      "title": "Sign in",
+      "submit": "Sign in",
+      "loading": "Signing in...",
+      "error": "Invalid email or password",
+      "noAccount": "Don't have an account?",
+      "register": "Sign up"
+    },
+    "register": {
+      "title": "Sign up",
+      "submit": "Create account",
+      "loading": "Creating...",
+      "error": "Failed to create account",
+      "hasAccount": "Already have an account?",
+      "login": "Sign in"
+    }
   }
 }
