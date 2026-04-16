@@ -38,22 +38,22 @@ React 19 веб-приложение на Vite.
 
 - HeroUI React v3 предоставляет light/dark переменные из коробки через `@heroui/styles`.
 - Переключение темы: управлять классом `dark` на `<html>` или через CSS `prefers-color-scheme`.
-- **Семантические классы**: использовать `bg-background`, `text-foreground`, `bg-surface`, `text-muted` и т.д. — они автоматически адаптируются к теме.
+
 - **Не хардкодить** цвета (`#ffffff`, `#000000`) в компонентах — только семантические токены.
 - Кастомизация цветов — через `index.css` в `@theme { ... }` или `@layer theme { ... }`.
 
 ### Переменные темы (основные)
 
-| Переменная | Назначение |
-|---|---|
-| `background` / `foreground` | Основной фон и текст |
-| `surface` / `surface-foreground` | Карточки, аккордеоны |
-| `overlay` / `overlay-foreground` | Модалки, поповеры |
-| `accent` / `accent-foreground` | Акцентный цвет (кнопки, ссылки) |
-| `default` / `default-foreground` | Нейтральные элементы |
-| `success` / `warning` / `danger` | Статусные цвета |
-| `muted` | Приглушённый текст |
-| `separator` / `border` | Разделители и границы |
+| Переменная                       | Назначение                      |
+| -------------------------------- | ------------------------------- |
+| `background` / `foreground`      | Основной фон и текст            |
+| `surface` / `surface-foreground` | Карточки, аккордеоны            |
+| `overlay` / `overlay-foreground` | Модалки, поповеры               |
+| `accent` / `accent-foreground`   | Акцентный цвет (кнопки, ссылки) |
+| `default` / `default-foreground` | Нейтральные элементы            |
+| `success` / `warning` / `danger` | Статусные цвета                 |
+| `muted`                          | Приглушённый текст              |
+| `separator` / `border`           | Разделители и границы           |
 
 ## Архитектура (FSD, адаптированная под React Router)
 

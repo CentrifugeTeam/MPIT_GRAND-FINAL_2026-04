@@ -4,7 +4,7 @@ import { Tabs } from "@heroui/react";
 import type { Key } from "react";
 
 const NAV_TABS = [
-  { id: "hero", path: "/" },
+  { id: "hero", path: "/home" },
   { id: "products", path: "/products" },
   { id: "about", path: "/about" },
   { id: "price", path: "/price" },
@@ -21,7 +21,7 @@ export function RootLayout() {
       tab.path === "/"
         ? location.pathname === "/"
         : location.pathname.startsWith(tab.path),
-    )?.id ?? "hero";
+    )?.id ?? "home";
 
   const handleSelectionChange = (key: Key) => {
     const tab = NAV_TABS.find((item) => item.id === key);
@@ -54,3 +54,4 @@ export function RootLayout() {
     </div>
   );
 }
+
