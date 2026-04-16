@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button, Card, TextField, Label, Input, FieldError, toast } from "@heroui/react";
+import { Button, Card, TextField, Input, FieldError, toast } from "@heroui/react";
 import { useTranslation } from "react-i18next";
 import { registerSchema, type RegisterFormData } from "@/features/auth/model/schema";
 import { registerRequest } from "@/features/auth/api/auth";
@@ -39,19 +39,16 @@ export function RegisterPage() {
         <Card.Content>
           <form onSubmit={handleSubmit((data) => mutate(data))} className="flex flex-col gap-4">
             <TextField isInvalid={!!errors.email}>
-              <Label>{t("auth.email")}</Label>
               <Input {...register("email")} type="email" placeholder="example@mail.com" />
               <FieldError>{errors.email?.message}</FieldError>
             </TextField>
 
             <TextField isInvalid={!!errors.password}>
-              <Label>{t("auth.password")}</Label>
               <Input {...register("password")} type="password" placeholder="••••••••" />
               <FieldError>{errors.password?.message}</FieldError>
             </TextField>
 
             <TextField isInvalid={!!errors.confirmPassword}>
-              <Label>{t("auth.confirmPassword")}</Label>
               <Input {...register("confirmPassword")} type="password" placeholder="••••••••" />
               <FieldError>{errors.confirmPassword?.message}</FieldError>
             </TextField>
