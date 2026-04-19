@@ -34,6 +34,22 @@ React 19 веб-приложение на Vite.
 - Тема и токены: использовать переменные HeroUI (`--color-accent`, `--radius-md` и т.д.), не хардкодить цвета.
 - HeroUI v3 **не требует Provider** — стили подключаются через `@import "@heroui/styles"` в CSS.
 
+### Минимум кастомных стилей — обязательное правило
+
+- **Запрещены** произвольные значения `[...]` там, где есть стандартный Tailwind-класс или HeroUI-токен:
+  - ❌ `text-[14px]` → ✅ `text-sm`
+  - ❌ `text-[12px]` → ✅ `text-xs`
+  - ❌ `w-[320px]` → ✅ `w-80`
+  - ❌ `text-[#6B7280]` → ✅ `text-gray-500` или `text-muted`
+  - ❌ `bg-[#1c1c1c]` → ✅ `bg-zinc-900`
+  - ❌ `border-[#2a2a2a]` → ✅ `border-zinc-800`
+  - ❌ `text-red-400` (ошибки) → ✅ `text-danger`
+- **Порядок приоритета** при выборе класса:
+  1. HeroUI-пропс (`variant`, `color`, `size`) — первый выбор
+  2. Семантический токен HeroUI (`text-muted`, `bg-surface`, `border-border`, `text-danger`)
+  3. Стандартный Tailwind-класс (`text-sm`, `bg-zinc-900`, `gap-4`)
+  4. Произвольное значение `[...]` — только если первые три не подходят
+
 ## Тема (Light / Dark)
 
 - HeroUI React v3 предоставляет light/dark переменные из коробки через `@heroui/styles`.

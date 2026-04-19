@@ -6,10 +6,13 @@ export function NotFoundPage() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-20">
-      <h1 className="text-xl font-bold text-foreground">{t("notFound.title")}</h1>
-      <Link to="/" className="text-accent hover:underline">
+      <h1 className="text-xl font-bold text-foreground">
+        {t("notFound.title")}
+      </h1>
+      <Link to="/home" className="text-accent hover:underline">
         {t("notFound.goHome")}
       </Link>
     </div>
   );
 }
+
