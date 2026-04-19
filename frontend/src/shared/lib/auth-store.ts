@@ -1,33 +1,43 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 часа
+import type { AuthResponse } from "@/entities/auth/types";
 
 interface AuthState {
-  token: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   expiresAt: number | null;
-  setToken: (token: string) => void;
-  clearToken: () => void;
+  userUuid: string | null;
+  setSession: (data: AuthResponse) => void;
+  clearSession: () => void;
   isAuthenticated: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      token: null,
+      accessToken: null,
+      refreshToken: null,
       expiresAt: null,
-      setToken: (token) => set({ token, expiresAt: Date.now() + TOKEN_TTL_MS }),
-      clearToken: () => set({ token: null, expiresAt: null }),
+      userUuid: null,
+      setSession: ({ access_token, refresh_token, expires_in, user_uuid }) =>
+        set({
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          expiresAt: Date.now() + expires_in * 1000,
+          userUuid: user_uuid,
+        }),
+      clearSession: () =>
+        set({ accessToken: null, refreshToken: null, expiresAt: null, userUuid: null }),
       isAuthenticated: () => {
-        const { token, expiresAt } = get();
-        if (!token) return false;
+        const { accessToken, expiresAt } = get();
+        if (!accessToken) return false;
         if (expiresAt !== null && Date.now() > expiresAt) {
-          set({ token: null, expiresAt: null });
+          set({ accessToken: null, refreshToken: null, expiresAt: null, userUuid: null });
           return false;
         }
         return true;
       },
     }),
-    { name: "auth-token" }
+    { name: "auth-session" }
   )
 );

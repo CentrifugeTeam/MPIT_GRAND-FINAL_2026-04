@@ -3,13 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Tabs } from "@heroui/react";
 import type { Key } from "react";
 
-const NAV_TABS = [
-  { id: "hero", path: "/home" },
-  { id: "products", path: "/products" },
-  { id: "about", path: "/about" },
-  { id: "price", path: "/price" },
-  { id: "contacts", path: "/contacts" },
-] as const;
+const NAV_TABS = [{ id: "home", path: "/home" }] as const;
 
 export function RootLayout() {
   const { t } = useTranslation();
@@ -17,11 +11,7 @@ export function RootLayout() {
   const navigate = useNavigate();
 
   const selectedKey =
-    NAV_TABS.find((tab) =>
-      tab.path === "/"
-        ? location.pathname === "/"
-        : location.pathname.startsWith(tab.path),
-    )?.id ?? "home";
+    NAV_TABS.find((tab) => location.pathname.startsWith(tab.path))?.id ?? "home";
 
   const handleSelectionChange = (key: Key) => {
     const tab = NAV_TABS.find((item) => item.id === key);
