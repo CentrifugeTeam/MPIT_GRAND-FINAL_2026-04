@@ -1,0 +1,21 @@
+import { api } from "@/shared/api/axios";
+import { useAuthStore } from "@/shared/lib/auth-store";
+import { authResponseSchema } from "@/entities/auth/types";
+import { useMutation } from "@tanstack/react-query";
+
+type Payload = {
+  email: string;
+  password: string;
+};
+
+export const useLogin = () => {
+  const setSession = useAuthStore((s) => s.setSession);
+
+  return useMutation({
+    mutationFn: async ({ email, password }: Payload) => {
+      const { data } = await api.post("/api/auth/login", { email, password });
+      return authResponseSchema.parse(data);
+    },
+    onSuccess: (data) => setSession(data),
+  });
+};

@@ -12,19 +12,19 @@ export const api = axios.create({
 
 // Добавляем токен в каждый запрос
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+  const token = useAuthStore.getState().accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Обрабатываем 401 — чистим токен и редиректим на публичную страницу
+// Обрабатываем 401 — чистим сессию и редиректим на публичную страницу
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearToken();
+      useAuthStore.getState().clearSession();
       window.location.href = "/";
     }
     return Promise.reject(error);

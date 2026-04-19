@@ -36,25 +36,37 @@
     "login": "Sign in",
     "register": "Sign up"
   },
+  "validation": {
+    "required": "Required",
+    "email": "Enter a valid email"
+  },
   "auth": {
     "email": "Email",
     "password": "Password",
     "confirmPassword": "Confirm password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "emailAddress": "Email Address",
+    "emailPlaceholder": "name@example.com",
+    "forgotPassword": "Forgot password?",
     "login": {
-      "title": "Sign in",
-      "submit": "Sign in",
+      "title": "Welcome back",
+      "subtitle": "Sign in to access your account.",
+      "submit": "Sign in →",
       "loading": "Signing in...",
       "error": "Invalid email or password",
       "noAccount": "Don't have an account?",
       "register": "Sign up"
     },
     "register": {
-      "title": "Sign up",
-      "submit": "Create account",
+      "title": "Create account",
+      "subtitle": "Sign up to get started.",
+      "submit": "Create account →",
       "loading": "Creating...",
       "error": "Failed to create account",
       "hasAccount": "Already have an account?",
-      "login": "Sign in"
+      "login": "Sign in",
+      "passwordsMismatch": "Passwords do not match"
     }
   }
 }

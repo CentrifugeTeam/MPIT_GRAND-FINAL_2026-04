@@ -36,25 +36,37 @@
     "login": "Войти",
     "register": "Зарегистрироваться"
   },
+  "validation": {
+    "required": "Обязательное поле",
+    "email": "Введите корректный email"
+  },
   "auth": {
     "email": "Email",
     "password": "Пароль",
     "confirmPassword": "Повторите пароль",
+    "signIn": "Войти",
+    "signUp": "Зарегистрироваться",
+    "emailAddress": "Email адрес",
+    "emailPlaceholder": "name@example.com",
+    "forgotPassword": "Забыли пароль?",
     "login": {
-      "title": "Вход",
-      "submit": "Войти",
+      "title": "С возвращением",
+      "subtitle": "Войдите в свой аккаунт.",
+      "submit": "Войти →",
       "loading": "Входим...",
       "error": "Неверный email или пароль",
       "noAccount": "Нет аккаунта?",
       "register": "Зарегистрироваться"
     },
     "register": {
-      "title": "Регистрация",
-      "submit": "Создать аккаунт",
+      "title": "Создать аккаунт",
+      "subtitle": "Зарегистрируйтесь, чтобы начать.",
+      "submit": "Создать аккаунт →",
       "loading": "Создаём...",
       "error": "Не удалось создать аккаунт",
       "hasAccount": "Уже есть аккаунт?",
-      "login": "Войти"
+      "login": "Войти",
+      "passwordsMismatch": "Пароли не совпадают"
     }
   }
 }
