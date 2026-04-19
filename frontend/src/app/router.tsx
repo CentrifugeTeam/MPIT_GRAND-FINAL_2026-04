@@ -1,13 +1,9 @@
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { RootLayout } from "./layout";
 import { ProtectedRoute } from "./protected-route";
 import { GuestRoute } from "./guest-route";
 import { PublicPage } from "@/pages/public";
 import { HomePage } from "@/pages/home";
-import { ProductsPage } from "@/pages/products";
-import { AboutPage } from "@/pages/about";
-import { PricePage } from "@/pages/price";
-import { ContactsPage } from "@/pages/contacts";
 import { SettingsPage } from "@/pages/settings";
 import { NotFoundPage } from "@/pages/not-found";
 import { LoginPage } from "@/pages/auth/login";
@@ -30,12 +26,10 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<RootLayout />}>
             <Route path="home" element={<HomePage />} />
-            <Route path="products" element={<ProductsPage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="price" element={<PricePage />} />
-            <Route path="contacts" element={<ContactsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+          {/* Авторизованный пользователь на неизвестном маршруте → /home */}
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
