@@ -1,10 +1,28 @@
 import httpx
 import jwt
 from typing import Dict, Any
+from urllib.parse import quote
 from fastapi import HTTPException, status
 from app.core.config import get_settings
 
 settings = get_settings()
+
+
+def _email_path(email: str) -> str:
+    """Без кодирования `@` ломает path `/users/email/{email}` (остаётся только часть до @)."""
+    return quote(email, safe="")
+
+
+def _raise_auth_error(response: httpx.Response) -> None:
+    if response.is_success:
+        return
+    try:
+        body = response.json()
+        detail = body.get("detail", body)
+    except Exception:
+        detail = response.text or response.reason_phrase
+    raise HTTPException(status_code=response.status_code, detail=detail)
+
 
 class AuthService:
     def __init__(self):
@@ -17,9 +35,9 @@ class AuthService:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.auth_service_url}/users/",
-                json=user_data
+                json=user_data,
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
@@ -27,9 +45,9 @@ class AuthService:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.auth_service_url}/auth/login",
-                json={"email": email, "password": password}
+                json={"email": email, "password": password},
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
@@ -44,16 +62,16 @@ class AuthService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid or expired refresh token"
                 )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def get_user_by_email(self, email: str) -> Dict[str, Any]:
         """Получить пользователя по email через auth-service"""
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.auth_service_url}/users/email/{email}"
+                f"{self.auth_service_url}/users/email/{_email_path(email)}"
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def get_user_by_id(self, user_id: str) -> Dict[str, Any]:
@@ -62,7 +80,7 @@ class AuthService:
             response = await client.get(
                 f"{self.auth_service_url}/users/{user_id}"
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def get_all_users(self) -> list[Dict[str, Any]]:
@@ -71,17 +89,17 @@ class AuthService:
             response = await client.get(
                 f"{self.auth_service_url}/users/"
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def update_user(self, email: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Обновить пользователя через auth-service"""
         async with httpx.AsyncClient() as client:
             response = await client.put(
-                f"{self.auth_service_url}/users/email/{email}",
-                json=user_data
+                f"{self.auth_service_url}/users/email/{_email_path(email)}",
+                json=user_data,
             )
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     async def update_user_role(self, user_uuid: str, role) -> Dict[str, Any]:
@@ -104,7 +122,7 @@ class AuthService:
                     detail="Invalid role"
                 )
 
-            response.raise_for_status()
+            _raise_auth_error(response)
             return response.json()
 
     def decode_token(self, token: str) -> Dict[str, Any]:

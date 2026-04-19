@@ -1,14 +1,21 @@
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 from app.models import Notification, NotificationSettings, NotificationStatus
 from app.schemas import NotificationCreate, NotificationSettings as NotificationSettingsSchema
 
+
+def _as_user_uuid(user_id: Union[str, UUID]) -> UUID:
+    """Строковый UUID из API / очередей → тип колонки users.uuid."""
+    return user_id if isinstance(user_id, UUID) else UUID(user_id)
+
+
 class NotificationCRUD:
     def create_notification(self, db: Session, user_id: str, notification: NotificationCreate) -> Notification:
         """Создать уведомление"""
+        uid = _as_user_uuid(user_id)
         db_notification = Notification(
-            user_id=user_id,
+            user_id=uid,
             type=notification.type,
             title=notification.title,
             message=notification.message,
@@ -21,8 +28,9 @@ class NotificationCRUD:
 
     def get_user_notifications(self, db: Session, user_id: str, skip: int = 0, limit: int = 100) -> List[Notification]:
         """Получить уведомления пользователя"""
+        uid = _as_user_uuid(user_id)
         return db.query(Notification).filter(
-            Notification.user_id == user_id
+            Notification.user_id == uid
         ).offset(skip).limit(limit).all()
 
     def get_notification_by_id(self, db: Session, notification_id: UUID) -> Optional[Notification]:
@@ -52,7 +60,8 @@ class NotificationCRUD:
 class NotificationSettingsCRUD:
     def get_user_settings(self, db: Session, user_id: str) -> Optional[NotificationSettings]:
         """Получить настройки уведомлений пользователя"""
-        return db.query(NotificationSettings).filter(NotificationSettings.user_id == user_id).first()
+        uid = _as_user_uuid(user_id)
+        return db.query(NotificationSettings).filter(NotificationSettings.user_id == uid).first()
 
     def create_or_update_settings(self, db: Session, user_id: str, settings: NotificationSettingsSchema) -> NotificationSettings:
         """Создать или обновить настройки уведомлений"""
@@ -66,8 +75,9 @@ class NotificationSettingsCRUD:
             db.refresh(existing_settings)
             return existing_settings
         else:
+            uid = _as_user_uuid(user_id)
             db_settings = NotificationSettings(
-                user_id=user_id,
+                user_id=uid,
                 email_notifications=settings.email_notifications,
                 system_notifications=settings.system_notifications,
                 registration_notifications=settings.registration_notifications

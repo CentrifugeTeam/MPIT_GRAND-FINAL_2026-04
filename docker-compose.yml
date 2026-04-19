@@ -83,6 +83,75 @@ services:
       - app-network
     restart: unless-stopped
 
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: analytics-service
+    ports:
+      - "8009:8009"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    environment:
+      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - PLATFORM_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - SCHEMA_CACHE_TTL_SECONDS=86400
+      - SCHEMA_CRON_HOUR=3
+      - QUERY_MAX_ROWS=500
+      - QUERY_TIMEOUT_MS=30000
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASSWORD=admin123
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./analytics-service:/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  sql-generator-worker:
+    build:
+      context: ./sql-generator-worker
+      dockerfile: Dockerfile
+    container_name: sql-generator-worker
+    environment:
+      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - PLATFORM_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - QUERY_MAX_ROWS=500
+      - QUERY_TIMEOUT_MS=30000
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASSWORD=admin123
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
   bff-service:
     build:
       context: ./bff-service
@@ -97,12 +166,19 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8002
       - NOTIFICATION_SERVICE_URL=http://notification-service:8007
       - FILES_SERVICE_URL=http://files-service:8006
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8009
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - RABBITMQ_HOST=rabbitmq
     depends_on:
-      - auth-service
-      - files-service
+      auth-service:
+        condition: service_started
+      files-service:
+        condition: service_started
+      analytics-service:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     volumes:
       - ./bff-service:/app
     networks:
@@ -151,29 +227,6 @@ services:
         condition: service_healthy
       postgres-db:
         condition: service_healthy
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  websocket-service:
-    build:
-      context: ./websocket-service
-      dockerfile: Dockerfile
-    container_name: websocket-service
-    ports:
-      - "8008:8008"
-    environment:
-      - SECRET_KEY=your-secret-key-here
-      - ALGORITHM=HS256
-      - WEBSOCKET_PORT=8008
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASSWORD=admin123
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    volumes:
-      - ./websocket-service:/app
     networks:
       - app-network
     restart: unless-stopped

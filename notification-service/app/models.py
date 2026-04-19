@@ -20,7 +20,7 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     type = Column(Enum(NotificationType), nullable=False)
     title = Column(String, nullable=False)
     message = Column(Text, nullable=False)
@@ -34,7 +34,7 @@ class NotificationSettings(Base):
     __tablename__ = "notification_settings"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(String, unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), unique=True, nullable=False, index=True)
     email_notifications = Column(Boolean, default=True, nullable=False)
     system_notifications = Column(Boolean, default=True, nullable=False)
     registration_notifications = Column(Boolean, default=True, nullable=False)

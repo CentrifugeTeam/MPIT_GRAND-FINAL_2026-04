@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from uuid import UUID
 from enum import Enum
@@ -28,6 +28,8 @@ class UserListResponse(BaseModel):
     users: list[UserResponse]
 
 class TokenResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     access_token: str
     refresh_token: str
     expires_in: int

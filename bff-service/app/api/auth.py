@@ -47,14 +47,16 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     try:
         user = await auth_service.get_user_by_email(current_user["email"])
         return UserResponse(
-            uuid=user["uuid"],
+            uuid=str(user["uuid"]),
             email=user["email"],
-            role=user.get("role", "USER")
+            role=str(user.get("role", "USER")),
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found",
         )
 
 @router.get("/user/{user_id}", response_model=UserResponse)
@@ -63,14 +65,16 @@ async def get_user_by_id(user_id: str, current_user: dict = Depends(get_current_
     try:
         user = await auth_service.get_user_by_id(user_id)
         return UserResponse(
-            uuid=user["uuid"],
+            uuid=str(user["uuid"]),
             email=user["email"],
-            role=user.get("role", "USER")
+            role=str(user.get("role", "USER")),
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found",
         )
 
 @router.get("/users", response_model=UserListResponse)
@@ -103,16 +107,19 @@ async def update_current_user(
     try:
         updated_user = await auth_service.update_user(
             current_user["email"],
-            user_update.dict(exclude_unset=True)
+            user_update.model_dump(exclude_unset=True),
         )
         return UserResponse(
-            uuid=updated_user["uuid"],
-            email=updated_user["email"]
+            uuid=str(updated_user["uuid"]),
+            email=updated_user["email"],
+            role=str(updated_user.get("role", "USER")),
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to update user"
+            detail="Failed to update user",
         )
 
 @router.post("/create", response_model=dict)
@@ -125,12 +132,14 @@ async def create_user(user_data: UserCreate):
                 detail="Passwords do not match"
             )
 
-        user = await auth_service.create_user(user_data.dict())
-        return {"message": "User created successfully", "uuid": user["uuid"]}
+        user = await auth_service.create_user(user_data.model_dump())
+        return {"message": "User created successfully", "uuid": str(user["uuid"])}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=str(e),
         )
 
 @router.post("/login", response_model=TokenResponse)
