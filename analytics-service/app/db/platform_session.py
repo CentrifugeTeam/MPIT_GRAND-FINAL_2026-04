@@ -43,9 +43,29 @@ def _migrate_nl_sql_jobs_user_id_to_uuid() -> None:
         )
 
 
+def _migrate_nl_sql_jobs_max_rows() -> None:
+    with _engine.connect() as conn:
+        row = conn.execute(
+            text(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'nl_sql_jobs'
+                  AND column_name = 'max_rows'
+                """
+            )
+        ).fetchone()
+        if row:
+            return
+    with _engine.begin() as conn:
+        conn.execute(text("ALTER TABLE nl_sql_jobs ADD COLUMN max_rows INTEGER"))
+
+
 def init_platform_tables():
     from app.db.platform_base import PlatformBase
     from app.db.platform_models import NlSqlJob  # noqa: F401
 
     PlatformBase.metadata.create_all(bind=_engine)
     _migrate_nl_sql_jobs_user_id_to_uuid()
+    _migrate_nl_sql_jobs_max_rows()

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -5,10 +6,22 @@ from pydantic import BaseModel, Field
 
 class QuestionRequest(BaseModel):
     question: str = Field(..., min_length=1, description="Вопрос на естественном языке")
+    max_rows: Optional[int] = Field(
+        None,
+        ge=1,
+        le=50_000_000,
+        description="Лимит строк в guard (LIMIT). Не указано — без принудительного LIMIT.",
+    )
 
 
 class ExecuteSqlRequest(BaseModel):
     sql: str = Field(..., min_length=1, description="Только SELECT / WITH ... SELECT")
+    max_rows: Optional[int] = Field(
+        None,
+        ge=1,
+        le=50_000_000,
+        description="Лимит строк при применении guard; не указано — без принудительного LIMIT.",
+    )
 
 
 class ColumnInfo(BaseModel):
@@ -63,20 +76,68 @@ class ErrorDetail(BaseModel):
     detail: str
 
 
+class GlossaryMatchItem(BaseModel):
+    id: Optional[str] = None
+    title: Optional[str] = None
+    category: Optional[str] = None
+    definition: str = ""
+
+
 class AskAsyncResponse(BaseModel):
     job_id: str
     status: str = "pending"
     template_key: Optional[str] = None
     message: str = "Задача поставлена в очередь генерации SQL"
+    interpretation_confidence: float = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="Эвристическая уверенность в однозначности запроса (1 = хорошо).",
+    )
+    interpretation_warnings: list[str] = Field(default_factory=list)
+    interpretation_suggestions: list[str] = Field(default_factory=list)
+    glossary_matches: list[GlossaryMatchItem] = Field(
+        default_factory=list,
+        description="Термины из корпоративного глоссария, релевантные вопросу.",
+    )
+
+
+class GlossaryListResponse(BaseModel):
+    version: int = 1
+    total: int = 0
+    entries: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class JobStatusResponse(BaseModel):
     job_id: str
     user_id: str
     question: str
+    max_rows: Optional[int] = None
     template_key: Optional[str] = None
     status: str
     sql: Optional[str] = None
     explanation: Optional[str] = None
     error: Optional[str] = None
     result: Optional[dict[str, Any]] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class JobHistoryItem(BaseModel):
+    job_id: str
+    user_id: str
+    question: str
+    max_rows: Optional[int] = None
+    template_key: Optional[str] = None
+    status: str
+    sql: Optional[str] = None
+    explanation: Optional[str] = None
+    error: Optional[str] = None
+    result: Optional[dict[str, Any]] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class JobHistoryResponse(BaseModel):
+    items: list[JobHistoryItem]
+    total: int

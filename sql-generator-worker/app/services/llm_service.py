@@ -11,9 +11,12 @@ SYSTEM_PROMPT = """Ты генерируешь только PostgreSQL для а
 Правила:
 - Только один запрос: SELECT или WITH ... SELECT. Никаких INSERT/UPDATE/DELETE/DDL.
 - Используй только перечисленные таблицы и колонки из схемы (не выдумывай колонку id, если в схеме её нет).
+- Фильтры по периоду, кварталу (Q1–Q4), году или дате допускай только через колонки, которые реально есть в схеме для этой таблицы и имеют тип даты/времени (например EXTRACT(QUARTER FROM users.created_at) только если в схеме есть users.created_at). Не добавляй полей «год», «квартал», «период», если их нет среди колонок таблицы. Если подходящей колонки даты нет — не придумывай её; ответь без временного фильтра или ограничься полями из схемы (например только роль).
 - Таблица users: первичный ключ — uuid (тип uuid), колонки id нет. JOIN с notification_settings: users.uuid = notification_settings.user_id.
 - Таблица nl_sql_jobs: колонка user_id имеет тип uuid (как users.uuid); JOIN делай как u.uuid = nl.user_id без смешения с varchar.
 - Если для колонки в схеме перечислены значения enum, используй только эти литералы с тем же регистром (например 'ADMIN', не 'admin'). Не добавляй ролей или значений, которых нет в схеме.
+- Если в вопросе встречается значение, которого нет в enum (например "Шрек" для users.role), не подставляй его в SQL как фильтр по enum-колонке.
+- Не добавляй лишние JOIN к другим таблицам, если они не нужны для ответа на вопрос (избегай произвольного JOIN «на всякий случай»).
 - Пиши корректный PostgreSQL (даты, агрегаты, фильтры, GROUP BY по необходимости).
 - Не добавляй пояснений до и после SQL. Выведи один блок ```sql ... ``` с финальным запросом.
 """
@@ -53,6 +56,7 @@ def _extract_explanation(text: str) -> Optional[str]:
 async def generate_sql(
     question: str,
     tables: list[TableSchema],
+    glossary_context: Optional[str] = None,
 ) -> tuple[str, Optional[str], str]:
     """
     Возвращает (sql, explanation, raw_response_excerpt).
@@ -68,6 +72,8 @@ async def generate_sql(
         + "\n\nВопрос пользователя:\n"
         + question.strip()
     )
+    if glossary_context and glossary_context.strip():
+        user_content += "\n\n" + glossary_context.strip()
 
     payload = {
         "model": settings.LLM_MODEL,

@@ -1,0 +1,1279 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "rev_0",
+      "title": "Выручка (Revenue)",
+      "category": "finance",
+      "definition": "Сумма денежных поступлений от реализации товаров/услуг до вычета скидок.",
+      "synonyms": [
+        "выручка",
+        "revenue",
+        "оборот продаж",
+        "sales revenue",
+        "доход от продаж"
+      ],
+      "sql_hints": "SUM(amount) или SUM(price*qty); фильтр по статусу оплаты."
+    },
+    {
+      "id": "gmv_1",
+      "title": "GMV (Gross Merchandise Volume)",
+      "category": "finance",
+      "definition": "Валовый объём сделок до комиссий и возвратов.",
+      "synonyms": [
+        "gmv",
+        "валовой объём",
+        "товарооборот грязный"
+      ],
+      "sql_hints": "SUM(order_total); часто до возвратов."
+    },
+    {
+      "id": "net_rev",
+      "title": "Чистая выручка",
+      "category": "finance",
+      "definition": "Выручка после вычета возвратов, скидок и налогов с выручки.",
+      "synonyms": [
+        "чистая выручка",
+        "net revenue",
+        "nett revenue"
+      ],
+      "sql_hints": "SUM(amount) - refunds; уточняйте политику НДС."
+    },
+    {
+      "id": "profit",
+      "title": "Прибыль",
+      "category": "finance",
+      "definition": "Разница между доходами и расходами за период.",
+      "synonyms": [
+        "прибыль",
+        "profit",
+        "margin profit"
+      ],
+      "sql_hints": "SUM(revenue)-SUM(cost); не путать с маржой."
+    },
+    {
+      "id": "margin",
+      "title": "Маржа / маржинальность",
+      "category": "finance",
+      "definition": "Доля прибыли или отклонение цены от себестоимости.",
+      "synonyms": [
+        "маржа",
+        "margin",
+        "рентабельность",
+        "маржинальность"
+      ],
+      "sql_hints": "(SUM(price-cost))/SUM(price) или SUM(margin)."
+    },
+    {
+      "id": "cac_5",
+      "title": "CAC (Customer Acquisition Cost)",
+      "category": "marketing",
+      "definition": "Стоимость привлечения одного платящего клиента.",
+      "synonyms": [
+        "cac",
+        "стоимость привлечения",
+        "cost per acquisition"
+      ],
+      "sql_hints": "marketing_spend / new_customers."
+    },
+    {
+      "id": "ltv_6",
+      "title": "LTV (Lifetime Value)",
+      "category": "marketing",
+      "definition": "Совокупная прибыль/выручка от клиента за всё время.",
+      "synonyms": [
+        "ltv",
+        "lifetime value",
+        "пожизненная ценность"
+      ],
+      "sql_hints": "SUM(revenue per user) lifetime; когорты."
+    },
+    {
+      "id": "romi",
+      "title": "ROMI / ROAS",
+      "category": "marketing",
+      "definition": "Окупаемость маркетинговых инвестиций или расходов на рекламу.",
+      "synonyms": [
+        "romi",
+        "roas",
+        "окупаемость рекламы",
+        "return on ad spend"
+      ],
+      "sql_hints": "revenue_from_campaign / ad_spend."
+    },
+    {
+      "id": "ctr_8",
+      "title": "CTR",
+      "category": "marketing",
+      "definition": "Доля кликов к показам объявления.",
+      "synonyms": [
+        "ctr",
+        "кликабельность",
+        "click-through"
+      ],
+      "sql_hints": "clicks / impressions."
+    },
+    {
+      "id": "cvr_9",
+      "title": "Конверсия (CVR)",
+      "category": "marketing",
+      "definition": "Доля пользователей, совершивших целевое действие.",
+      "synonyms": [
+        "конверсия",
+        "cvr",
+        "conversion rate",
+        "коэффициент конверсии"
+      ],
+      "sql_hints": "conversions / sessions или orders / visits."
+    },
+    {
+      "id": "cpa_10",
+      "title": "CPA",
+      "category": "marketing",
+      "definition": "Стоимость одного целевого действия (лид, заказ).",
+      "synonyms": [
+        "cpa",
+        "cost per action",
+        "цена лида"
+      ],
+      "sql_hints": "spend / conversions."
+    },
+    {
+      "id": "cpc_11",
+      "title": "CPC",
+      "category": "marketing",
+      "definition": "Стоимость одного клика по объявлению.",
+      "synonyms": [
+        "cpc",
+        "cost per click",
+        "цена клика"
+      ],
+      "sql_hints": "spend / clicks."
+    },
+    {
+      "id": "cpm_12",
+      "title": "CPM",
+      "category": "marketing",
+      "definition": "Стоимость тысячи показов.",
+      "synonyms": [
+        "cpm",
+        "cost per mille",
+        "цена за тысячу показов"
+      ],
+      "sql_hints": "1000 * spend / impressions."
+    },
+    {
+      "id": "aov_13",
+      "title": "Средний чек (AOV)",
+      "category": "sales",
+      "definition": "Средняя сумма заказа.",
+      "synonyms": [
+        "средний чек",
+        "aov",
+        "average order value",
+        "средний заказ"
+      ],
+      "sql_hints": "SUM(order_amount)/COUNT(orders)."
+    },
+    {
+      "id": "arpu",
+      "title": "ARPU",
+      "category": "finance",
+      "definition": "Средняя выручка на одного пользователя за период.",
+      "synonyms": [
+        "arpu",
+        "average revenue per user"
+      ],
+      "sql_hints": "revenue / active_users."
+    },
+    {
+      "id": "arr_15",
+      "title": "ARR",
+      "category": "finance",
+      "definition": "Годовая регулярная выручка подписок.",
+      "synonyms": [
+        "arr",
+        "annual recurring revenue"
+      ],
+      "sql_hints": "MRR * 12 или сумма годовых контрактов."
+    },
+    {
+      "id": "mrr_16",
+      "title": "MRR",
+      "category": "finance",
+      "definition": "Месячная регулярная выручка подписок.",
+      "synonyms": [
+        "mrr",
+        "monthly recurring revenue"
+      ],
+      "sql_hints": "SUM(monthly_subscription_fees)."
+    },
+    {
+      "id": "churn",
+      "title": "Отток (Churn)",
+      "category": "product",
+      "definition": "Доля ушедших клиентов или подписок за период.",
+      "synonyms": [
+        "отток",
+        "churn",
+        "текучка клиентов"
+      ],
+      "sql_hints": "lost_customers / start_customers или по MRR."
+    },
+    {
+      "id": "retention",
+      "title": "Удержание (Retention)",
+      "category": "product",
+      "definition": "Доля пользователей, вернувшихся в окне после регистрации.",
+      "synonyms": [
+        "ретеншн",
+        "retention",
+        "удержание"
+      ],
+      "sql_hints": "cohort analysis; returning/active."
+    },
+    {
+      "id": "dau_19",
+      "title": "DAU",
+      "category": "product",
+      "definition": "Уникальные активные пользователи за день.",
+      "synonyms": [
+        "dau",
+        "daily active users",
+        "дневная аудитория"
+      ],
+      "sql_hints": "COUNT DISTINCT user_id WHERE activity_date = day."
+    },
+    {
+      "id": "wau_20",
+      "title": "WAU",
+      "category": "product",
+      "definition": "Уникальные активные пользователи за неделю.",
+      "synonyms": [
+        "wau",
+        "weekly active users"
+      ],
+      "sql_hints": "COUNT DISTINCT user_id over 7 days."
+    },
+    {
+      "id": "mau_21",
+      "title": "MAU",
+      "category": "product",
+      "definition": "Уникальные активные пользователи за месяц.",
+      "synonyms": [
+        "mau",
+        "monthly active users"
+      ],
+      "sql_hints": "COUNT DISTINCT user_id over month."
+    },
+    {
+      "id": "stickiness",
+      "title": "Stickiness DAU/MAU",
+      "category": "product",
+      "definition": "Насколько часто возвращаются пользователи.",
+      "synonyms": [
+        "липкость",
+        "stickiness",
+        "dau/mau"
+      ],
+      "sql_hints": "DAU / MAU."
+    },
+    {
+      "id": "nps_23",
+      "title": "NPS",
+      "category": "support",
+      "definition": "Индекс лояльности по опросам 0–10.",
+      "synonyms": [
+        "nps",
+        "net promoter score",
+        "индекс лояльности"
+      ],
+      "sql_hints": "% promoters - % detractors."
+    },
+    {
+      "id": "csat",
+      "title": "CSAT",
+      "category": "support",
+      "definition": "Удовлетворённость по опросам (шкала).",
+      "synonyms": [
+        "csat",
+        "customer satisfaction"
+      ],
+      "sql_hints": "AVG(rating) satisfaction surveys."
+    },
+    {
+      "id": "sla_25",
+      "title": "SLA",
+      "category": "operations",
+      "definition": "Соблюдение сроков обработки заявок/заказов.",
+      "synonyms": [
+        "sla",
+        "сроки обслуживания",
+        "дедлайн заявок"
+      ],
+      "sql_hints": "share completed within deadline."
+    },
+    {
+      "id": "fulfillment",
+      "title": "Фулфилмент / отгрузка",
+      "category": "operations",
+      "definition": "Выполнение заказа от оплаты до доставки.",
+      "synonyms": [
+        "фулфилмент",
+        "отгрузка",
+        "доставка заказа"
+      ],
+      "sql_hints": "status shipped/delivered; lead time."
+    },
+    {
+      "id": "inventory",
+      "title": "Остатки / запасы",
+      "category": "operations",
+      "definition": "Количество товара на складах.",
+      "synonyms": [
+        "остатки",
+        "запасы",
+        "inventory",
+        "stock"
+      ],
+      "sql_hints": "SUM(quantity) WHERE stock; turnover."
+    },
+    {
+      "id": "sku_28",
+      "title": "SKU",
+      "category": "operations",
+      "definition": "Уникальный артикул товарной позиции.",
+      "synonyms": [
+        "sku",
+        "артикул",
+        "номенклатура"
+      ],
+      "sql_hints": "GROUP BY sku or product_id."
+    },
+    {
+      "id": "cohort",
+      "title": "Когорта",
+      "category": "analytics",
+      "definition": "Группа пользователей по периоду первого события.",
+      "synonyms": [
+        "когорта",
+        "cohort",
+        "когортный анализ"
+      ],
+      "sql_hints": "DATE_TRUNC signup; join behavior by period."
+    },
+    {
+      "id": "funnel",
+      "title": "Воронка",
+      "category": "marketing",
+      "definition": "Последовательность шагов и конверсия между ними.",
+      "synonyms": [
+        "воронка",
+        "funnel",
+        "этапы"
+      ],
+      "sql_hints": "COUNT per step; step-to-step ratio."
+    },
+    {
+      "id": "yoy_31",
+      "title": "YoY сравнение",
+      "category": "time",
+      "definition": "Сравнение с тем же периодом год назад.",
+      "synonyms": [
+        "год к году",
+        "yoy",
+        "year over year"
+      ],
+      "sql_hints": "metric_this_year / metric_last_year - 1."
+    },
+    {
+      "id": "mom_32",
+      "title": "MoM",
+      "category": "time",
+      "definition": "Сравнение с предыдущим месяцем.",
+      "synonyms": [
+        "мес к мес",
+        "mom",
+        "month over month"
+      ],
+      "sql_hints": "delta vs prior month."
+    },
+    {
+      "id": "wow_33",
+      "title": "WoW",
+      "category": "time",
+      "definition": "Сравнение с предыдущей неделей.",
+      "synonyms": [
+        "неделя к неделе",
+        "wow",
+        "week over week"
+      ],
+      "sql_hints": "delta vs prior week."
+    },
+    {
+      "id": "seasonality",
+      "title": "Сезонность",
+      "category": "time",
+      "definition": "Повторяющиеся колебания по календарю.",
+      "synonyms": [
+        "сезонность",
+        "seasonality",
+        "пики продаж"
+      ],
+      "sql_hints": "GROUP BY month/week; YoY same month."
+    },
+    {
+      "id": "running_total",
+      "title": "Нарастающий итог",
+      "category": "analytics",
+      "definition": "Кумулятивная сумма метрики по времени.",
+      "synonyms": [
+        "нарастающий итог",
+        "running total",
+        "кумулятив"
+      ],
+      "sql_hints": "SUM() OVER (ORDER BY date ROWS UNBOUNDED PRECEDING)."
+    },
+    {
+      "id": "rank_top_n",
+      "title": "Топ-N / рейтинг",
+      "category": "analytics",
+      "definition": "Первые N записей по метрике.",
+      "synonyms": [
+        "топ",
+        "top",
+        "рейтинг",
+        "лидеры"
+      ],
+      "sql_hints": "ORDER BY metric DESC LIMIT N; ROW_NUMBER."
+    },
+    {
+      "id": "share_pct",
+      "title": "Доля от целого",
+      "category": "analytics",
+      "definition": "Процент вклада строки в сумму группы.",
+      "synonyms": [
+        "доля",
+        "процент от",
+        "share",
+        "percentage"
+      ],
+      "sql_hints": "100 * val / SUM(val) OVER (PARTITION BY ...)"
+    },
+    {
+      "id": "growth_rate",
+      "title": "Темп роста",
+      "category": "finance",
+      "definition": "Относительное изменение метрики между периодами.",
+      "synonyms": [
+        "темп роста",
+        "growth rate",
+        "прирост"
+      ],
+      "sql_hints": "(now - prev)/prev."
+    },
+    {
+      "id": "median",
+      "title": "Медиана",
+      "category": "analytics",
+      "definition": "Среднее по рангу, устойчивое к выбросам.",
+      "synonyms": [
+        "медиана",
+        "median",
+        "перцентиль 50"
+      ],
+      "sql_hints": "PERCENTILE_CONT(0.5) WITHIN GROUP."
+    },
+    {
+      "id": "percentile",
+      "title": "Перцентиль",
+      "category": "analytics",
+      "definition": "Значение уровня p распределения.",
+      "synonyms": [
+        "перцентиль",
+        "percentile",
+        "квантиль"
+      ],
+      "sql_hints": "PERCENTILE_CONT(p) WITHIN GROUP."
+    },
+    {
+      "id": "distinct_cnt",
+      "title": "Число уникальных",
+      "category": "analytics",
+      "definition": "Подсчёт уникальных сущностей.",
+      "synonyms": [
+        "уникальные",
+        "distinct",
+        "число пользователей"
+      ],
+      "sql_hints": "COUNT(DISTINCT id)."
+    },
+    {
+      "id": "active_users",
+      "title": "Активные пользователи",
+      "category": "product",
+      "definition": "Пользователи с действием за окно времени.",
+      "synonyms": [
+        "активные пользователи",
+        "active users",
+        "активность"
+      ],
+      "sql_hints": "FILTER events in window."
+    },
+    {
+      "id": "new_users",
+      "title": "Новые пользователи",
+      "category": "product",
+      "definition": "Регистрации или первые события за период.",
+      "synonyms": [
+        "новые пользователи",
+        "signups",
+        "регистрации"
+      ],
+      "sql_hints": "COUNT WHERE first_seen in period."
+    },
+    {
+      "id": "sessions",
+      "title": "Сессии / визиты",
+      "category": "marketing",
+      "definition": "Последовательность действий в одном визите.",
+      "synonyms": [
+        "сессии",
+        "sessions",
+        "визиты"
+      ],
+      "sql_hints": "COUNT session_id GROUP BY day."
+    },
+    {
+      "id": "bounce",
+      "title": "Показатель отказов",
+      "category": "marketing",
+      "definition": "Визиты с одним просмотром.",
+      "synonyms": [
+        "отказы",
+        "bounce",
+        "bounce rate"
+      ],
+      "sql_hints": "single_page_sessions / sessions."
+    },
+    {
+      "id": "time_on_site",
+      "title": "Время на сайте",
+      "category": "marketing",
+      "definition": "Средняя длительность визита.",
+      "synonyms": [
+        "время на сайте",
+        "session duration"
+      ],
+      "sql_hints": "AVG(session_length)."
+    },
+    {
+      "id": "organic",
+      "title": "Органический трафик",
+      "category": "marketing",
+      "definition": "Переходы без платной рекламы.",
+      "synonyms": [
+        "органика",
+        "organic",
+        "seo"
+      ],
+      "sql_hints": "medium = organic / referral rules."
+    },
+    {
+      "id": "paid_traffic",
+      "title": "Платный трафик",
+      "category": "marketing",
+      "definition": "Клики из рекламных кампаний.",
+      "synonyms": [
+        "платный трафик",
+        "paid",
+        "рекламный трафик"
+      ],
+      "sql_hints": "utm_medium cpc/paid."
+    },
+    {
+      "id": "roi_campaign",
+      "title": "ROI кампании",
+      "category": "marketing",
+      "definition": "Окупаемость конкретной кампании.",
+      "synonyms": [
+        "roi кампании",
+        "окупаемость кампании"
+      ],
+      "sql_hints": "(revenue - spend)/spend."
+    },
+    {
+      "id": "allocation",
+      "title": "Аллокация бюджета",
+      "category": "finance",
+      "definition": "Распределение затрат по каналам/продуктам.",
+      "synonyms": [
+        "аллокация",
+        "распределение бюджета"
+      ],
+      "sql_hints": "SUM(cost) GROUP BY channel."
+    },
+    {
+      "id": "discount_rate",
+      "title": "Уровень скидок",
+      "category": "sales",
+      "definition": "Доля выручки или заказов со скидкой.",
+      "synonyms": [
+        "скидки",
+        "discount rate",
+        "промо"
+      ],
+      "sql_hints": "SUM(discount)/SUM(gross)."
+    },
+    {
+      "id": "refund_rate",
+      "title": "Доля возвратов",
+      "category": "finance",
+      "definition": "Отношение суммы возвратов к продажам.",
+      "synonyms": [
+        "возвраты",
+        "refunds",
+        "refund rate"
+      ],
+      "sql_hints": "SUM(refund)/SUM(sales)."
+    },
+    {
+      "id": "pipeline",
+      "title": "Воронка продаж (pipeline)",
+      "category": "sales",
+      "definition": "Сделки по стадиям и суммы.",
+      "synonyms": [
+        "pipeline",
+        "воронка продаж",
+        "сделки"
+      ],
+      "sql_hints": "SUM(amount) GROUP BY stage."
+    },
+    {
+      "id": "win_rate",
+      "title": "Win rate",
+      "category": "sales",
+      "definition": "Доля выигранных сделок.",
+      "synonyms": [
+        "win rate",
+        "конверсия в сделку"
+      ],
+      "sql_hints": "won / (won+lost)."
+    },
+    {
+      "id": "sales_cycle",
+      "title": "Длительность сделки",
+      "category": "sales",
+      "definition": "Дни от лида до победы.",
+      "synonyms": [
+        "цикл сделки",
+        "sales cycle"
+      ],
+      "sql_hints": "AVG(close_date - lead_date)."
+    },
+    {
+      "id": "quota",
+      "title": "Квота продаж",
+      "category": "sales",
+      "definition": "План по объёму для менеджера/региона.",
+      "synonyms": [
+        "квота",
+        "план продаж",
+        "quota"
+      ],
+      "sql_hints": "compare actual vs quota."
+    },
+    {
+      "id": "geo_split",
+      "title": "Разбивка по регионам",
+      "category": "geo",
+      "definition": "Метрики по стране/городу/офису.",
+      "synonyms": [
+        "по регионам",
+        "география",
+        "geo",
+        "город"
+      ],
+      "sql_hints": "GROUP BY region/city."
+    },
+    {
+      "id": "channel_split",
+      "title": "Разбивка по каналам",
+      "category": "marketing",
+      "definition": "Метрики по источнику трафика/продаж.",
+      "synonyms": [
+        "по каналам",
+        "channel",
+        "источник"
+      ],
+      "sql_hints": "GROUP BY channel/medium."
+    },
+    {
+      "id": "product_split",
+      "title": "Разбивка по продуктам",
+      "category": "product",
+      "definition": "Метрики по SKU/категории.",
+      "synonyms": [
+        "по продуктам",
+        "по категориям",
+        "sku"
+      ],
+      "sql_hints": "GROUP BY product_id/category."
+    },
+    {
+      "id": "segment",
+      "title": "Сегмент клиентов",
+      "category": "marketing",
+      "definition": "Группа по поведению или RFМ.",
+      "synonyms": [
+        "сегмент",
+        "segment",
+        "rfm"
+      ],
+      "sql_hints": "CASE WHEN rules or cluster."
+    },
+    {
+      "id": "rfm_61",
+      "title": "RFM анализ",
+      "category": "marketing",
+      "definition": "Recency, Frequency, Monetary сегментация.",
+      "synonyms": [
+        "rfm",
+        "сегментация клиентов"
+      ],
+      "sql_hints": "score per dimension; tertiles."
+    },
+    {
+      "id": "clv_balance",
+      "title": "Баланс LTV:CAC",
+      "category": "finance",
+      "definition": "Соотношение ценности клиента и стоимости привлечения.",
+      "synonyms": [
+        "ltv cac",
+        "соотношение ltv"
+      ],
+      "sql_hints": "LTV / CAC target > 3."
+    },
+    {
+      "id": "payment_mix",
+      "title": "Способы оплаты",
+      "category": "finance",
+      "definition": "Доля платежей картой/наличными/СБП.",
+      "synonyms": [
+        "способы оплаты",
+        "payment mix"
+      ],
+      "sql_hints": "GROUP BY payment_method."
+    },
+    {
+      "id": "subscription_mix",
+      "title": "Тарифы / планы",
+      "category": "product",
+      "definition": "Распределение пользователей по тарифам.",
+      "synonyms": [
+        "тарифы",
+        "планы подписки",
+        "subscription tier"
+      ],
+      "sql_hints": "GROUP BY plan."
+    },
+    {
+      "id": "feature_adoption",
+      "title": "Внедрение фичи",
+      "category": "product",
+      "definition": "Доля пользователей, использующих функцию.",
+      "synonyms": [
+        "внедрение фичи",
+        "adoption",
+        "использование функции"
+      ],
+      "sql_hints": "users_with_feature / total_users."
+    },
+    {
+      "id": "error_rate",
+      "title": "Доля ошибок",
+      "category": "operations",
+      "definition": "Частота ошибок API или заказов.",
+      "synonyms": [
+        "ошибки",
+        "error rate",
+        "доля сбоев"
+      ],
+      "sql_hints": "errors / requests."
+    },
+    {
+      "id": "latency_p95",
+      "title": "Задержка p95",
+      "category": "operations",
+      "definition": "95-й перцентиль времени ответа.",
+      "synonyms": [
+        "латентность",
+        "p95",
+        "время ответа"
+      ],
+      "sql_hints": "PERCENTILE_CONT(0.95) latency."
+    },
+    {
+      "id": "uptime",
+      "title": "Доступность сервиса",
+      "category": "operations",
+      "definition": "Доля времени без инцидентов.",
+      "synonyms": [
+        "аптайм",
+        "uptime",
+        "доступность"
+      ],
+      "sql_hints": "good_minutes / total."
+    },
+    {
+      "id": "ticket_backlog",
+      "title": "Очередь тикетов",
+      "category": "support",
+      "definition": "Незакрытые обращения.",
+      "synonyms": [
+        "очередь тикетов",
+        "бэклог поддержки"
+      ],
+      "sql_hints": "COUNT open tickets."
+    },
+    {
+      "id": "first_response",
+      "title": "Время первого ответа",
+      "category": "support",
+      "definition": "SLA до первого ответа.",
+      "synonyms": [
+        "первый ответ",
+        "first response time"
+      ],
+      "sql_hints": "AVG(first_reply - created)."
+    },
+    {
+      "id": "resolution_time",
+      "title": "Время решения тикета",
+      "category": "support",
+      "definition": "От создания до закрытия.",
+      "synonyms": [
+        "время решения",
+        "resolution time"
+      ],
+      "sql_hints": "AVG(resolved - created)."
+    },
+    {
+      "id": "employee_cnt",
+      "title": "Численность",
+      "category": "hr",
+      "definition": "Количество сотрудников.",
+      "synonyms": [
+        "численность",
+        "headcount",
+        "штат"
+      ],
+      "sql_hints": "COUNT employees active."
+    },
+    {
+      "id": "attrition_hr",
+      "title": "Текучесть кадров",
+      "category": "hr",
+      "definition": "Доля уволившихся.",
+      "synonyms": [
+        "текучесть",
+        "attrition",
+        "увольнения"
+      ],
+      "sql_hints": "leavers / avg_headcount."
+    },
+    {
+      "id": "bench",
+      "title": "Bench / простой",
+      "category": "hr",
+      "definition": "Не загруженные ресурсы.",
+      "synonyms": [
+        "бенч",
+        "простой команды"
+      ],
+      "sql_hints": "capacity - utilized."
+    },
+    {
+      "id": "billable",
+      "title": "Billable hours",
+      "category": "hr",
+      "definition": "Оплачиваемые часы.",
+      "synonyms": [
+        "биллабл",
+        "billable",
+        "оплачиваемые часы"
+      ],
+      "sql_hints": "SUM(hours) WHERE billable."
+    },
+    {
+      "id": "utilization",
+      "title": "Утилизация",
+      "category": "hr",
+      "definition": "Загрузка сотрудника/ресурса.",
+      "synonyms": [
+        "утилизация",
+        "utilization",
+        "загрузка"
+      ],
+      "sql_hints": "billable / available_hours."
+    },
+    {
+      "id": "burn_rate",
+      "title": "Burn rate",
+      "category": "finance",
+      "definition": "Скорость расхода денег стартапа.",
+      "synonyms": [
+        "бёрн",
+        "burn rate",
+        "расход денег"
+      ],
+      "sql_hints": "cash_spent per month."
+    },
+    {
+      "id": "runway",
+      "title": "Runway",
+      "category": "finance",
+      "definition": "Месяцев до окончания денег при текущем burn.",
+      "synonyms": [
+        "ранвей",
+        "runway",
+        "запас по деньгам"
+      ],
+      "sql_hints": "cash / monthly_burn."
+    },
+    {
+      "id": "ebitda",
+      "title": "EBITDA",
+      "category": "finance",
+      "definition": "Прибыль до процентов, налогов и амортизации (упрощённо).",
+      "synonyms": [
+        "ebitda",
+        "ебитда"
+      ],
+      "sql_hints": "Определение зависит от учётной политики."
+    },
+    {
+      "id": "working_capital",
+      "title": "Оборотный капитал",
+      "category": "finance",
+      "definition": "Оборотные активы минус краткосрочные обязательства.",
+      "synonyms": [
+        "оборотный капитал",
+        "working capital"
+      ],
+      "sql_hints": "current_assets - current_liabilities."
+    },
+    {
+      "id": "accounts_receivable",
+      "title": "Дебиторка",
+      "category": "finance",
+      "definition": "Задолженность покупателей.",
+      "synonyms": [
+        "дебиторка",
+        "receivables",
+        "долги клиентов"
+      ],
+      "sql_hints": "SUM(open_invoices)."
+    },
+    {
+      "id": "accounts_payable",
+      "title": "Кредиторка",
+      "category": "finance",
+      "definition": "Задолженность перед поставщиками.",
+      "synonyms": [
+        "кредиторка",
+        "payables"
+      ],
+      "sql_hints": "SUM(unpaid_bills)."
+    },
+    {
+      "id": "cash_flow",
+      "title": "Денежный поток",
+      "category": "finance",
+      "definition": "Приток и отток денег за период.",
+      "synonyms": [
+        "cash flow",
+        "денежный поток",
+        "ддс"
+      ],
+      "sql_hints": "SUM(inflows)-SUM(outflows)."
+    },
+    {
+      "id": "budget_variance",
+      "title": "Отклонение от бюджета",
+      "category": "finance",
+      "definition": "Факт к плану.",
+      "synonyms": [
+        "бюджет",
+        "variance",
+        "отклонение от плана"
+      ],
+      "sql_hints": "actual - budget."
+    },
+    {
+      "id": "forecast",
+      "title": "Прогноз",
+      "category": "analytics",
+      "definition": "Ожидаемое значение метрики вперёд.",
+      "synonyms": [
+        "прогноз",
+        "forecast",
+        "предсказание"
+      ],
+      "sql_hints": "model output or trend extrapolation."
+    },
+    {
+      "id": "anomaly",
+      "title": "Аномалия",
+      "category": "analytics",
+      "definition": "Резкое отклонение от нормы.",
+      "synonyms": [
+        "аномалия",
+        "outlier",
+        "всплеск"
+      ],
+      "sql_hints": "z-score; compare to rolling avg."
+    },
+    {
+      "id": "duplicate_rate",
+      "title": "Дубликаты",
+      "category": "operations",
+      "definition": "Повторяющиеся записи / заказы.",
+      "synonyms": [
+        "дубликаты",
+        "дубли",
+        "повторы"
+      ],
+      "sql_hints": "COUNT(*) - COUNT(DISTINCT key)."
+    },
+    {
+      "id": "data_quality",
+      "title": "Качество данных",
+      "category": "operations",
+      "definition": "Полнота и корректность полей.",
+      "synonyms": [
+        "качество данных",
+        "пропуски",
+        "null rate"
+      ],
+      "sql_hints": "SUM(CASE WHEN col IS NULL)/COUNT."
+    },
+    {
+      "id": "gdpr_pii",
+      "title": "Персональные данные",
+      "category": "operations",
+      "definition": "Идентификаторы пользователя под GDPR.",
+      "synonyms": [
+        "персональные данные",
+        "пиай",
+        "gdpr"
+      ],
+      "sql_hints": "Не выводить PII без маскирования."
+    },
+    {
+      "id": "uuid_join",
+      "title": "Связь по UUID",
+      "category": "generic_sql",
+      "definition": "В проекте пользователи часто по uuid, не по id.",
+      "synonyms": [
+        "uuid",
+        "идентификатор пользователя"
+      ],
+      "sql_hints": "JOIN ON users.uuid = fact.user_id::uuid при необходимости."
+    },
+    {
+      "id": "enum_case",
+      "title": "Регистр enum",
+      "category": "generic_sql",
+      "definition": "Значения enum в PostgreSQL как в схеме.",
+      "synonyms": [
+        "enum",
+        "роль",
+        "статус"
+      ],
+      "sql_hints": "Использовать литералы из схемы, например 'ADMIN'."
+    },
+    {
+      "id": "agg_filter",
+      "title": "Условная агрегация",
+      "category": "generic_sql",
+      "definition": "SUM(CASE WHEN ... THEN x END).",
+      "synonyms": [
+        "условная сумма",
+        "conditional sum"
+      ],
+      "sql_hints": "SUM(CASE WHEN status='paid' THEN amount END)."
+    },
+    {
+      "id": "window_lag",
+      "title": "Лаг / сдвиг по времени",
+      "category": "analytics",
+      "definition": "Значение метрики в предыдущем периоде.",
+      "synonyms": [
+        "лаг",
+        "lag",
+        "предыдущий период"
+      ],
+      "sql_hints": "LAG(metric) OVER (ORDER BY date)."
+    },
+    {
+      "id": "rolling_avg",
+      "title": "Скользящее среднее",
+      "category": "analytics",
+      "definition": "Сглаживание колебаний.",
+      "synonyms": [
+        "скользящее среднее",
+        "moving average"
+      ],
+      "sql_hints": "AVG OVER (ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)."
+    },
+    {
+      "id": "ytd_95",
+      "title": "YTD с начала года",
+      "category": "time",
+      "definition": "Накоплено с 1 января.",
+      "synonyms": [
+        "с начала года",
+        "ytd",
+        "year to date"
+      ],
+      "sql_hints": "SUM WHERE date >= date_trunc('year', now())."
+    },
+    {
+      "id": "mtd_96",
+      "title": "MTD с начала месяца",
+      "category": "time",
+      "definition": "Накоплено с 1-го числа.",
+      "synonyms": [
+        "с начала месяца",
+        "mtd"
+      ],
+      "sql_hints": "SUM WHERE date >= date_trunc('month', now())."
+    },
+    {
+      "id": "week_part",
+      "title": "Номер недели ISO",
+      "category": "time",
+      "definition": "Группировка по календарной неделе.",
+      "synonyms": [
+        "неделя года",
+        "iso week"
+      ],
+      "sql_hints": "EXTRACT(isoyear), EXTRACT(week)."
+    },
+    {
+      "id": "hour_of_day",
+      "title": "Распределение по часам",
+      "category": "time",
+      "definition": "Активность по часу суток.",
+      "synonyms": [
+        "по часам",
+        "hour of day"
+      ],
+      "sql_hints": "EXTRACT(HOUR FROM ts)."
+    },
+    {
+      "id": "geo_bucket",
+      "title": "Региональные бакеты",
+      "category": "geo",
+      "definition": "Крупные географические зоны.",
+      "synonyms": [
+        "федеральный округ",
+        "регион рф"
+      ],
+      "sql_hints": "CASE WHEN region IN (...) END."
+    },
+    {
+      "id": "currency_fx",
+      "title": "Курсы валют",
+      "category": "finance",
+      "definition": "Пересчёт сумм в одну валюту.",
+      "synonyms": [
+        "валюта",
+        "курс",
+        "fx"
+      ],
+      "sql_hints": "amount * rate_to_base."
+    },
+    {
+      "id": "tax_vat",
+      "title": "НДС",
+      "category": "finance",
+      "definition": "Налог на добавленную стоимость.",
+      "synonyms": [
+        "ндс",
+        "vat",
+        "налог"
+      ],
+      "sql_hints": "amount * vat_rate / (1+vat_rate) при необходимости."
+    },
+    {
+      "id": "bundle",
+      "title": "Бандлы / комплекты",
+      "category": "sales",
+      "definition": "Продажа наборов товаров.",
+      "synonyms": [
+        "бандл",
+        "комплект",
+        "bundle"
+      ],
+      "sql_hints": "Компоненты vs bundle SKU."
+    },
+    {
+      "id": "cross_sell",
+      "title": "Допродажи",
+      "category": "sales",
+      "definition": "Сопутствующие товары в заказе.",
+      "synonyms": [
+        "кросс-селл",
+        "допродажи",
+        "cross sell"
+      ],
+      "sql_hints": "basket analysis."
+    },
+    {
+      "id": "cart_abandon",
+      "title": "Брошенные корзины",
+      "category": "marketing",
+      "definition": "Заказы не завершённые оплатой.",
+      "synonyms": [
+        "брошенная корзина",
+        "abandoned cart"
+      ],
+      "sql_hints": "sessions checkout without purchase."
+    },
+    {
+      "id": "lead_time",
+      "title": "Lead time поставки",
+      "category": "operations",
+      "definition": "Время от заказа до получения.",
+      "synonyms": [
+        "lead time",
+        "срок поставки"
+      ],
+      "sql_hints": "AVG(received - ordered)."
+    },
+    {
+      "id": "fill_rate",
+      "title": "Fill rate",
+      "category": "operations",
+      "definition": "Доля заказанного количества отгруженного.",
+      "synonyms": [
+        "fill rate",
+        "удовлетворение заказа"
+      ],
+      "sql_hints": "shipped_qty / ordered_qty."
+    },
+    {
+      "id": "abc_xyz",
+      "title": "ABC/XYZ классификация",
+      "category": "operations",
+      "definition": "Приоритизация SKU по обороту и стабильности.",
+      "synonyms": [
+        "abc xyz",
+        "классификация запасов"
+      ],
+      "sql_hints": "Segment by cumsum revenue / variability."
+    }
+  ]
+}

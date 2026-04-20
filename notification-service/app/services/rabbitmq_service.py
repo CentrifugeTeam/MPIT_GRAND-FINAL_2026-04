@@ -1,6 +1,8 @@
 import pika
 import json
 import asyncio
+import logging
+import time
 from typing import Dict, Any
 from app.core.config import get_settings
 from app.database import SessionLocal
@@ -9,29 +11,39 @@ from app.services.email_service import email_service
 from app.models import NotificationStatus
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 class RabbitMQService:
     def __init__(self):
         self.connection = None
         self.channel = None
         self.queue_name = "email_queue"
+        self._retry_base_sec = 1.0
+        self._retry_max_sec = 15.0
 
     def connect(self):
         """Подключиться к RabbitMQ"""
-        try:
+        delay = self._retry_base_sec
+        while True:
             credentials = pika.PlainCredentials(settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD)
-            self.connection = pika.BlockingConnection(
-                pika.ConnectionParameters(
-                    host=settings.RABBITMQ_HOST,
-                    credentials=credentials
+            try:
+                self.connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(
+                        host=settings.RABBITMQ_HOST,
+                        credentials=credentials
+                    )
                 )
-            )
-            self.channel = self.connection.channel()
+                self.channel = self.connection.channel()
 
-            # Объявляем очередь
-            self.channel.queue_declare(queue=self.queue_name, durable=True)
-        except Exception as e:
-            pass
+                # Объявляем очередь
+                self.channel.queue_declare(queue=self.queue_name, durable=True)
+                return
+            except Exception as e:
+                logger.warning(
+                    "RabbitMQ connect failed (%s). Retrying in %.1fs", e, delay
+                )
+                time.sleep(delay)
+                delay = min(delay * 2, self._retry_max_sec)
 
     def disconnect(self):
         """Отключиться от RabbitMQ"""

@@ -27,19 +27,22 @@ const inputCn =
 export const LoginPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { mutate, isPending, isError } = useLogin();
+  const { mutateAsync, isPending, isError } = useLogin();
   const [showPassword, setShowPassword] = useState(false);
 
   const formMethod = useForm<LoginSchemaData>({
     resolver: zodResolver(loginSchema),
     mode: "all",
+    defaultValues: { email: "", password: "" },
   });
 
-  const handleClick = (data: LoginSchemaData) => {
-    mutate(
-      { email: data.email, password: data.password },
-      { onSuccess: () => navigate('/home') },
-    );
+  const handleClick = async (data: LoginSchemaData) => {
+    try {
+      await mutateAsync({ email: data.email, password: data.password });
+      navigate("/home", { replace: true });
+    } catch {
+      /* ошибка парсинга / сети — isError */
+    }
   };
 
   return (
@@ -106,6 +109,7 @@ export const LoginPage = () => {
                   </label>
                   <Input
                     {...field}
+                    value={field.value ?? ""}
                     placeholder={t("auth.emailPlaceholder")}
                     className={inputCn}
                   />
@@ -126,6 +130,7 @@ export const LoginPage = () => {
                   <div className="relative">
                     <Input
                       {...field}
+                      value={field.value ?? ""}
                       type={showPassword ? "text" : "password"}
                       className={`${inputCn} pr-12`}
                     />

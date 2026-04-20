@@ -26,11 +26,40 @@ class WsClient {
   onStatusChange: ((status: WsStatus) => void) | null = null;
 
   connect(url: string) {
+    if (
+      this.url === url &&
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN ||
+        this.ws.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
     if (this.ws) this._close();
     this.url = url;
     this.shouldReconnect = true;
     this.reconnectAttempt = 0;
     this._open();
+  }
+
+  /** Дождаться открытия текущего соединения (для общего сокета с analytics). */
+  async ensureOpen(url: string): Promise<void> {
+    this.connect(url);
+    await this._waitUntilOpen();
+  }
+
+  private _waitUntilOpen(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const deadline = Date.now() + 20_000;
+      const id = window.setInterval(() => {
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          window.clearInterval(id);
+          resolve();
+        } else if (Date.now() > deadline) {
+          window.clearInterval(id);
+          reject(new Error("WebSocket open timeout"));
+        }
+      }, 40);
+    });
   }
 
   disconnect() {
@@ -43,6 +72,13 @@ class WsClient {
   send<T>(type: string, payload: T) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type, payload }));
+    }
+  }
+
+  /** Сообщение как ожидает BFF: все поля на верхнем уровне (`watch_job`, `job_id`). */
+  sendPlain(message: Record<string, unknown>) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
     }
   }
 
@@ -64,10 +100,19 @@ class WsClient {
 
     this.ws.onmessage = (event: MessageEvent<string>) => {
       try {
-        const msg = JSON.parse(event.data) as WsMessage;
-        this.handlers.get(msg.type)?.forEach((h) => h(msg.payload));
-        // "*" — подписка на все сообщения
-        this.handlers.get("*")?.forEach((h) => h(msg));
+        const msg = JSON.parse(event.data) as Record<string, unknown> & {
+          type?: string;
+          payload?: unknown;
+        };
+        const t = msg.type;
+        if (!t) return;
+        const payload =
+          Object.prototype.hasOwnProperty.call(msg, "payload") &&
+          msg.payload !== undefined
+            ? msg.payload
+            : msg;
+        this.handlers.get(t)?.forEach((h) => h(payload as never));
+        this.handlers.get("*")?.forEach((h) => h(msg as never));
       } catch {
         // игнорируем не-JSON фреймы
       }

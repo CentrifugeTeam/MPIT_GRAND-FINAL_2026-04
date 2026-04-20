@@ -12,6 +12,14 @@ websocket_service = WebSocketService()
 settings = get_settings()
 
 
+async def _safe_send_json(websocket: WebSocket, data: dict) -> None:
+    """Клиент мог уже закрыть сокет (например сразу после leave_job) — не падаем в обработчике ошибок."""
+    try:
+        await websocket.send_json(data)
+    except Exception:
+        pass
+
+
 @router.post("/token", response_model=WebSocketToken)
 async def get_websocket_token(current_user: dict = Depends(get_current_user)):
     try:
@@ -79,13 +87,14 @@ async def websocket_endpoint(websocket: WebSocket):
             return
 
         await manager.connect(websocket, user_id, user_email or "")
-        await websocket.send_json(
+        await _safe_send_json(
+            websocket,
             {
                 "type": "connection_established",
                 "user_id": user_id,
                 "email": user_email,
                 "message": "WebSocket BFF",
-            }
+            },
         )
 
         while True:
@@ -94,44 +103,54 @@ async def websocket_endpoint(websocket: WebSocket):
                 message_type = data.get("type")
 
                 if message_type == "ping":
-                    await websocket.send_json({"type": "pong"})
+                    await _safe_send_json(websocket, {"type": "pong"})
                 elif message_type == "watch_job":
                     jid = data.get("job_id")
                     if jid:
                         room = f"job:{jid}"
                         await manager.join_room(websocket, room)
-                        await websocket.send_json(
+                        await _safe_send_json(
+                            websocket,
                             {
                                 "type": "watch_job_ack",
                                 "job_id": jid,
                                 "room": room,
-                            }
+                            },
                         )
                     else:
-                        await websocket.send_json(
-                            {"type": "error", "message": "job_id required"}
+                        await _safe_send_json(
+                            websocket,
+                            {"type": "error", "message": "job_id required"},
                         )
                 elif message_type == "leave_job":
                     jid = data.get("job_id")
                     if jid:
                         await manager.leave_room(websocket, f"job:{jid}")
-                        await websocket.send_json(
-                            {"type": "left_job", "job_id": jid}
+                        await _safe_send_json(
+                            websocket,
+                            {"type": "left_job", "job_id": jid},
                         )
                 elif message_type == "join_room":
                     room = data.get("room")
                     if room:
                         await manager.join_room(websocket, room)
-                        await websocket.send_json(
-                            {"type": "room_joined", "room": room}
+                        await _safe_send_json(
+                            websocket,
+                            {"type": "room_joined", "room": room},
                         )
                 else:
-                    await websocket.send_json({"type": "echo", "original": data})
+                    await _safe_send_json(
+                        websocket,
+                        {"type": "echo", "original": data},
+                    )
 
             except WebSocketDisconnect:
                 break
             except Exception as e:
-                await websocket.send_json({"type": "error", "message": str(e)})
+                await _safe_send_json(
+                    websocket,
+                    {"type": "error", "message": str(e)},
+                )
 
     finally:
         await manager.disconnect(websocket)

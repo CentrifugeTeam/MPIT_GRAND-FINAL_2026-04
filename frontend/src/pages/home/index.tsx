@@ -1,8 +1,5 @@
-import { useTranslation } from "react-i18next";
+import { AnalyticsPanel } from "@/features/analytics/ui/analytics-panel/analytics-panel";
 
 export function HomePage() {
-  const { t } = useTranslation();
-
-  return <div className="flex flex-col gap-4"></div>;
+  return <AnalyticsPanel />;
 }
-

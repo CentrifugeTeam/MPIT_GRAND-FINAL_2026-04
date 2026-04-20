@@ -40,6 +40,7 @@ export const RegisterPage = () => {
   const formMethod = useForm<RegisterSchemaData>({
     resolver: zodResolver(registerSchema),
     mode: 'all',
+    defaultValues: { email: '', password: '', confirmPassword: '' },
   });
 
   const handleClick = (data: RegisterSchemaData) => {
@@ -111,7 +112,12 @@ export const RegisterPage = () => {
                   <label className="text-foreground text-sm font-medium">
                     {t('auth.emailAddress')}
                   </label>
-                  <Input {...field} placeholder={t('auth.emailPlaceholder')} className={inputCn} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ''}
+                    placeholder={t('auth.emailPlaceholder')}
+                    className={inputCn}
+                  />
                   <ErrorMessage>{fieldState.error?.message}</ErrorMessage>
                 </div>
               )}
@@ -129,6 +135,7 @@ export const RegisterPage = () => {
                   <div className="relative">
                     <Input
                       {...field}
+                      value={field.value ?? ''}
                       type={showPassword ? 'text' : 'password'}
                       className={`${inputCn} pr-12`}
                     />
@@ -159,6 +166,7 @@ export const RegisterPage = () => {
                   <div className="relative">
                     <Input
                       {...field}
+                      value={field.value ?? ''}
                       type={showConfirm ? 'text' : 'password'}
                       className={`${inputCn} pr-12`}
                     />

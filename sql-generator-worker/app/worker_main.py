@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 
 import pika
@@ -24,6 +25,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sql_generator_worker")
 
 _engine_cache = None
+_RABBIT_CONNECT_RETRY_BASE_SEC = 1.0
+_RABBIT_CONNECT_RETRY_MAX_SEC = 15.0
 
 
 def get_data_engine():
@@ -45,12 +48,20 @@ async def run_pipeline(payload: dict) -> dict:
     update_job_row(job_id, status="processing")
 
     try:
-        raw_sql, explanation, _excerpt = await generate_sql(question, tables)
+        gctx = payload.get("glossary_context")
+        raw_sql, explanation, _excerpt = await generate_sql(
+            question,
+            tables,
+            glossary_context=gctx if isinstance(gctx, str) else None,
+        )
         allowed = allowed_table_set()
+        mr = payload.get("max_rows")
+        max_rows = int(mr) if mr is not None else None
         sql, guard_warnings = validate_and_prepare_sql(
             raw_sql,
-            settings.QUERY_MAX_ROWS,
+            max_rows,
             allowed,
+            schema_tables=tables,
         )
         cols, rows = execute_select(
             get_data_engine(),
@@ -70,6 +81,9 @@ async def run_pipeline(payload: dict) -> dict:
             "chart_payload": chart_payload,
             "guard_warnings": guard_warnings,
         }
+        interp_in = payload.get("interpretation")
+        if isinstance(interp_in, dict):
+            result_payload["interpretation"] = interp_in
 
         update_job_row(
             job_id,
@@ -91,7 +105,7 @@ async def run_pipeline(payload: dict) -> dict:
         logger.exception("pipeline failed")
         err = str(e)
         update_job_row(job_id, status="error", error=err)
-        return {
+        err_out: dict = {
             "job_id": str(job_id),
             "user_id": user_id,
             "status": "error",
@@ -106,6 +120,10 @@ async def run_pipeline(payload: dict) -> dict:
             "chart_payload": {},
             "guard_warnings": [],
         }
+        interp_in = payload.get("interpretation")
+        if isinstance(interp_in, dict):
+            err_out["interpretation"] = interp_in
+        return err_out
 
 
 def on_message(ch, method, properties, body: bytes) -> None:
@@ -133,7 +151,17 @@ def main() -> None:
         f"@{s.RABBITMQ_HOST}:{s.RABBITMQ_PORT}/"
     )
     params = pika.URLParameters(url)
-    connection = pika.BlockingConnection(params)
+    delay = _RABBIT_CONNECT_RETRY_BASE_SEC
+    while True:
+        try:
+            connection = pika.BlockingConnection(params)
+            break
+        except Exception as e:
+            logger.warning(
+                "RabbitMQ connect failed (%s). Retrying in %.1fs", e, delay
+            )
+            time.sleep(delay)
+            delay = min(delay * 2, _RABBIT_CONNECT_RETRY_MAX_SEC)
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_GENERATE_REQUEST, durable=True)
     channel.queue_declare(queue=QUEUE_GENERATE_RESULT, durable=True)

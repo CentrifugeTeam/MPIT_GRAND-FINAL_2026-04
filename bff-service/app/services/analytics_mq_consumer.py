@@ -12,6 +12,23 @@ from app.core.queues import QUEUE_GENERATE_RESULT
 logger = logging.getLogger(__name__)
 
 _task: Optional[asyncio.Task] = None
+_CONNECT_RETRY_BASE_SEC = 1.0
+_CONNECT_RETRY_MAX_SEC = 15.0
+
+
+async def _connect_with_retries(url: str) -> aio_pika.abc.AbstractRobustConnection:
+    delay = _CONNECT_RETRY_BASE_SEC
+    while True:
+        try:
+            return await aio_pika.connect_robust(url)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning(
+                "RabbitMQ connect failed (%s). Retrying in %.1fs", e, delay
+            )
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, _CONNECT_RETRY_MAX_SEC)
 
 
 async def _consumer_main() -> None:
@@ -20,7 +37,7 @@ async def _consumer_main() -> None:
         f"amqp://{settings.RABBITMQ_USER}:{settings.RABBITMQ_PASSWORD}"
         f"@{settings.RABBITMQ_HOST}:{settings.RABBITMQ_PORT}/"
     )
-    connection = await aio_pika.connect_robust(url)
+    connection = await _connect_with_retries(url)
     try:
         channel = await connection.channel()
         await channel.set_qos(prefetch_count=10)

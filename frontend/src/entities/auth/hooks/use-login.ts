@@ -8,6 +8,7 @@ type Payload = {
   password: string;
 };
 
+/** Навигацию после входа делайте в компоненте (useNavigate в mutate), чтобы не ломать порядок хуков при HMR. */
 export const useLogin = () => {
   const setSession = useAuthStore((s) => s.setSession);
 

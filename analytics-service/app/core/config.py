@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     SCHEMA_CACHE_TTL_SECONDS: int = 86400
     # Ежедневное обновление кэша схемы (час UTC, 0–23)
     SCHEMA_CRON_HOUR: int = 3
-    QUERY_MAX_ROWS: int = 500
     QUERY_TIMEOUT_MS: int = 30000
 
     # Empty = любые таблицы из текущей схемы public с разрешёнными приставками в guard

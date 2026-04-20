@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Set, Tuple
+from typing import Any, Optional, Sequence, Set, Tuple
 
 import sqlglot
 from sqlglot import exp
@@ -72,6 +72,181 @@ def _table_names(node: exp.Expression) -> Set[str]:
     return names
 
 
+def _schema_meta(
+    schema_tables: Optional[Sequence[Any]],
+) -> Optional[dict[str, dict[str, Any]]]:
+    if not schema_tables:
+        return None
+    out: dict[str, dict[str, Any]] = {}
+    for t in schema_tables:
+        if hasattr(t, "name"):
+            name = str(t.name).lower()
+            cols_attr = getattr(t, "columns", None) or []
+        elif isinstance(t, dict):
+            name = str(t["name"]).lower()
+            cols_attr = t.get("columns") or []
+        else:
+            continue
+        col_names: Set[str] = set()
+        enum_map: dict[str, Set[str]] = {}
+        for c in cols_attr:
+            if hasattr(c, "name"):
+                cname = str(c.name).lower()
+                col_names.add(cname)
+                values = getattr(c, "enum_values", None)
+                if values:
+                    enum_map[cname] = {str(v) for v in values}
+            elif isinstance(c, dict):
+                cname = str(c["name"]).lower()
+                col_names.add(cname)
+                values = c.get("enum_values")
+                if values:
+                    enum_map[cname] = {str(v) for v in values}
+        out[name] = {"columns": col_names, "enums": enum_map}
+    return out or None
+
+
+def _physical_alias_map(
+    root: exp.Expression, meta: dict[str, dict[str, Any]]
+) -> dict[str, str]:
+    """Maps table name / alias → physical public table name (only known schema tables)."""
+    m: dict[str, str] = {}
+    for t in root.find_all(exp.Table):
+        base = (t.name or "").lower()
+        if not base or base not in meta:
+            continue
+        m[base] = base
+        al = t.args.get("alias")
+        if isinstance(al, exp.TableAlias) and al.name:
+            m[str(al.name).lower()] = base
+    return m
+
+
+def _schema_column_errors(
+    root: exp.Expression, meta: dict[str, dict[str, Any]]
+) -> list[str]:
+    alias_map = _physical_alias_map(root, meta)
+    if not alias_map:
+        return []
+    physical_used = set(alias_map.values())
+    errors: list[str] = []
+    for col in root.find_all(exp.Column):
+        cname_raw = col.name
+        if not cname_raw:
+            continue
+        cname = str(cname_raw).lower()
+        tbl_raw = col.table
+        tbl = str(tbl_raw).lower() if tbl_raw else ""
+        if tbl:
+            base = alias_map.get(tbl, tbl)
+            if base not in meta:
+                continue
+            if cname not in meta[base]["columns"]:
+                errors.append(
+                    f"Колонка «{tbl_raw}.{cname_raw}» отсутствует в таблице «{base}» по схеме БД"
+                )
+            continue
+        candidates = [b for b in physical_used if cname in meta.get(b, {}).get("columns", set())]
+        if len(candidates) == 0:
+            errors.append(
+                f"Колонка «{cname_raw}» не найдена ни в одной из используемых таблиц схемы "
+                f"({', '.join(sorted(physical_used))})"
+            )
+        elif len(candidates) > 1:
+            errors.append(
+                f"Колонка «{cname_raw}» неоднозначна (есть в: {', '.join(sorted(candidates))}); "
+                "укажите таблицу или алиас"
+            )
+    return errors
+
+
+def _literal_values_from_expr(node: exp.Expression) -> Optional[Set[str]]:
+    if isinstance(node, exp.Literal):
+        if node.is_string:
+            return {node.this}
+        return {str(node.this)}
+    if isinstance(node, exp.Tuple):
+        vals: Set[str] = set()
+        for x in node.expressions:
+            if not isinstance(x, exp.Literal):
+                return None
+            vals.add(x.this if x.is_string else str(x.this))
+        return vals
+    return None
+
+
+def _resolve_column_base(
+    col: exp.Column,
+    alias_map: dict[str, str],
+    meta: dict[str, dict[str, Any]],
+) -> Optional[tuple[str, str]]:
+    cname_raw = col.name
+    if not cname_raw:
+        return None
+    cname = str(cname_raw).lower()
+    tbl_raw = col.table
+    tbl = str(tbl_raw).lower() if tbl_raw else ""
+    if tbl:
+        base = alias_map.get(tbl, tbl)
+        if base in meta and cname in meta[base]["columns"]:
+            return base, cname
+        return None
+    candidates = [b for b in set(alias_map.values()) if cname in meta.get(b, {}).get("columns", set())]
+    if len(candidates) == 1:
+        return candidates[0], cname
+    return None
+
+
+def _schema_enum_errors(
+    root: exp.Expression, meta: dict[str, dict[str, Any]]
+) -> list[str]:
+    alias_map = _physical_alias_map(root, meta)
+    if not alias_map:
+        return []
+    errors: list[str] = []
+    compare_nodes: tuple[type[exp.Expression], ...] = (
+        exp.EQ,
+        exp.NEQ,
+        exp.In,
+    )
+    for node in root.walk():
+        if not isinstance(node, compare_nodes):
+            continue
+        left = node.args.get("this")
+        right = node.args.get("expression")
+        if isinstance(node, exp.In):
+            right = node.args.get("expressions")
+            if right is not None:
+                right = exp.Tuple(expressions=right)
+        if isinstance(left, exp.Column):
+            col_side = left
+            val_side = right
+        elif isinstance(right, exp.Column):
+            col_side = right
+            val_side = left
+        else:
+            continue
+        if not isinstance(col_side, exp.Column) or not isinstance(val_side, exp.Expression):
+            continue
+        resolved = _resolve_column_base(col_side, alias_map, meta)
+        if not resolved:
+            continue
+        base, cname = resolved
+        allowed_values = meta[base]["enums"].get(cname)
+        if not allowed_values:
+            continue
+        used_values = _literal_values_from_expr(val_side)
+        if not used_values:
+            continue
+        bad = sorted(v for v in used_values if v not in allowed_values)
+        if bad:
+            errors.append(
+                f"Недопустимое enum-значение для «{base}.{cname}»: {', '.join(bad)}. "
+                f"Допустимо: {', '.join(sorted(allowed_values))}"
+            )
+    return errors
+
+
 def _apply_limit(node: exp.Expression, max_rows: int) -> exp.Expression:
     if isinstance(node, exp.With):
         inner = node.this
@@ -98,7 +273,10 @@ def allowed_table_set() -> Optional[Set[str]]:
 
 
 def validate_and_prepare_sql(
-    raw_sql: str, max_rows: int, allowed: Optional[Set[str]]
+    raw_sql: str,
+    max_rows: Optional[int],
+    allowed: Optional[Set[str]],
+    schema_tables: Optional[Sequence[Any]] = None,
 ) -> Tuple[str, list[str]]:
     warnings: list[str] = []
     sql = _extract_sql_from_markdown(raw_sql)
@@ -129,12 +307,25 @@ def validate_and_prepare_sql(
                 f"Таблицы вне разрешённого списка: {', '.join(sorted(extra))}"
             )
 
-    limited = _apply_limit(node, max_rows)
-    out = limited.sql(dialect="postgres")
+    meta = _schema_meta(schema_tables)
+    if meta:
+        col_err = _schema_column_errors(node, meta)
+        if col_err:
+            raise ValueError("; ".join(col_err))
+        enum_err = _schema_enum_errors(node, meta)
+        if enum_err:
+            raise ValueError("; ".join(enum_err))
+
+    final_node = node
+    if max_rows is not None:
+        final_node = _apply_limit(node, max_rows)
+        warnings.append(
+            f"При необходимости добавлен LIMIT не более {max_rows} строк"
+        )
+    out = final_node.sql(dialect="postgres")
     if not out or not out.strip():
         raise ValueError("Не удалось сгенерировать SQL")
 
-    warnings.append(f"Применён LIMIT не более {max_rows} строк")
     return out, warnings
 
 

@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Генерирует app/data/metrics_glossary.json — запуск при необходимости обновить объём глоссария."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "app" / "data" / "metrics_glossary.json"
+
+# (id, title, category, definition, synonyms tuple, sql_hints)
+RAW: list[tuple] = [
+    ("rev", "Выручка (Revenue)", "finance", "Сумма денежных поступлений от реализации товаров/услуг до вычета скидок.", ("выручка", "revenue", "оборот продаж", "sales revenue", "доход от продаж"), "SUM(amount) или SUM(price*qty); фильтр по статусу оплаты."),
+    ("gmv", "GMV (Gross Merchandise Volume)", "finance", "Валовый объём сделок до комиссий и возвратов.", ("gmv", "валовой объём", "товарооборот грязный"), "SUM(order_total); часто до возвратов."),
+    ("net_rev", "Чистая выручка", "finance", "Выручка после вычета возвратов, скидок и налогов с выручки.", ("чистая выручка", "net revenue", "nett revenue"), "SUM(amount) - refunds; уточняйте политику НДС."),
+    ("profit", "Прибыль", "finance", "Разница между доходами и расходами за период.", ("прибыль", "profit", "margin profit"), "SUM(revenue)-SUM(cost); не путать с маржой."),
+    ("margin", "Маржа / маржинальность", "finance", "Доля прибыли или отклонение цены от себестоимости.", ("маржа", "margin", "рентабельность", "маржинальность"), "(SUM(price-cost))/SUM(price) или SUM(margin)."),
+    ("cac", "CAC (Customer Acquisition Cost)", "marketing", "Стоимость привлечения одного платящего клиента.", ("cac", "стоимость привлечения", "cost per acquisition"), "marketing_spend / new_customers."),
+    ("ltv", "LTV (Lifetime Value)", "marketing", "Совокупная прибыль/выручка от клиента за всё время.", ("ltv", "lifetime value", "пожизненная ценность"), "SUM(revenue per user) lifetime; когорты."),
+    ("romi", "ROMI / ROAS", "marketing", "Окупаемость маркетинговых инвестиций или расходов на рекламу.", ("romi", "roas", "окупаемость рекламы", "return on ad spend"), "revenue_from_campaign / ad_spend."),
+    ("ctr", "CTR", "marketing", "Доля кликов к показам объявления.", ("ctr", "кликабельность", "click-through"), "clicks / impressions."),
+    ("cvr", "Конверсия (CVR)", "marketing", "Доля пользователей, совершивших целевое действие.", ("конверсия", "cvr", "conversion rate", "коэффициент конверсии"), "conversions / sessions или orders / visits."),
+    ("cpa", "CPA", "marketing", "Стоимость одного целевого действия (лид, заказ).", ("cpa", "cost per action", "цена лида"), "spend / conversions."),
+    ("cpc", "CPC", "marketing", "Стоимость одного клика по объявлению.", ("cpc", "cost per click", "цена клика"), "spend / clicks."),
+    ("cpm", "CPM", "marketing", "Стоимость тысячи показов.", ("cpm", "cost per mille", "цена за тысячу показов"), "1000 * spend / impressions."),
+    ("aov", "Средний чек (AOV)", "sales", "Средняя сумма заказа.", ("средний чек", "aov", "average order value", "средний заказ"), "SUM(order_amount)/COUNT(orders)."),
+    ("arpu", "ARPU", "finance", "Средняя выручка на одного пользователя за период.", ("arpu", "average revenue per user"), "revenue / active_users."),
+    ("arr", "ARR", "finance", "Годовая регулярная выручка подписок.", ("arr", "annual recurring revenue"), "MRR * 12 или сумма годовых контрактов."),
+    ("mrr", "MRR", "finance", "Месячная регулярная выручка подписок.", ("mrr", "monthly recurring revenue"), "SUM(monthly_subscription_fees)."),
+    ("churn", "Отток (Churn)", "product", "Доля ушедших клиентов или подписок за период.", ("отток", "churn", "текучка клиентов"), "lost_customers / start_customers или по MRR."),
+    ("retention", "Удержание (Retention)", "product", "Доля пользователей, вернувшихся в окне после регистрации.", ("ретеншн", "retention", "удержание"), "cohort analysis; returning/active."),
+    ("dau", "DAU", "product", "Уникальные активные пользователи за день.", ("dau", "daily active users", "дневная аудитория"), "COUNT DISTINCT user_id WHERE activity_date = day."),
+    ("wau", "WAU", "product", "Уникальные активные пользователи за неделю.", ("wau", "weekly active users"), "COUNT DISTINCT user_id over 7 days."),
+    ("mau", "MAU", "product", "Уникальные активные пользователи за месяц.", ("mau", "monthly active users"), "COUNT DISTINCT user_id over month."),
+    ("stickiness", "Stickiness DAU/MAU", "product", "Насколько часто возвращаются пользователи.", ("липкость", "stickiness", "dau/mau"), "DAU / MAU."),
+    ("nps", "NPS", "support", "Индекс лояльности по опросам 0–10.", ("nps", "net promoter score", "индекс лояльности"), "% promoters - % detractors."),
+    ("csat", "CSAT", "support", "Удовлетворённость по опросам (шкала).", ("csat", "customer satisfaction"), "AVG(rating) satisfaction surveys."),
+    ("sla", "SLA", "operations", "Соблюдение сроков обработки заявок/заказов.", ("sla", "сроки обслуживания", "дедлайн заявок"), "share completed within deadline."),
+    ("fulfillment", "Фулфилмент / отгрузка", "operations", "Выполнение заказа от оплаты до доставки.", ("фулфилмент", "отгрузка", "доставка заказа"), "status shipped/delivered; lead time."),
+    ("inventory", "Остатки / запасы", "operations", "Количество товара на складах.", ("остатки", "запасы", "inventory", "stock"), "SUM(quantity) WHERE stock; turnover."),
+    ("sku", "SKU", "operations", "Уникальный артикул товарной позиции.", ("sku", "артикул", "номенклатура"), "GROUP BY sku or product_id."),
+    ("cohort", "Когорта", "analytics", "Группа пользователей по периоду первого события.", ("когорта", "cohort", "когортный анализ"), "DATE_TRUNC signup; join behavior by period."),
+    ("funnel", "Воронка", "marketing", "Последовательность шагов и конверсия между ними.", ("воронка", "funnel", "этапы"), "COUNT per step; step-to-step ratio."),
+    ("yoy", "YoY сравнение", "time", "Сравнение с тем же периодом год назад.", ("год к году", "yoy", "year over year"), "metric_this_year / metric_last_year - 1."),
+    ("mom", "MoM", "time", "Сравнение с предыдущим месяцем.", ("мес к мес", "mom", "month over month"), "delta vs prior month."),
+    ("wow", "WoW", "time", "Сравнение с предыдущей неделей.", ("неделя к неделе", "wow", "week over week"), "delta vs prior week."),
+    ("seasonality", "Сезонность", "time", "Повторяющиеся колебания по календарю.", ("сезонность", "seasonality", "пики продаж"), "GROUP BY month/week; YoY same month."),
+    ("running_total", "Нарастающий итог", "analytics", "Кумулятивная сумма метрики по времени.", ("нарастающий итог", "running total", "кумулятив"), "SUM() OVER (ORDER BY date ROWS UNBOUNDED PRECEDING)."),
+    ("rank_top_n", "Топ-N / рейтинг", "analytics", "Первые N записей по метрике.", ("топ", "top", "рейтинг", "лидеры"), "ORDER BY metric DESC LIMIT N; ROW_NUMBER."),
+    ("share_pct", "Доля от целого", "analytics", "Процент вклада строки в сумму группы.", ("доля", "процент от", "share", "percentage"), "100 * val / SUM(val) OVER (PARTITION BY ...)"),
+    ("growth_rate", "Темп роста", "finance", "Относительное изменение метрики между периодами.", ("темп роста", "growth rate", "прирост"), "(now - prev)/prev."),
+    ("median", "Медиана", "analytics", "Среднее по рангу, устойчивое к выбросам.", ("медиана", "median", "перцентиль 50"), "PERCENTILE_CONT(0.5) WITHIN GROUP."),
+    ("percentile", "Перцентиль", "analytics", "Значение уровня p распределения.", ("перцентиль", "percentile", "квантиль"), "PERCENTILE_CONT(p) WITHIN GROUP."),
+    ("distinct_cnt", "Число уникальных", "analytics", "Подсчёт уникальных сущностей.", ("уникальные", "distinct", "число пользователей"), "COUNT(DISTINCT id)."),
+    ("active_users", "Активные пользователи", "product", "Пользователи с действием за окно времени.", ("активные пользователи", "active users", "активность"), "FILTER events in window."),
+    ("new_users", "Новые пользователи", "product", "Регистрации или первые события за период.", ("новые пользователи", "signups", "регистрации"), "COUNT WHERE first_seen in period."),
+    ("sessions", "Сессии / визиты", "marketing", "Последовательность действий в одном визите.", ("сессии", "sessions", "визиты"), "COUNT session_id GROUP BY day."),
+    ("bounce", "Показатель отказов", "marketing", "Визиты с одним просмотром.", ("отказы", "bounce", "bounce rate"), "single_page_sessions / sessions."),
+    ("time_on_site", "Время на сайте", "marketing", "Средняя длительность визита.", ("время на сайте", "session duration"), "AVG(session_length)."),
+    ("organic", "Органический трафик", "marketing", "Переходы без платной рекламы.", ("органика", "organic", "seo"), "medium = organic / referral rules."),
+    ("paid_traffic", "Платный трафик", "marketing", "Клики из рекламных кампаний.", ("платный трафик", "paid", "рекламный трафик"), "utm_medium cpc/paid."),
+    ("roi_campaign", "ROI кампании", "marketing", "Окупаемость конкретной кампании.", ("roi кампании", "окупаемость кампании"), "(revenue - spend)/spend."),
+    ("allocation", "Аллокация бюджета", "finance", "Распределение затрат по каналам/продуктам.", ("аллокация", "распределение бюджета"), "SUM(cost) GROUP BY channel."),
+    ("discount_rate", "Уровень скидок", "sales", "Доля выручки или заказов со скидкой.", ("скидки", "discount rate", "промо"), "SUM(discount)/SUM(gross)."),
+    ("refund_rate", "Доля возвратов", "finance", "Отношение суммы возвратов к продажам.", ("возвраты", "refunds", "refund rate"), "SUM(refund)/SUM(sales)."),
+    ("pipeline", "Воронка продаж (pipeline)", "sales", "Сделки по стадиям и суммы.", ("pipeline", "воронка продаж", "сделки"), "SUM(amount) GROUP BY stage."),
+    ("win_rate", "Win rate", "sales", "Доля выигранных сделок.", ("win rate", "конверсия в сделку"), "won / (won+lost)."),
+    ("sales_cycle", "Длительность сделки", "sales", "Дни от лида до победы.", ("цикл сделки", "sales cycle"), "AVG(close_date - lead_date)."),
+    ("quota", "Квота продаж", "sales", "План по объёму для менеджера/региона.", ("квота", "план продаж", "quota"), "compare actual vs quota."),
+    ("geo_split", "Разбивка по регионам", "geo", "Метрики по стране/городу/офису.", ("по регионам", "география", "geo", "город"), "GROUP BY region/city."),
+    ("channel_split", "Разбивка по каналам", "marketing", "Метрики по источнику трафика/продаж.", ("по каналам", "channel", "источник"), "GROUP BY channel/medium."),
+    ("product_split", "Разбивка по продуктам", "product", "Метрики по SKU/категории.", ("по продуктам", "по категориям", "sku"), "GROUP BY product_id/category."),
+    ("segment", "Сегмент клиентов", "marketing", "Группа по поведению или RFМ.", ("сегмент", "segment", "rfm"), "CASE WHEN rules or cluster."),
+    ("rfm", "RFM анализ", "marketing", "Recency, Frequency, Monetary сегментация.", ("rfm", "сегментация клиентов"), "score per dimension; tertiles."),
+    ("clv_balance", "Баланс LTV:CAC", "finance", "Соотношение ценности клиента и стоимости привлечения.", ("ltv cac", "соотношение ltv"), "LTV / CAC target > 3."),
+    ("payment_mix", "Способы оплаты", "finance", "Доля платежей картой/наличными/СБП.", ("способы оплаты", "payment mix"), "GROUP BY payment_method."),
+    ("subscription_mix", "Тарифы / планы", "product", "Распределение пользователей по тарифам.", ("тарифы", "планы подписки", "subscription tier"), "GROUP BY plan."),
+    ("feature_adoption", "Внедрение фичи", "product", "Доля пользователей, использующих функцию.", ("внедрение фичи", "adoption", "использование функции"), "users_with_feature / total_users."),
+    ("error_rate", "Доля ошибок", "operations", "Частота ошибок API или заказов.", ("ошибки", "error rate", "доля сбоев"), "errors / requests."),
+    ("latency_p95", "Задержка p95", "operations", "95-й перцентиль времени ответа.", ("латентность", "p95", "время ответа"), "PERCENTILE_CONT(0.95) latency."),
+    ("uptime", "Доступность сервиса", "operations", "Доля времени без инцидентов.", ("аптайм", "uptime", "доступность"), "good_minutes / total."),
+    ("ticket_backlog", "Очередь тикетов", "support", "Незакрытые обращения.", ("очередь тикетов", "бэклог поддержки"), "COUNT open tickets."),
+    ("first_response", "Время первого ответа", "support", "SLA до первого ответа.", ("первый ответ", "first response time"), "AVG(first_reply - created)."),
+    ("resolution_time", "Время решения тикета", "support", "От создания до закрытия.", ("время решения", "resolution time"), "AVG(resolved - created)."),
+    ("employee_cnt", "Численность", "hr", "Количество сотрудников.", ("численность", "headcount", "штат"), "COUNT employees active."),
+    ("attrition_hr", "Текучесть кадров", "hr", "Доля уволившихся.", ("текучесть", "attrition", "увольнения"), "leavers / avg_headcount."),
+    ("bench", "Bench / простой", "hr", "Не загруженные ресурсы.", ("бенч", "простой команды"), "capacity - utilized."),
+    ("billable", "Billable hours", "hr", "Оплачиваемые часы.", ("биллабл", "billable", "оплачиваемые часы"), "SUM(hours) WHERE billable."),
+    ("utilization", "Утилизация", "hr", "Загрузка сотрудника/ресурса.", ("утилизация", "utilization", "загрузка"), "billable / available_hours."),
+    ("burn_rate", "Burn rate", "finance", "Скорость расхода денег стартапа.", ("бёрн", "burn rate", "расход денег"), "cash_spent per month."),
+    ("runway", "Runway", "finance", "Месяцев до окончания денег при текущем burn.", ("ранвей", "runway", "запас по деньгам"), "cash / monthly_burn."),
+    ("ebitda", "EBITDA", "finance", "Прибыль до процентов, налогов и амортизации (упрощённо).", ("ebitda", "ебитда"), "Определение зависит от учётной политики."),
+    ("working_capital", "Оборотный капитал", "finance", "Оборотные активы минус краткосрочные обязательства.", ("оборотный капитал", "working capital"), "current_assets - current_liabilities."),
+    ("accounts_receivable", "Дебиторка", "finance", "Задолженность покупателей.", ("дебиторка", "receivables", "долги клиентов"), "SUM(open_invoices)."),
+    ("accounts_payable", "Кредиторка", "finance", "Задолженность перед поставщиками.", ("кредиторка", "payables"), "SUM(unpaid_bills)."),
+    ("cash_flow", "Денежный поток", "finance", "Приток и отток денег за период.", ("cash flow", "денежный поток", "ддс"), "SUM(inflows)-SUM(outflows)."),
+    ("budget_variance", "Отклонение от бюджета", "finance", "Факт к плану.", ("бюджет", "variance", "отклонение от плана"), "actual - budget."),
+    ("forecast", "Прогноз", "analytics", "Ожидаемое значение метрики вперёд.", ("прогноз", "forecast", "предсказание"), "model output or trend extrapolation."),
+    ("anomaly", "Аномалия", "analytics", "Резкое отклонение от нормы.", ("аномалия", "outlier", "всплеск"), "z-score; compare to rolling avg."),
+    ("duplicate_rate", "Дубликаты", "operations", "Повторяющиеся записи / заказы.", ("дубликаты", "дубли", "повторы"), "COUNT(*) - COUNT(DISTINCT key)."),
+    ("data_quality", "Качество данных", "operations", "Полнота и корректность полей.", ("качество данных", "пропуски", "null rate"), "SUM(CASE WHEN col IS NULL)/COUNT."),
+    ("gdpr_pii", "Персональные данные", "operations", "Идентификаторы пользователя под GDPR.", ("персональные данные", "пиай", "gdpr"), "Не выводить PII без маскирования."),
+    ("uuid_join", "Связь по UUID", "generic_sql", "В проекте пользователи часто по uuid, не по id.", ("uuid", "идентификатор пользователя"), "JOIN ON users.uuid = fact.user_id::uuid при необходимости."),
+    ("enum_case", "Регистр enum", "generic_sql", "Значения enum в PostgreSQL как в схеме.", ("enum", "роль", "статус"), "Использовать литералы из схемы, например 'ADMIN'."),
+    ("agg_filter", "Условная агрегация", "generic_sql", "SUM(CASE WHEN ... THEN x END).", ("условная сумма", "conditional sum"), "SUM(CASE WHEN status='paid' THEN amount END)."),
+    ("window_lag", "Лаг / сдвиг по времени", "analytics", "Значение метрики в предыдущем периоде.", ("лаг", "lag", "предыдущий период"), "LAG(metric) OVER (ORDER BY date)."),
+    ("rolling_avg", "Скользящее среднее", "analytics", "Сглаживание колебаний.", ("скользящее среднее", "moving average"), "AVG OVER (ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)."),
+    ("ytd", "YTD с начала года", "time", "Накоплено с 1 января.", ("с начала года", "ytd", "year to date"), "SUM WHERE date >= date_trunc('year', now())."),
+    ("mtd", "MTD с начала месяца", "time", "Накоплено с 1-го числа.", ("с начала месяца", "mtd"), "SUM WHERE date >= date_trunc('month', now())."),
+    ("week_part", "Номер недели ISO", "time", "Группировка по календарной неделе.", ("неделя года", "iso week"), "EXTRACT(isoyear), EXTRACT(week)."),
+    ("hour_of_day", "Распределение по часам", "time", "Активность по часу суток.", ("по часам", "hour of day"), "EXTRACT(HOUR FROM ts)."),
+    ("geo_bucket", "Региональные бакеты", "geo", "Крупные географические зоны.", ("федеральный округ", "регион рф"), "CASE WHEN region IN (...) END."),
+    ("currency_fx", "Курсы валют", "finance", "Пересчёт сумм в одну валюту.", ("валюта", "курс", "fx"), "amount * rate_to_base."),
+    ("tax_vat", "НДС", "finance", "Налог на добавленную стоимость.", ("ндс", "vat", "налог"), "amount * vat_rate / (1+vat_rate) при необходимости."),
+    ("bundle", "Бандлы / комплекты", "sales", "Продажа наборов товаров.", ("бандл", "комплект", "bundle"), "Компоненты vs bundle SKU."),
+    ("cross_sell", "Допродажи", "sales", "Сопутствующие товары в заказе.", ("кросс-селл", "допродажи", "cross sell"), "basket analysis."),
+    ("cart_abandon", "Брошенные корзины", "marketing", "Заказы не завершённые оплатой.", ("брошенная корзина", "abandoned cart"), "sessions checkout without purchase."),
+    ("lead_time", "Lead time поставки", "operations", "Время от заказа до получения.", ("lead time", "срок поставки"), "AVG(received - ordered)."),
+    ("fill_rate", "Fill rate", "operations", "Доля заказанного количества отгруженного.", ("fill rate", "удовлетворение заказа"), "shipped_qty / ordered_qty."),
+    ("abc_xyz", "ABC/XYZ классификация", "operations", "Приоритизация SKU по обороту и стабильности.", ("abc xyz", "классификация запасов"), "Segment by cumsum revenue / variability."),
+]
+
+entries = []
+for i, row in enumerate(RAW):
+    eid, title, cat, definition, syns, hints = row
+    entries.append(
+        {
+            "id": eid if len(eid) > 3 else f"{eid}_{i}",
+            "title": title,
+            "category": cat,
+            "definition": definition,
+            "synonyms": list(syns),
+            "sql_hints": hints,
+        }
+    )
+
+OUT.parent.mkdir(parents=True, exist_ok=True)
+with open(OUT, "w", encoding="utf-8") as f:
+    json.dump({"version": 1, "entries": entries}, f, ensure_ascii=False, indent=2)
+
+print(f"Wrote {len(entries)} entries to {OUT}")
