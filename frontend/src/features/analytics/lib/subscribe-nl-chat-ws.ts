@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 
+import { resolveNlAssistantVisibleText } from "@/features/analytics/lib/nl-chat-assistant-body";
 import {
   pickChartPayload,
   pickRows,
@@ -25,16 +26,31 @@ export function subscribeNlChatWs(
       const text = String(payload.text ?? "");
       const rep = payload.report ? String(payload.report) : "";
       const sql = payload.sql != null ? String(payload.sql) : null;
-      const body = rep ? `${text}\n\n${rep}`.trim() : text;
+      const status = String(payload.status ?? "");
+      const err = payload.error != null ? String(payload.error).trim() : "";
+      const cols = pickStringArray(payload.columns);
+      const rowObjs = pickRows(payload.rows);
       const rc = payload.row_count;
+      const rcNum = typeof rc === "number" ? rc : undefined;
+
+      const body = resolveNlAssistantVisibleText(tRef.current, {
+        text,
+        report: rep,
+        status,
+        error: err,
+        columns: cols,
+        rows: rowObjs,
+        sql,
+        rowCount: rcNum,
+      });
       appendLine({
         id: String(payload.message_id ?? crypto.randomUUID()),
         role: "assistant",
-        text: body || tRef.current("home.analytics.chatEmptyAssistant"),
+        text: body,
         sql,
         chartPayload: pickChartPayload(payload.chart_payload),
-        columns: pickStringArray(payload.columns),
-        rows: pickRows(payload.rows),
+        columns: cols,
+        rows: rowObjs,
         rowCount: typeof rc === "number" ? rc : undefined,
       });
       setNlChatBusy(false);

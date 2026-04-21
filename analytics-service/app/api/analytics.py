@@ -70,6 +70,8 @@ async def get_schema(
 
     settings = get_settings()
     sk = (source_key or "").strip() or None
+    if not sk:
+        sk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip() or None
     cached = schema_cache.get_cached(settings.SCHEMA_CACHE_TTL_SECONDS, sk)
     if cached is not None and not refresh:
         return SchemaResponse(tables=cached, cached=True)

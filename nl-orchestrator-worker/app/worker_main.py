@@ -43,6 +43,23 @@ _pending_lock = asyncio.Lock()
 _WS_CHAT_TABLE_ROWS_CAP = 200
 
 
+def _rows_as_dicts(columns: List[Any], rows: List[Any]) -> List[Dict[str, Any]]:
+    """JSON из воркера обычно list[dict]; на всякий случай поддерживаем list[list] + columns."""
+    col_names = [str(c) for c in columns] if isinstance(columns, list) else []
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        if isinstance(r, dict):
+            out.append(dict(r))
+        elif isinstance(r, (list, tuple)) and col_names:
+            out.append(
+                {
+                    col_names[i]: r[i]
+                    for i in range(min(len(col_names), len(r)))
+                }
+            )
+    return out
+
+
 def _slim_chart_payload_for_ws(chart_payload: Any) -> dict[str, Any]:
     """Уменьшаем тело для WebSocket: для bar/line строки таблицы не нужны клиенту."""
     if not isinstance(chart_payload, dict):
@@ -253,6 +270,56 @@ async def _handle_sql_chat_result(
         async with _pending_lock:
             ctx = pending.pop(jid, None)
         if ctx is None:
+            conv_orphan = str(data.get("conversation_id") or "").strip()
+            uid_orphan = str(data.get("user_id") or "").strip()
+            if conv_orphan:
+                msg_id = f"orphan-{jid}"
+                err_txt = (
+                    "Результат SQL пришёл без контекста сессии (рестарт сервиса или рассинхрон). "
+                    f"job_id={jid}. Отправьте вопрос ещё раз."
+                )
+                logger.warning(
+                    "sql chat result: no pending ctx for job_id=%s conversation_id=%s",
+                    jid,
+                    conv_orphan,
+                )
+                sql_o = data.get("sql")
+                sql_str = str(sql_o) if sql_o else None
+                ws_orphan: Dict[str, Any] = {
+                    "type": "chat_assistant",
+                    "conversation_id": conv_orphan,
+                    "message_id": msg_id,
+                    "text": err_txt,
+                    "report": "",
+                    "sql": sql_str,
+                    "status": "error",
+                    "error": err_txt,
+                    "row_count": data.get("row_count"),
+                    "chart": {"type": "table"},
+                    "chart_payload": {},
+                    "columns": [],
+                    "rows": [],
+                }
+                await _publish_json(pub_channel, ws_orphan)
+                if uid_orphan:
+                    await _sync_chat_event(
+                        "assistant_message",
+                        uid_orphan,
+                        conv_orphan,
+                        msg_id,
+                        {
+                            "text": err_txt,
+                            "report": "",
+                            "sql": sql_str,
+                            "status": "error",
+                            "error": err_txt,
+                            "row_count": data.get("row_count"),
+                            "chart": {"type": "table"},
+                            "chart_payload": {},
+                            "columns": [],
+                            "rows": [],
+                        },
+                    )
             return
         status = str(data.get("status") or "")
         err: Optional[str] = data.get("error") if status == "error" else None
@@ -266,13 +333,14 @@ async def _handle_sql_chat_result(
             cols = []
         if not isinstance(rows, list):
             rows = []
+        rows_dicts = _rows_as_dicts(cols, rows)
         try:
             final = await finalize_after_sql(
                 ctx.user_text,
                 sql_s,
                 err,
                 [str(c) for c in cols],
-                [dict(r) for r in rows if isinstance(r, dict)],
+                rows_dicts,
             )
         except Exception as e:
             logger.exception("finalize_after_sql failed")
@@ -285,7 +353,7 @@ async def _handle_sql_chat_result(
             dict(chart_raw) if isinstance(chart_raw, dict) else {"type": "table"}
         )
         chart_payload_ws = _slim_chart_payload_for_ws(data.get("chart_payload"))
-        rows_list = [dict(r) for r in rows if isinstance(r, dict)]
+        rows_list = rows_dicts
         rows_ws = rows_list[:_WS_CHAT_TABLE_ROWS_CAP]
 
         ws_body: Dict[str, Any] = {

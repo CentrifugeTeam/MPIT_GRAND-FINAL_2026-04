@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ANALYTICS_MAX_ROWS_CAP } from "@/features/analytics/config/constants";
+
+/** Сброс «зависшего» ожидания ответа, если chat_assistant не пришёл (сеть, рассинхрон pending). */
+const NL_CHAT_BUSY_WATCHDOG_MS = 120_000;
 import { fetchNlChatMessages } from "@/features/analytics/api/analytics-api";
 import type { NlChatLine } from "@/features/analytics/lib/nl-chat-line";
 import { subscribeNlChatWs } from "@/features/analytics/lib/subscribe-nl-chat-ws";
@@ -54,6 +57,18 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     linesRef.current = lines;
   }, [lines]);
 
+  useEffect(() => {
+    setNlChatBusy(false);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!nlChatBusy) return;
+    const id = window.setTimeout(() => {
+      setNlChatBusy(false);
+    }, NL_CHAT_BUSY_WATCHDOG_MS);
+    return () => window.clearTimeout(id);
+  }, [nlChatBusy]);
+
   const appendLine = useCallback((line: NlChatLine) => {
     setLines((prev) => {
       if (prev.some((p) => p.id === line.id)) return prev;
@@ -82,7 +97,7 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     void fetchNlChatMessages(conversationId)
       .then((data) => {
         if (cancelled || gen !== transcriptLoadGen.current) return;
-        setLines(data.items.map(apiNlMessageToLine));
+        setLines(data.items.map((row) => apiNlMessageToLine(row, t)));
       })
       .catch(() => {
         if (!cancelled && gen === transcriptLoadGen.current) setLines([]);
@@ -90,7 +105,7 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, t]);
 
   useEffect(() => {
     if (!conversationId) return;

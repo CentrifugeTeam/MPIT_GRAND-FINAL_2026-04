@@ -1,6 +1,9 @@
 import type { ChartPayloadShape } from "@/entities/analytics";
 
+import { resolveNlAssistantVisibleText } from "@/features/analytics/lib/nl-chat-assistant-body";
 import type { NlChatLine } from "@/features/analytics/lib/nl-chat-line";
+
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
 export type NlChatMessageApiRow = {
   id: string;
@@ -33,24 +36,41 @@ function pickRows(raw: unknown): Record<string, unknown>[] | undefined {
 }
 
 /** Строка из GET /api/analytics/chats/:id/messages → лента UI. */
-export function apiNlMessageToLine(row: NlChatMessageApiRow): NlChatLine {
+export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine {
   const pl = row.payload;
   const text = String(pl.text ?? "");
   const report = pl.report != null ? String(pl.report) : "";
-  const body =
-    row.role === "assistant" && report
-      ? `${text}\n\n${report}`.trim()
-      : text;
   const sql = pl.sql != null ? String(pl.sql) : null;
   const rc = pl.row_count;
+  const rcNum = typeof rc === "number" ? rc : undefined;
+  const cols = pickStringArray(pl.columns);
+  const rowObjs = pickRows(pl.rows);
+  const status = String(pl.status ?? "");
+  const err = pl.error != null ? String(pl.error).trim() : "";
+  const role = row.role as NlChatLine["role"];
+
+  const body =
+    role === "assistant"
+      ? resolveNlAssistantVisibleText(t, {
+          text,
+          report,
+          status,
+          error: err,
+          columns: cols,
+          rows: rowObjs,
+          sql,
+          rowCount: rcNum,
+        })
+      : text;
+
   return {
     id: row.id,
-    role: row.role as NlChatLine["role"],
-    text: body || " ",
+    role,
+    text: body.trim() || text,
     sql,
     chartPayload: pickChartPayload(pl.chart_payload),
-    columns: pickStringArray(pl.columns),
-    rows: pickRows(pl.rows),
-    rowCount: typeof rc === "number" ? rc : undefined,
+    columns: cols,
+    rows: rowObjs,
+    rowCount: rcNum,
   };
 }

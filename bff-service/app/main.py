@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analytics, auth, files, notification, websocket
+from app.api import analytics, auth, notification, websocket
 
 
 @asynccontextmanager
@@ -37,7 +37,6 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(notification.router, prefix="/api/notification", tags=["notification"])
-app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(websocket.router, prefix="/api/websocket", tags=["websocket"])
 

@@ -47,8 +47,9 @@ API Gateway сервис, который объединяет все микро�
 ```env
 # Внутренние URL сервисов
 AUTH_SERVICE_URL=http://auth-service:8002
-FILES_SERVICE_URL=http://files-service:8006
 NOTIFICATION_SERVICE_URL=http://notification-service:8007
+# WebSocket NL-чат: если клиент не передал источник, BFF подставит этот ключ при запросе схемы (см. analytics DEFAULT_ANALYTICS_SOURCE_KEY).
+DEFAULT_ANALYTICS_SOURCE_KEY=main-db
 
 # JWT конфиг (для валидации)
 SECRET_KEY=your-secret-key-here

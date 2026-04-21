@@ -43,21 +43,23 @@ def _parse_sources_json(raw: str) -> list[tuple[str, str, str]]:
 
 def _parse_sources_inline(raw: str) -> list[tuple[str, str, str]]:
     """
-    Формат: key|url||key2|url2 (двойной || между источниками, один | между ключом и URL).
+    Формат: key|url||key2|url2 (двойной || между источниками).
+    Опционально третий сегмент: key|url|отображаемое имя (URL не должен содержать символ |).
     """
     chunks = [c.strip() for c in raw.split("||") if c.strip()]
     out: list[tuple[str, str, str]] = []
     for c in chunks:
-        if "|" not in c:
+        parts = [p.strip() for p in c.split("|")]
+        if len(parts) < 2:
             raise ValueError(
-                "ANALYTICS_SOURCES_INLINE: каждый блок должен быть key|url, разделитель источников — ||",
+                "ANALYTICS_SOURCES_INLINE: каждый блок key|url или key|url|display_name, разделитель источников — ||",
             )
-        sk_raw, url = c.split("|", 1)
-        sk = normalize_source_key(sk_raw)
-        url = url.strip()
+        sk = normalize_source_key(parts[0])
+        url = parts[1].strip()
         if not url:
             raise ValueError(f"ANALYTICS_SOURCES_INLINE: пустой URL для «{sk}»")
-        out.append((sk, url, sk))
+        dn = parts[2].strip() if len(parts) > 2 and parts[2].strip() else sk
+        out.append((sk, url, dn))
     return out
 
 
@@ -196,8 +198,19 @@ def list_sources_public() -> list[dict[str, Any]]:
 
 
 def get_default_source_key() -> Optional[str]:
+    """Сначала ключ из DEFAULT_ANALYTICS_SOURCE_KEY (если строка есть в БД), иначе флаг is_default в БД."""
+    settings = get_settings()
+    env_pref = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip().lower()
     db = PlatformSessionLocal()
     try:
+        if env_pref:
+            row_env = (
+                db.query(AnalyticsDataSource)
+                .filter(AnalyticsDataSource.source_key == env_pref)
+                .one_or_none()
+            )
+            if row_env:
+                return row_env.source_key
         row = (
             db.query(AnalyticsDataSource)
             .filter(AnalyticsDataSource.is_default.is_(True))
@@ -221,9 +234,10 @@ def list_active_source_keys() -> list[str]:
 
 
 def resolve_database_url(source_key: Optional[str]) -> str:
-    """URL для подключения к данным; source_key None — источник по умолчанию."""
+    """URL для подключения к данным; source_key None — сначала DEFAULT_ANALYTICS_SOURCE_KEY, затем is_default в БД."""
     settings = get_settings()
     sk = (source_key or "").strip().lower() or None
+    env_pref = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip().lower()
     db = PlatformSessionLocal()
     try:
         if sk:
@@ -234,6 +248,14 @@ def resolve_database_url(source_key: Optional[str]) -> str:
             )
             if row:
                 return row.database_url.strip()
+        if env_pref:
+            row_env = (
+                db.query(AnalyticsDataSource)
+                .filter(AnalyticsDataSource.source_key == env_pref)
+                .one_or_none()
+            )
+            if row_env:
+                return row_env.database_url.strip()
         row_d = (
             db.query(AnalyticsDataSource)
             .filter(AnalyticsDataSource.is_default.is_(True))

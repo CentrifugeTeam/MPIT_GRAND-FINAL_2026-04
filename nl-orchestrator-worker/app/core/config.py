@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     RABBITMQ_PORT: int = 5672
 
     CHAT_MAX_HISTORY_MESSAGES: int = 20
-    CHAT_SQL_MAX_ROWS: int = 5000
+    CHAT_SQL_MAX_ROWS: int = 10000
 
     ANALYTICS_SERVICE_URL: str = ""
     INTERNAL_NL_CHAT_SYNC_TOKEN: str = ""

@@ -19,24 +19,56 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-files:
+  main-db:
     image: postgres:15
-    container_name: postgres-files
+    container_name: main-db
     environment:
-      POSTGRES_DB: files_db
+      POSTGRES_DB: main_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - postgres_files_data:/var/lib/postgresql/data
+      - postgres_main_db_data:/var/lib/postgresql/data
     ports:
       - "5447:5432"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d main_db"]
+      interval: 3s
       timeout: 5s
-      retries: 5
+      retries: 20
+      start_period: 45s
+
+  # Один проход: DDL drivee_orders + заливка из CSV (лимит и skip из env). Ждёт готовность main-db.
+  main-db-bootstrap:
+    image: python:3.11-slim
+    container_name: main-db-bootstrap
+    restart: "no"
+    working_dir: /work
+    environment:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      MAIN_DB_SEED_DSN: ${MAIN_DB_SEED_DSN:-postgresql://postgres:postgres@main-db:5432/main_db}
+      MAIN_DB_CSV_PATH: ${MAIN_DB_CSV_PATH:-/work/dataset/train.csv}
+      CSV_SEED_LIMIT: ${CSV_SEED_LIMIT:-1000}
+    volumes:
+      - ./:/work:ro
+    networks:
+      - app-network
+    depends_on:
+      main-db:
+        condition: service_healthy
+    command:
+      - bash
+      - -c
+      - >-
+        set -e;
+        pip install -q 'psycopg[binary]';
+        python /work/scripts/seed_main_db.py
+        --dsn "$$MAIN_DB_SEED_DSN"
+        --csv "$$MAIN_DB_CSV_PATH"
+        --limit "$$CSV_SEED_LIMIT"
+        --skip-if-count-ge "$$CSV_SEED_LIMIT"
+        --wait-seconds 120
 
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -92,26 +124,28 @@ services:
     ports:
       - "8009:8009"
     environment:
-      - ANALYTICS_DATABASE_URL=${ANALYTICS_DATABASE_URL:-postgresql://postgres:postgres@postgres-files:5432/files_db}
+      - ANALYTICS_DATABASE_URL=${ANALYTICS_DATABASE_URL:-postgresql://postgres:postgres@main-db:5432/main_db}
       - PLATFORM_DATABASE_URL=${PLATFORM_DATABASE_URL:-postgresql://postgres:postgres@postgres-db:5432/postgres-db}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
-      - SCHEMA_CACHE_TTL_SECONDS=86400
-      - SCHEMA_CRON_HOUR=3
-      - QUERY_TIMEOUT_MS=30000
+      - SCHEMA_CACHE_TTL_SECONDS=${SCHEMA_CACHE_TTL_SECONDS:-86400}
+      - SCHEMA_CRON_HOUR=${SCHEMA_CRON_HOUR:-3}
+      - QUERY_TIMEOUT_MS=${QUERY_TIMEOUT_MS:-30000}
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - INTERNAL_NL_CHAT_SYNC_TOKEN=${INTERNAL_NL_CHAT_SYNC_TOKEN:-dev-nl-chat-sync}
       - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
-      - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-files-db}
-      - ANALYTICS_SOURCES_INLINE=${ANALYTICS_SOURCES_INLINE:-files-db|postgresql://postgres:postgres@postgres-files:5432/files_db||postgres-main|postgresql://postgres:postgres@postgres-db:5432/postgres-db}
+      - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-main-db}
+      - ANALYTICS_SOURCES_INLINE=${ANALYTICS_SOURCES_INLINE:-main-db|postgresql://postgres:postgres@main-db:5432/main_db|Warehouse (main_db, drivee_orders)||postgres-main|postgresql://postgres:postgres@postgres-db:5432/postgres-db|Platform metadata (users, chats; no drivee_orders)}
     depends_on:
       postgres-db:
         condition: service_healthy
-      postgres-files:
+      main-db:
         condition: service_healthy
+      main-db-bootstrap:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     volumes:
@@ -126,20 +160,23 @@ services:
       dockerfile: Dockerfile
     container_name: sql-generator-worker
     environment:
-      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-files:5432/files_db
+      - ANALYTICS_DATABASE_URL=${ANALYTICS_DATABASE_URL:-postgresql://postgres:postgres@main-db:5432/main_db}
       - PLATFORM_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-main-db}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
-      - QUERY_TIMEOUT_MS=30000
+      - QUERY_TIMEOUT_MS=${QUERY_TIMEOUT_MS:-30000}
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
     depends_on:
       postgres-db:
         condition: service_healthy
-      postgres-files:
+      main-db:
         condition: service_healthy
+      main-db-bootstrap:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     networks:
@@ -155,8 +192,8 @@ services:
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
-      - CHAT_MAX_HISTORY_MESSAGES=${CHAT_MAX_HISTORY_MESSAGES:-20}
-      - CHAT_SQL_MAX_ROWS=${CHAT_SQL_MAX_ROWS:-5000}
+      - CHAT_MAX_HISTORY_MESSAGES=${CHAT_MAX_HISTORY_MESSAGES:-40}
+      - CHAT_SQL_MAX_ROWS=${CHAT_SQL_MAX_ROWS:-50000}
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
@@ -184,16 +221,15 @@ services:
       - ALGORITHM=HS256
       - AUTH_SERVICE_URL=http://auth-service:8002
       - NOTIFICATION_SERVICE_URL=http://notification-service:8007
-      - FILES_SERVICE_URL=http://files-service:8006
       - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-main-db}
+      - NL_CHAT_BLOCKED_SOURCE_KEYS=${NL_CHAT_BLOCKED_SOURCE_KEYS:-postgres-main}
       - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - RABBITMQ_HOST=rabbitmq
     depends_on:
       auth-service:
-        condition: service_started
-      files-service:
         condition: service_started
       analytics-service:
         condition: service_started
@@ -203,27 +239,6 @@ services:
         condition: service_started
     volumes:
       - ./bff-service:/app
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  files-service:
-    build:
-      context: ./files-service
-      dockerfile: Dockerfile
-    container_name: files-service
-    ports:
-      - "8006:8006"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres-files:5432/files_db
-      - STORAGE_PATH=/app/storage
-      - MAX_FILE_SIZE=10485760
-    depends_on:
-      postgres-files:
-        condition: service_healthy
-    volumes:
-      - ./files-service:/app
-      - files_storage:/app/storage
     networks:
       - app-network
     restart: unless-stopped
@@ -280,8 +295,7 @@ services:
 volumes:
   rabbitmq_data:
   postgres_db_data:
-  postgres_files_data:
-  files_storage:
+  postgres_main_db_data:
 
 networks:
   app-network:

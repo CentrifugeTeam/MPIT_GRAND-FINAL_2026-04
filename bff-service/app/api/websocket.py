@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 import jwt
@@ -14,6 +15,14 @@ from app.services.chat_mq import chat_bus
 router = APIRouter()
 websocket_service = WebSocketService()
 settings = get_settings()
+logger = logging.getLogger(__name__)
+
+
+def _nl_chat_blocked_source_keys() -> frozenset[str]:
+    raw = (settings.NL_CHAT_BLOCKED_SOURCE_KEYS or "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(x.strip().lower() for x in raw.split(",") if x.strip())
 
 
 async def _safe_send_json(websocket: WebSocket, data: dict) -> None:
@@ -187,6 +196,28 @@ async def websocket_endpoint(websocket: WebSocket):
                             if isinstance(ask, str) and str(ask).strip()
                             else None
                         )
+                        explicit_source_key = sk is not None
+                        if not sk:
+                            dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
+                            if dk:
+                                sk = dk
+                        blocked = _nl_chat_blocked_source_keys()
+                        # Blocklist avoids accidental NL against platform DB when no key is sent.
+                        # If the client explicitly sends analytics_source_key (UI source), honor it.
+                        if (
+                            sk
+                            and blocked
+                            and sk.lower() in blocked
+                            and not explicit_source_key
+                        ):
+                            dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
+                            if dk and dk.lower() != sk.lower():
+                                logger.info(
+                                    "chat_message analytics_source_key %r coerced to %r (blocked for NL)",
+                                    sk,
+                                    dk,
+                                )
+                                sk = dk
                         try:
                             schema_tables = await fetch_public_schema(sk)
                         except Exception as e:
