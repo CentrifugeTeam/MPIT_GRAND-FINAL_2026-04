@@ -1,14 +1,14 @@
 import { useCallback, useState } from "react";
 import { AnimatePresence } from "motion/react";
 
-import type { AnalyticsDataSourceItem } from "@/features/analytics/api/analytics-api";
+import type { AnalyticsDataSourceItem } from "../../api/analytics-api";
 import type {
   FigmaFaqId,
   FigmaTranslateFn,
-} from "@/features/analytics/config/figma-analytics-faq";
-import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
-import type { NlChatLine } from "@/features/analytics/lib/use-nl-orchestrator-chat";
-import { NlChatTranscriptBlock } from "@/features/analytics/ui/analytics-panel/nl-chat-transcript-block";
+} from "../../config/figma-analytics-faq";
+import type { InterpretationHint } from "../../lib/interpretation-hint";
+import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
+import { NlChatTranscriptBlock } from "../analytics-panel/nl-chat-transcript-block";
 
 import { FigmaAnalyticsHero } from "./figma-analytics-hero";
 import { FigmaChatHeaderRow } from "./figma-chat-header-row";

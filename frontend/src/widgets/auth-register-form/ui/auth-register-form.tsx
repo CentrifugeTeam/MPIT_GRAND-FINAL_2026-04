@@ -33,7 +33,7 @@ const inputCn =
 
 export function AuthRegisterForm() {
   const { t } = useTranslation();
-  const { mutate, isPending, isError } = useRegister();
+  const { mutateAsync, isPending, isError } = useRegister();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -44,11 +44,13 @@ export function AuthRegisterForm() {
     defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
-  const handleClick = (data: RegisterSchemaData) => {
-    mutate(
-      { email: data.email, password: data.password, confirm_password: data.confirmPassword },
-      { onSuccess: () => navigate("/auth/login") },
-    );
+  const handleClick = async (data: RegisterSchemaData) => {
+    try {
+      await mutateAsync({ email: data.email, password: data.password, confirm_password: data.confirmPassword });
+      navigate("/home", { replace: true });
+    } catch {
+      /* registration failed — isError handles UI */
+    }
   };
 
   return (
@@ -72,7 +74,7 @@ export function AuthRegisterForm() {
           >
             <Tabs.ListContainer>
               <Tabs.List
-                aria-label="Auth tabs"
+                aria-label={t("auth.tabs.ariaLabel")}
                 className="bg-default rounded-full p-1 gap-0 w-full"
               >
                 <Tabs.Tab
@@ -180,7 +182,7 @@ export function AuthRegisterForm() {
             />
 
             <Button
-              onPress={() => formMethod.handleSubmit(handleClick)()}
+              onPress={() => void formMethod.handleSubmit(handleClick)()}
               isDisabled={isPending}
               className="bg-foreground text-background w-full h-14 rounded-full text-base font-medium"
               size="lg"

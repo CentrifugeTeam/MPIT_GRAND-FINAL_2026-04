@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "@iconify/react";
 
-import type { AnalyticsDataSourceItem } from "@/features/analytics/api/analytics-api";
+import type { AnalyticsDataSourceItem } from "../../api/analytics-api";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 

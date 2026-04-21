@@ -9,7 +9,7 @@ export function NotFoundPage() {
       <h1 className="text-xl font-bold text-foreground">
         {t("notFound.title")}
       </h1>
-      <Link to="/home" className="text-accent hover:underline">
+      <Link to="/" className="text-accent hover:underline">
         {t("notFound.goHome")}
       </Link>
     </div>

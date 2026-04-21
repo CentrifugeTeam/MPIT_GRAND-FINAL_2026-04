@@ -1,4 +1,12 @@
 import { api } from "@/shared/api/axios";
+import {
+  analyticsDataSourcesResponseSchema,
+  analyticsHistoryResponseSchema,
+  createNlChatResponseSchema,
+  interpretQuestionResponseSchema,
+  nlChatMessagesResponseSchema,
+  websocketTokenResponseSchema,
+} from "@/entities/analytics";
 
 export type GlossaryMatchApi = {
   id: string;
@@ -77,12 +85,12 @@ export async function fetchInterpretQuestion(
     "/api/analytics/interpret-question",
     body,
   );
-  return data;
+  return interpretQuestionResponseSchema.parse(data);
 }
 
 export async function fetchWebSocketToken() {
   const { data } = await api.post<WebSocketTokenResponse>("/api/websocket/token");
-  return data;
+  return websocketTokenResponseSchema.parse(data);
 }
 
 export type AnalyticsDataSourceItem = {
@@ -98,14 +106,14 @@ export type AnalyticsDataSourcesResponse = {
 
 export async function fetchAnalyticsDataSources() {
   const { data } = await api.get<AnalyticsDataSourcesResponse>("/api/analytics/data-sources");
-  return data;
+  return analyticsDataSourcesResponseSchema.parse(data);
 }
 
 export async function fetchAnalyticsHistory(limit = 50, offset = 0) {
   const { data } = await api.get<AnalyticsHistoryResponse>("/api/analytics/history", {
     params: { limit, offset },
   });
-  return data;
+  return analyticsHistoryResponseSchema.parse(data);
 }
 
 export async function deleteAnalyticsJob(jobId: string) {
@@ -123,7 +131,7 @@ export type CreateNlChatResponse = {
 
 export async function createNlAnalyticsChat() {
   const { data } = await api.post<CreateNlChatResponse>("/api/analytics/chats");
-  return data;
+  return createNlChatResponseSchema.parse(data);
 }
 
 export type NlChatMessagesResponse = {
@@ -139,7 +147,7 @@ export async function fetchNlChatMessages(conversationId: string) {
   const { data } = await api.get<NlChatMessagesResponse>(
     `/api/analytics/chats/${conversationId}/messages`,
   );
-  return data;
+  return nlChatMessagesResponseSchema.parse(data);
 }
 
 export async function deleteNlChat(conversationId: string) {

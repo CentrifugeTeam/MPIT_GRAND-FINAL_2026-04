@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-import { createNlAnalyticsChat, fetchInterpretQuestion } from "@/features/analytics/api/analytics-api";
-import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
-import { parseAnalyticsMaxRows } from "@/features/analytics/lib/parse-analytics-max-rows";
-import type { NlChatSendOptions } from "@/features/analytics/lib/use-nl-orchestrator-chat";
+import { createNlAnalyticsChat, fetchInterpretQuestion } from "../api/analytics-api";
+import type { InterpretationHint } from "../lib/interpretation-hint";
+import { parseAnalyticsMaxRows } from "../lib/parse-analytics-max-rows";
+import type { NlChatSendOptions } from "../lib/use-nl-orchestrator-chat";
 
 type SendChatFn = (text: string, options?: NlChatSendOptions) => Promise<void>;
 
@@ -88,9 +88,6 @@ export function useAnalyticsSendMessage({
         conversationIdOverride: cid,
       });
       setQuestion("");
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, 400);
-      });
       await loadHistory();
     } finally {
       setInterpretBusy(false);

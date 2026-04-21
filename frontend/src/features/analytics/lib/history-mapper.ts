@@ -1,5 +1,5 @@
-import type { AnalyticsHistoryItem } from "@/features/analytics/api/analytics-api";
-import type { AnalyticsChatEntry } from "@/features/analytics/model/analytics-chat-store";
+import type { AnalyticsHistoryItem } from "../api/analytics-api";
+import type { AnalyticsChatEntry } from "../model/analytics-chat-store";
 import type { NlSqlWsPayload } from "@/entities/analytics";
 
 function jobHistoryToNlPayload(

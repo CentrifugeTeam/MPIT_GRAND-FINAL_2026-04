@@ -1,14 +1,14 @@
-import { Input, type InputRootProps } from '@heroui/react';
+import { Input, type InputRootProps } from "@heroui/react";
 
-export type Props = InputRootProps & {
+export type InputWithHelperProps = InputRootProps & {
   helperText?: string;
 };
 
-export const InputWithHelper = ({ helperText, ...rest }: Props) => {
+export const InputWithHelper = ({ helperText, ...rest }: InputWithHelperProps) => {
   return (
-    <div className='flex flex-col gap-3'>
+    <div className="flex flex-col gap-3">
       <Input {...rest} />
-      <span className='text-black'>{helperText}</span>
+      {helperText && <span className="text-xs text-muted">{helperText}</span>}
     </div>
   );
 };

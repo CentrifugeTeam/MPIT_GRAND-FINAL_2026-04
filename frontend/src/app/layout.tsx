@@ -1,14 +1,13 @@
 import { Outlet, useLocation } from "react-router";
 
 export function RootLayout() {
-  const location = useLocation();
-
-  const isHomeRoute = location.pathname === "/home" || location.pathname.endsWith("/home");
+  const { pathname } = useLocation();
+  const isHomeRoute = pathname === "/home";
 
   return (
     <div
       className={`flex min-h-screen flex-col text-foreground ${
-        isHomeRoute ? "bg-[#060607]" : "bg-background"
+        isHomeRoute ? "bg-background" : "bg-background"
       }`}
     >
       <main

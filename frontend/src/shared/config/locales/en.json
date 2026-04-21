@@ -109,6 +109,7 @@
       "heroSubtitle": "Ask about your metrics in plain language",
       "search": "Search",
       "searchPlaceholder": "Search chats…",
+      "searchShortcut": "⌘K",
       "newChat": "New chat",
       "reports": "Reports",
       "reportsSoon": "Coming soon",
@@ -212,7 +213,13 @@
     "required": "Required",
     "email": "Enter a valid email"
   },
+  "common": {
+    "close": "Close"
+  },
   "auth": {
+    "tabs": {
+      "ariaLabel": "Sign in and sign up tabs"
+    },
     "email": "Email",
     "password": "Password",
     "confirmPassword": "Confirm password",

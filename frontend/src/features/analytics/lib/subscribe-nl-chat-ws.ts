@@ -1,12 +1,12 @@
 import type { MutableRefObject } from "react";
 
-import { resolveNlAssistantVisibleText } from "@/features/analytics/lib/nl-chat-assistant-body";
+import { resolveNlAssistantVisibleText } from "./nl-chat-assistant-body";
 import {
   pickChartPayload,
   pickRows,
   pickStringArray,
-} from "@/features/analytics/lib/nl-chat-ws-payload";
-import type { NlChatLine } from "@/features/analytics/lib/nl-chat-line";
+} from "./nl-chat-ws-payload";
+import type { NlChatLine } from "./nl-chat-line";
 import { wsClient } from "@/shared/api/ws-client";
 
 type TRef = MutableRefObject<(key: string, opts?: Record<string, unknown>) => string>;
@@ -51,7 +51,7 @@ export function subscribeNlChatWs(
         chartPayload: pickChartPayload(payload.chart_payload),
         columns: cols,
         rows: rowObjs,
-        rowCount: typeof rc === "number" ? rc : undefined,
+        rowCount: rcNum,
       });
       setNlChatBusy(false);
     }),

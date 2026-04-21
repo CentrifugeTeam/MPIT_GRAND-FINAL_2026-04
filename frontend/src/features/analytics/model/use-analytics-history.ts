@@ -5,18 +5,18 @@ import {
   deleteAnalyticsJob,
   deleteNlChat,
   fetchAnalyticsHistory,
-} from "@/features/analytics/api/analytics-api";
+} from "../api/analytics-api";
 import type { NlSqlWsPayload } from "@/entities/analytics";
-import { historyItemToChatEntry } from "@/features/analytics/lib/history-mapper";
+import { historyItemToChatEntry } from "../lib/history-mapper";
 import {
   useAnalyticsChatStore,
   type AnalyticsChatEntry,
-} from "@/features/analytics/model/analytics-chat-store";
-import { useAnalyticsChatTitlesStore } from "@/features/analytics/model/analytics-chat-titles-store";
+} from "./analytics-chat-store";
+import { useAnalyticsChatTitlesStore } from "./analytics-chat-titles-store";
 import {
   interpretationToHint,
   type InterpretationHint,
-} from "@/features/analytics/lib/interpretation-hint";
+} from "../lib/interpretation-hint";
 
 type Args = {
   activeId: string | null;
@@ -53,8 +53,8 @@ export function useAnalyticsHistory({
     try {
       const data = await fetchAnalyticsHistory();
       setEntriesFromServer(data.items.map(historyItemToChatEntry));
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error("[analytics] Failed to load history:", err);
     } finally {
       setHistoryBusy(false);
     }
@@ -133,8 +133,8 @@ export function useAnalyticsHistory({
           setMaxRowsStr("");
           setResult(null);
         }
-      } catch {
-        /* ignore */
+      } catch (err) {
+        console.error("[analytics] Failed to delete history entry:", err);
       }
     },
     [
@@ -161,8 +161,8 @@ export function useAnalyticsHistory({
       setMaxRowsStr("");
       setResult(null);
       setInterpretationHint(null);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error("[analytics] Failed to clear all history:", err);
     }
   }, [
     clearAllTitles,

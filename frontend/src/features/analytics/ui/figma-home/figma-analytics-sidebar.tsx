@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
 
-import type { AnalyticsSidebarProps } from "@/features/analytics/ui/analytics-panel/analytics-sidebar";
+import type { AnalyticsSidebarProps } from "../analytics-panel/analytics-sidebar";
 import {
   FIGMA_SIDEBAR_COLLAPSED_PX,
   FIGMA_SIDEBAR_EXPANDED_PX,
@@ -154,7 +154,6 @@ export function FigmaAnalyticsSidebar({
       <AnimatePresence>
         {pendingDeleteId && (
           <FigmaConfirmDialog
-            t={t}
             open
             title={t("home.analytics.deleteChatTitle")}
             message={t("home.analytics.deleteChatBody")}
@@ -173,7 +172,6 @@ export function FigmaAnalyticsSidebar({
       <AnimatePresence>
         {deleteAllOpen && (
           <FigmaConfirmDialog
-            t={t}
             open
             title={t("home.analytics.deleteAllHistory")}
             message={t("home.analytics.deleteAllHistoryDetail")}

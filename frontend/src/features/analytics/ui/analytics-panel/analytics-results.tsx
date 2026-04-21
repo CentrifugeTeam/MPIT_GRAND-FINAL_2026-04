@@ -4,9 +4,9 @@ import type {
   ChartPayloadShape,
   NlSqlWsPayload,
 } from "@/entities/analytics";
-import { SqlBlock } from "@/shared/ui/sql-block";
-import { DataTablePreview } from "@/shared/ui/data-table-preview";
-import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
+import { SqlBlock } from "@/shared/ui/molecules/sql-block";
+import { DataTablePreview } from "@/shared/ui/organisms/data-table-preview";
+import type { InterpretationHint } from "../../lib/interpretation-hint";
 
 import { ANALYTICS_TABLE_PREVIEW_MAX } from "../../config/constants";
 import { AnalyticsCharts } from "../analytics-charts";
@@ -96,8 +96,8 @@ export function AnalyticsResults({
           {result.guard_warnings && result.guard_warnings.length > 0 && (
             <Card className="border-warning/40 bg-warning/5 p-4">
               <ul className="list-inside list-disc text-sm text-warning">
-                {result.guard_warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
+                {result.guard_warnings.map((w) => (
+                  <li key={w}>{w}</li>
                 ))}
               </ul>
             </Card>

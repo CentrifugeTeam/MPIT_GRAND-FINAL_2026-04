@@ -59,7 +59,7 @@ export function SettingsPage() {
             aria-label={t("settings.language")}
             className="w-36"
             value={i18n.language}
-            onChange={(key) => i18n.changeLanguage(key as string)}
+            onChange={(key) => i18n.changeLanguage(String(key))}
           >
             <Select.Trigger>
               <Select.Value />
@@ -67,11 +67,11 @@ export function SettingsPage() {
             </Select.Trigger>
             <Select.Popover>
               <ListBox>
-                <ListBox.Item id="ru" textValue="Русский">
+                <ListBox.Item id="ru" textValue={t("settings.languageRu")}>
                   {t("settings.languageRu")}
                   <ListBox.ItemIndicator />
                 </ListBox.Item>
-                <ListBox.Item id="en" textValue="English">
+                <ListBox.Item id="en" textValue={t("settings.languageEn")}>
                   {t("settings.languageEn")}
                   <ListBox.ItemIndicator />
                 </ListBox.Item>

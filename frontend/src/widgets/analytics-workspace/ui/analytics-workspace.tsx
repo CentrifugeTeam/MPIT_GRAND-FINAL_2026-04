@@ -13,12 +13,14 @@ export function AnalyticsWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [params, setParams] = useSearchParams();
 
+  const { entries, historyBusy, selectEntry } = p;
+
   useEffect(() => {
-    if (p.historyBusy) return;
+    if (historyBusy) return;
     const cid = params.get("analyticsChat")?.trim();
     if (!cid) return;
-    if (p.entries.some((e) => e.id === cid)) {
-      p.selectEntry(cid);
+    if (entries.some((e) => e.id === cid)) {
+      selectEntry(cid);
     }
     setParams(
       (prev) => {
@@ -28,7 +30,7 @@ export function AnalyticsWorkspace() {
       },
       { replace: true },
     );
-  }, [p, p.entries, p.historyBusy, p.selectEntry, params, setParams]);
+  }, [entries, historyBusy, selectEntry, params, setParams]);
 
   const handleShareChat = useCallback(async () => {
     if (!p.nlConversationId) return;
@@ -42,7 +44,7 @@ export function AnalyticsWorkspace() {
   }, [p.nlConversationId]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-[#060607] py-4 pl-0 pr-4">
+    <div className="flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background py-4 pl-0 pr-4">
       <div className="flex min-h-0 shrink-0 self-stretch">
         <FigmaAnalyticsSidebar
           isOpen={sidebarOpen}
@@ -70,44 +72,45 @@ export function AnalyticsWorkspace() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <FigmaAnalyticsMain
-          t={p.t}
-          sidebarOpen={sidebarOpen}
-          onOpenSidebar={() => setSidebarOpen(true)}
-          interpretationHint={p.interpretationHint}
-          hideInterpretationStrip={!!p.result}
-          question={p.question}
-          composerBusy={p.composerBusy}
-          nlChatLines={p.nlChatLines}
-          nlChatReady={p.nlChatReady}
-          dataSources={p.dataSources}
-          selectedSourceKey={p.selectedSourceKey}
-          selectedSourceLabel={p.selectedSourceLabel}
-          onSourceKeyChange={p.setSelectedSourceKey}
-          dataSourcesLoaded={p.dataSourcesLoaded}
-          nlConversationId={p.nlConversationId}
-          onShareChat={handleShareChat}
-          historyBusy={p.historyBusy}
-          onRefreshHistory={() => void p.loadHistory()}
-          onQuestionChange={p.setQuestion}
-          onSend={() => void p.sendComposerMessage()}
-          onStartNewChat={() => void p.startNewChat()}
-        />
+          <FigmaAnalyticsMain
+            t={p.t}
+            sidebarOpen={sidebarOpen}
+            onOpenSidebar={() => setSidebarOpen(true)}
+            interpretationHint={p.interpretationHint}
+            hideInterpretationStrip={!!p.result}
+            question={p.question}
+            composerBusy={p.composerBusy}
+            nlChatLines={p.nlChatLines}
+            nlChatReady={p.nlChatReady}
+            dataSources={p.dataSources}
+            selectedSourceKey={p.selectedSourceKey}
+            selectedSourceLabel={p.selectedSourceLabel}
+            onSourceKeyChange={p.setSelectedSourceKey}
+            dataSourcesLoaded={p.dataSourcesLoaded}
+            nlConversationId={p.nlConversationId}
+            onShareChat={handleShareChat}
+            historyBusy={p.historyBusy}
+            onRefreshHistory={() => void p.loadHistory()}
+            onQuestionChange={p.setQuestion}
+            onSend={() => void p.sendComposerMessage()}
+            onStartNewChat={() => void p.startNewChat()}
+          />
 
-        {p.result && (
-          <div className="shrink-0 border-t border-[#28282c]">
-            <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
-              <AnalyticsResults
-                t={p.t}
-                result={p.result}
-                showChart={p.showChart}
-                chartPayload={p.chartPayload}
-                interpretationFallback={p.interpretationHint}
-              />
+          {p.result && (
+            <div className="shrink-0 border-t border-border">
+              <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
+                <AnalyticsResults
+                  t={p.t}
+                  result={p.result}
+                  showChart={p.showChart}
+                  chartPayload={p.chartPayload}
+                  interpretationFallback={p.interpretationHint}
+                />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
     </div>
   );
 }
+

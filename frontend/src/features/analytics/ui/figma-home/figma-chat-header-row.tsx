@@ -1,7 +1,7 @@
 import { Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { FigmaTranslateFn } from "@/features/analytics/config/figma-analytics-faq";
+import type { FigmaTranslateFn } from "../../config/figma-analytics-faq";
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_MENU,

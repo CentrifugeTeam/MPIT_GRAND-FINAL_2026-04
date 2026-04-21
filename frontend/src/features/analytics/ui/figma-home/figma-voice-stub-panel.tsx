@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { Icon } from "@iconify/react";
 
-import type { FigmaTranslateFn } from "@/features/analytics/config/figma-analytics-faq";
+import type { FigmaTranslateFn } from "../../config/figma-analytics-faq";
 
 export function FigmaVoiceStubPanel({
   t,

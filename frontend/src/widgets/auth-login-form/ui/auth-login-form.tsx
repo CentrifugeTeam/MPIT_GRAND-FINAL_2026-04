@@ -67,7 +67,7 @@ export function AuthLoginForm() {
           >
             <Tabs.ListContainer>
               <Tabs.List
-                aria-label="Auth tabs"
+                aria-label={t("auth.tabs.ariaLabel")}
                 className="bg-default rounded-full p-1 gap-0 w-full"
               >
                 <Tabs.Tab

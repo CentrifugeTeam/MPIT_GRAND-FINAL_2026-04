@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 
-import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from "@/features/analytics/config/figma-sidebar-styles";
+import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from "../../config/figma-sidebar-styles";
 import { FigmaSimpleTooltip } from "./figma-simple-tooltip";
 
 export type FigmaSidebarPrimaryNavProps = {
@@ -17,7 +17,7 @@ export function FigmaSidebarPrimaryNav({
   t,
 }: FigmaSidebarPrimaryNavProps) {
   return (
-    <div className="flex w-full flex-col gap-[4px]">
+    <div className="flex w-full flex-col gap-[4px] items-center">
       {isOpen ? (
         <button
           type="button"
@@ -25,14 +25,17 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className="flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]">
-            <Icon icon="mdi:magnify" className="shrink-0 text-[#a1a1aa]" width={16} />
+            <Icon
+              icon="mdi:magnify"
+              className="shrink-0 text-[#a1a1aa]"
+              width={16}
+            />
             <span className="min-w-0 flex-1 truncate font-sans text-[14px] font-medium text-[#fcfcfc]">
               {t("home.figma.search")}
             </span>
-            <div className="flex shrink-0 items-center gap-0.5 rounded-lg bg-[#27272a] px-1.5 py-0.5">
-              <span className="font-medium text-[12px] text-[#a1a1aa]">⌘</span>
-              <span className="font-medium text-[12px] text-[#a1a1aa]">K</span>
-            </div>
+            <span className="rounded-lg bg-[#27272a] px-1.5 py-0.5 font-medium text-[12px] text-[#a1a1aa]">
+              {t("home.figma.searchShortcut")}
+            </span>
           </div>
         </button>
       ) : (
@@ -54,7 +57,11 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className="flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]">
-            <Icon icon="mdi:message-plus-outline" className="shrink-0 text-[#a1a1aa]" width={16} />
+            <Icon
+              icon="mdi:message-plus-outline"
+              className="shrink-0 text-[#a1a1aa]"
+              width={16}
+            />
             <span className="min-w-0 flex-1 truncate font-sans text-[14px] font-medium text-[#fcfcfc]">
               {t("home.figma.newChat")}
             </span>
@@ -67,7 +74,11 @@ export function FigmaSidebarPrimaryNav({
             onClick={() => void onStartNewChat()}
             className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
           >
-            <Icon icon="mdi:message-plus-outline" className="text-[#a1a1aa]" width={18} />
+            <Icon
+              icon="mdi:message-plus-outline"
+              className="text-[#a1a1aa]"
+              width={18}
+            />
           </button>
         </FigmaSimpleTooltip>
       )}
@@ -80,7 +91,11 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} cursor-not-allowed text-left opacity-50`}
         >
           <div className="flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]">
-            <Icon icon="mdi:file-chart-outline" className="shrink-0 text-[#a1a1aa]" width={16} />
+            <Icon
+              icon="mdi:file-chart-outline"
+              className="shrink-0 text-[#a1a1aa]"
+              width={16}
+            />
             <span className="min-w-0 flex-1 truncate font-sans text-[14px] font-medium text-[#fcfcfc]">
               {t("home.figma.reports")}
             </span>
@@ -94,7 +109,11 @@ export function FigmaSidebarPrimaryNav({
               disabled
               className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} cursor-not-allowed justify-center p-2 opacity-50`}
             >
-              <Icon icon="mdi:file-chart-outline" className="text-[#a1a1aa]" width={18} />
+              <Icon
+                icon="mdi:file-chart-outline"
+                className="text-[#a1a1aa]"
+                width={18}
+              />
             </button>
           </span>
         </FigmaSimpleTooltip>
@@ -102,3 +121,4 @@ export function FigmaSidebarPrimaryNav({
     </div>
   );
 }
+

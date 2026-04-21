@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 
-import type { FigmaTranslateFn } from "@/features/analytics/config/figma-analytics-faq";
+import type { FigmaTranslateFn } from "../../config/figma-analytics-faq";
 import { FIGMA_HERO_COPY_MAX_PX } from "./figma-tokens";
 
 export function FigmaAnalyticsHero({ t }: { t: FigmaTranslateFn }) {

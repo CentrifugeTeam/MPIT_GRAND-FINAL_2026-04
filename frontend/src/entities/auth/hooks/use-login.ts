@@ -1,6 +1,6 @@
 import { api } from "@/shared/api/axios";
 import { useAuthStore } from "@/shared/lib/auth-store";
-import { authResponseSchema } from "@/entities/auth/types";
+import { authResponseSchema } from "../types";
 import { useMutation } from "@tanstack/react-query";
 
 type Payload = {

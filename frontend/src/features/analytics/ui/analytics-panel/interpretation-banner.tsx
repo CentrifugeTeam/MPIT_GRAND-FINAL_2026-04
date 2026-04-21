@@ -1,5 +1,5 @@
 type TInterp = (key: string, opts?: Record<string, unknown>) => string;
-import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
+import type { InterpretationHint } from "../../lib/interpretation-hint";
 
 export function InterpretationBanner({
   t,
@@ -42,8 +42,8 @@ export function InterpretationBanner({
                 {t("home.analytics.interpretationWarnings")}:{" "}
               </span>
               <ul className="mt-0.5 list-inside list-disc text-muted">
-                {hint.warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
+                {hint.warnings.map((w) => (
+                  <li key={w}>{w}</li>
                 ))}
               </ul>
             </div>
@@ -54,8 +54,8 @@ export function InterpretationBanner({
                 {t("home.analytics.interpretationSuggestions")}:{" "}
               </span>
               <ul className="mt-0.5 list-inside list-disc text-muted">
-                {hint.suggestions.map((s, i) => (
-                  <li key={i}>{s}</li>
+                {hint.suggestions.map((s) => (
+                  <li key={s}>{s}</li>
                 ))}
               </ul>
             </div>

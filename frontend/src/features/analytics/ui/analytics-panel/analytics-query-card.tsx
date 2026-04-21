@@ -1,9 +1,9 @@
 import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
-import type { NlChatLine } from "@/features/analytics/lib/use-nl-orchestrator-chat";
-import { NlChatTranscriptBlock } from "@/features/analytics/ui/analytics-panel/nl-chat-transcript-block";
+import type { InterpretationHint } from "../../lib/interpretation-hint";
+import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
+import { NlChatTranscriptBlock } from "./nl-chat-transcript-block";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 

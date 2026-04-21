@@ -1,9 +1,6 @@
 import { motion } from "motion/react";
 
-type TFn = (key: string, opts?: Record<string, unknown>) => string;
-
 export type FigmaConfirmDialogProps = {
-  t: TFn;
   open: boolean;
   title: string;
   message: string;
@@ -14,9 +11,7 @@ export type FigmaConfirmDialogProps = {
   onCancel: () => void;
 };
 
-/** Оверлей и карточка в стиле FigmaSearchModal. */
 export function FigmaConfirmDialog({
-  t,
   open,
   title,
   message,
@@ -26,7 +21,6 @@ export function FigmaConfirmDialog({
   onConfirm,
   onCancel,
 }: FigmaConfirmDialogProps) {
-  void t;
   if (!open) return null;
 
   return (
@@ -45,7 +39,7 @@ export function FigmaConfirmDialog({
         onClick={onCancel}
       />
       <motion.div
-        className="relative z-10 w-full max-w-[420px] overflow-hidden rounded-[24px] border border-solid border-[#28282c] bg-[#18181b] px-6 py-5 shadow-xl"
+        className="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-border bg-background px-6 py-5 shadow-xl"
         initial={{ opacity: 0, scale: 0.97, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
@@ -56,13 +50,13 @@ export function FigmaConfirmDialog({
       >
         <h2
           id="figma-confirm-title"
-          className="font-sans text-[18px] font-medium leading-snug text-[#fcfcfc]"
+          className="text-lg font-medium leading-snug text-foreground"
         >
           {title}
         </h2>
         <p
           id="figma-confirm-desc"
-          className="mt-2 font-sans text-[14px] leading-relaxed text-[#a1a1aa]"
+          className="mt-2 text-sm leading-relaxed text-muted"
         >
           {message}
         </p>
@@ -70,17 +64,17 @@ export function FigmaConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-[24px] bg-[#27272a] px-4 py-2 font-sans text-[14px] font-medium text-[#fcfcfc] transition-colors hover:bg-[#323236] active:scale-[0.97]"
+            className="rounded-3xl bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary active:scale-[0.97]"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`rounded-[24px] px-4 py-2 font-sans text-[14px] font-medium transition-colors active:scale-[0.97] ${
+            className={`rounded-3xl px-4 py-2 text-sm font-medium transition-colors active:scale-[0.97] ${
               danger
-                ? "bg-red-600 text-white hover:bg-red-500"
-                : "bg-[#fcfcfc] text-[#18181b] hover:bg-[#e4e4e7]"
+                ? "bg-danger text-danger-foreground hover:bg-danger/90"
+                : "bg-foreground text-background hover:bg-foreground/90"
             }`}
           >
             {confirmLabel}

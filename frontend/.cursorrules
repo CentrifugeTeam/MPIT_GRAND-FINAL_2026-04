@@ -1,0 +1,42 @@
+# FSD Architecture Rules
+
+This project follows Feature-Sliced Design (FSD) methodology.
+
+## Layer Hierarchy (strict top-down imports only)
+app → pages → widgets → features → entities → shared
+
+A layer can ONLY import from layers below it. Never sideways, never upward.
+
+## Slice Structure
+Each slice follows the segment convention:
+- ui/       — React components
+- model/    — state, stores, business logic (zustand/redux/effector)
+- api/      — API requests, data fetching
+- lib/      — helpers, utilities specific to the slice
+- config/   — constants, configs
+- types/    — TypeScript types
+
+## Public API Rule
+Every slice MUST expose functionality via index.ts (public API).
+Never import from deep paths across slices/layers like `features/auth/ui/LoginForm/LoginForm.tsx`.
+Use slice root imports like `@/features/auth`.
+Inside the same slice, use relative imports between segments (`../model`, `../lib`) to keep boundaries explicit.
+
+## Naming
+- Layers: lowercase plural (features, entities, widgets)
+- Slices: lowercase kebab-case or camelCase (auth, user-profile)
+- Components: PascalCase
+
+## Cross-imports between slices of the same layer are FORBIDDEN
+If feature-A needs feature-B, lift the shared logic to entities or shared.
+
+## Connectors and adapters
+- Connector = HTTP/WS call function, keep it in slice `api/` segment.
+- Adapter = mapping `api dto -> domain model`, keep it in `entities/*/model` or `entities/*/lib`.
+- UI must not consume raw DTO from backend directly.
+
+## Shared UI atomic levels
+- `shared/ui/atoms` - basic primitive building blocks
+- `shared/ui/molecules` - composed controls
+- `shared/ui/organisms` - larger reusable blocks
+- `shared/ui/templates` - page skeletons without business logic

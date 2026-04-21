@@ -13,18 +13,16 @@ export function DataTablePreview({
   rows,
   emptyLabel,
   truncatedHint,
-  maxPreviewRows = 10_000,
+  maxPreviewRows = 200,
 }: DataTablePreviewProps) {
   if (!columns.length || !rows.length) {
-    return (
-      <p className="text-sm text-muted">{emptyLabel}</p>
-    );
+    return <p className="text-sm text-muted">{emptyLabel}</p>;
   }
   const shown = rows.slice(0, maxPreviewRows);
   return (
     <div className="max-h-[min(480px,70vh)] overflow-auto rounded-xl border border-border">
-      <table className="w-full min-w-[320px] text-left text-sm">
-        <thead className="bg-surface-secondary text-xs uppercase tracking-wide text-muted sticky top-0">
+      <table className="w-full min-w-80 text-left text-sm">
+        <thead className="sticky top-0 bg-surface-secondary text-xs uppercase tracking-wide text-muted">
           <tr>
             {columns.map((c) => (
               <th key={c} className="px-3 py-2 font-medium">
@@ -46,9 +44,7 @@ export function DataTablePreview({
         </tbody>
       </table>
       {rows.length > maxPreviewRows && (
-        <p className="border-t border-border px-3 py-2 text-xs text-muted">
-          {truncatedHint}
-        </p>
+        <p className="border-t border-border px-3 py-2 text-xs text-muted">{truncatedHint}</p>
       )}
     </div>
   );

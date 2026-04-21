@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import { Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { AnalyticsChatEntry } from "@/features/analytics/model/analytics-chat-store";
+import type { AnalyticsChatEntry } from "../../model/analytics-chat-store";
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_ITEM_DANGER,

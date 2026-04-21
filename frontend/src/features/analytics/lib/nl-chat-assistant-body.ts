@@ -18,7 +18,7 @@ export function resolveNlAssistantVisibleText(
 ): string {
   const rep = input.report.trim();
   const txt = input.text.trim();
-  let body = rep ? `${txt}\n\n${rep}`.trim() : txt;
+  const body = rep ? `${txt}\n\n${rep}`.trim() : txt;
   if (body) return body;
 
   const hasTable =

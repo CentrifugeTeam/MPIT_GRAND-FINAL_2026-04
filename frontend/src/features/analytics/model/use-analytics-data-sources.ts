@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchAnalyticsDataSources,
   type AnalyticsDataSourceItem,
-} from "@/features/analytics/api/analytics-api";
+} from "../api/analytics-api";
 
 export function useAnalyticsDataSources() {
   const [dataSources, setDataSources] = useState<AnalyticsDataSourceItem[]>([]);

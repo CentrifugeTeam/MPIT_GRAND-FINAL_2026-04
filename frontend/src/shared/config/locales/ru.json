@@ -109,6 +109,7 @@
       "heroSubtitle": "Задайте вопрос о метриках обычным языком",
       "search": "Поиск",
       "searchPlaceholder": "Поиск по чатам…",
+      "searchShortcut": "⌘K",
       "newChat": "Новый чат",
       "reports": "Отчёты",
       "reportsSoon": "Скоро",
@@ -212,7 +213,13 @@
     "required": "Обязательное поле",
     "email": "Введите корректный email"
   },
+  "common": {
+    "close": "Закрыть"
+  },
   "auth": {
+    "tabs": {
+      "ariaLabel": "Вкладки входа и регистрации"
+    },
     "email": "Email",
     "password": "Пароль",
     "confirmPassword": "Повторите пароль",

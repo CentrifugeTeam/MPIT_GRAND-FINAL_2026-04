@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 import type { NlSqlWsPayload } from "@/entities/analytics";
 
+const MAX_CHAT_ENTRIES = 80;
+
 export type AnalyticsEntryKind = "sql_job" | "nl_chat";
 
 export interface AnalyticsChatEntry {
@@ -34,7 +36,7 @@ export const useAnalyticsChatStore = create<AnalyticsChatState>()((set) => ({
     set((s) => {
       const rest = s.entries.filter((e) => e.id !== entry.id);
       return {
-        entries: [entry, ...rest].slice(0, 80),
+        entries: [entry, ...rest].slice(0, MAX_CHAT_ENTRIES),
         activeId: entry.id,
       };
     }),
@@ -54,7 +56,7 @@ export const useAnalyticsChatStore = create<AnalyticsChatState>()((set) => ({
 
   setEntriesFromServer: (incoming) =>
     set((s) => {
-      const capped = incoming.slice(0, 80);
+      const capped = incoming.slice(0, MAX_CHAT_ENTRIES);
       const nextActive =
         s.activeId && capped.some((e) => e.id === s.activeId)
           ? s.activeId

@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { RootLayout } from "./layout";
-import { ProtectedRoute } from "./protected-route";
-import { GuestRoute } from "./guest-route";
+
+import { RootLayout } from "@/app/layout";
+import { ProtectedRoute } from "@/app/protected-route";
+import { GuestRoute } from "@/app/guest-route";
 import { PublicPage } from "@/pages/public";
 import { HomePage } from "@/pages/home";
 import { SettingsPage } from "@/pages/settings";
@@ -13,22 +14,22 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Публичная страница — доступна всем */}
+        {/* Public — accessible to everyone */}
         <Route path="/" element={<PublicPage />} />
 
-        {/* Гостевые маршруты — только для неавторизованных */}
+        {/* Guest-only routes */}
         <Route element={<GuestRoute />}>
           <Route path="auth/login" element={<LoginPage />} />
           <Route path="auth/register" element={<RegisterPage />} />
         </Route>
 
-        {/* Защищённые маршруты — только для авторизованных */}
+        {/* Protected routes — authenticated users only */}
         <Route element={<ProtectedRoute />}>
           <Route element={<RootLayout />}>
             <Route path="home" element={<HomePage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-          {/* Авторизованный пользователь на неизвестном маршруте → /home */}
+          {/* Authenticated user on unknown route → /home */}
           <Route path="*" element={<Navigate to="/home" replace />} />
         </Route>
 

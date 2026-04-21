@@ -59,4 +59,28 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['src/{app,pages,widgets}/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/features/*/*'],
+              message: 'Use feature public API (`@/features/<slice>`) from app/pages/widgets.',
+            },
+            {
+              group: ['@/entities/*/*'],
+              message: 'Use entity public API (`@/entities/<slice>`) from app/pages/widgets.',
+            },
+            {
+              group: ['@/widgets/*/*'],
+              message: 'Use widget public API (`@/widgets/<slice>`) from app/pages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

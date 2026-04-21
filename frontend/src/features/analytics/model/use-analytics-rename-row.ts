@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { patchNlChatTitle } from "@/features/analytics/api/analytics-api";
-import type { AnalyticsChatEntry } from "@/features/analytics/model/analytics-chat-store";
-import { useAnalyticsChatStore } from "@/features/analytics/model/analytics-chat-store";
-import { useAnalyticsChatTitlesStore } from "@/features/analytics/model/analytics-chat-titles-store";
+import { patchNlChatTitle } from "../api/analytics-api";
+import type { AnalyticsChatEntry } from "./analytics-chat-store";
+import { useAnalyticsChatStore } from "./analytics-chat-store";
+import { useAnalyticsChatTitlesStore } from "./analytics-chat-titles-store";
 
 export function useAnalyticsRenameRow() {
   const [editingRowId, setEditingRowId] = useState<string | null>(null);

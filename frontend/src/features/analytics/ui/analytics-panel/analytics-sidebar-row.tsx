@@ -2,8 +2,8 @@ import type { RefObject } from "react";
 import { Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { AnalyticsChatEntry } from "@/features/analytics/model/analytics-chat-store";
-import { formatChatTime } from "@/features/analytics/lib/format-chat-time";
+import type { AnalyticsChatEntry } from "../../model/analytics-chat-store";
+import { formatChatTime } from "../../lib/format-chat-time";
 
 export type AnalyticsSidebarRowProps = {
   entry: AnalyticsChatEntry;

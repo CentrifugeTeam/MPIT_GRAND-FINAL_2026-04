@@ -1,13 +1,13 @@
 import { Card } from "@heroui/react";
 
-import { ANALYTICS_TABLE_PREVIEW_MAX } from "@/features/analytics/config/constants";
+import { ANALYTICS_TABLE_PREVIEW_MAX } from "../../config/constants";
 import {
   nlChatHasSeriesChart,
   nlChatHasTablePreview,
-} from "@/features/analytics/lib/nl-chat-viz";
-import type { NlChatLine } from "@/features/analytics/lib/use-nl-orchestrator-chat";
-import { AnalyticsCharts } from "@/features/analytics/ui/analytics-charts";
-import { DataTablePreview } from "@/shared/ui/data-table-preview";
+} from "../../lib/nl-chat-viz";
+import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
+import { AnalyticsCharts } from "../analytics-charts";
+import { DataTablePreview } from "@/shared/ui/organisms/data-table-preview";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 

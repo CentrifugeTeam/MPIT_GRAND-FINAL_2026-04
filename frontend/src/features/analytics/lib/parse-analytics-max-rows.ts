@@ -1,4 +1,4 @@
-import { ANALYTICS_MAX_ROWS_CAP } from "@/features/analytics/config/constants";
+import { ANALYTICS_MAX_ROWS_CAP } from "../config/constants";
 
 export function parseAnalyticsMaxRows(maxRowsStr: string): number | null {
   const s = maxRowsStr.trim();

@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ANALYTICS_MAX_ROWS_CAP } from "@/features/analytics/config/constants";
-
 /** Сброс «зависшего» ожидания ответа, если chat_assistant не пришёл (сеть, рассинхрон pending). */
 const NL_CHAT_BUSY_WATCHDOG_MS = 120_000;
-import { fetchNlChatMessages } from "@/features/analytics/api/analytics-api";
-import type { NlChatLine } from "@/features/analytics/lib/nl-chat-line";
-import { subscribeNlChatWs } from "@/features/analytics/lib/subscribe-nl-chat-ws";
-import { apiNlMessageToLine } from "@/features/analytics/lib/nl-chat-transcript";
+
+import { ANALYTICS_MAX_ROWS_CAP } from "../config/constants";
+import { fetchNlChatMessages } from "../api/analytics-api";
+import type { NlChatLine } from "./nl-chat-line";
+import { subscribeNlChatWs } from "./subscribe-nl-chat-ws";
+import { apiNlMessageToLine } from "./nl-chat-transcript";
 import { wsClient } from "@/shared/api/ws-client";
 import { useWsStore } from "@/shared/lib/ws-store";
 
-export type { NlChatLine } from "@/features/analytics/lib/nl-chat-line";
+export type { NlChatLine } from "./nl-chat-line";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -29,33 +29,15 @@ export type NlChatSendOptions = {
 export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   const [lines, setLines] = useState<NlChatLine[]>([]);
   const [nlChatBusy, setNlChatBusy] = useState(false);
-  const [prevConversationId, setPrevConversationId] = useState(conversationId);
   const linesRef = useRef<NlChatLine[]>([]);
   const joinedRef = useRef(false);
   const transcriptLoadGen = useRef(0);
   const routingCidRef = useRef<string | null>(conversationId);
   const tRef = useRef(t);
 
-  if (conversationId !== prevConversationId) {
-    setPrevConversationId(conversationId);
-    setLines([]);
-  }
-
   useEffect(() => {
     joinedRef.current = false;
   }, [conversationId]);
-
-  useEffect(() => {
-    routingCidRef.current = conversationId;
-    tRef.current = t;
-  }, [conversationId, t]);
-
-  const ensureWsConnected = useWsStore((s) => s.ensureConnected);
-  const wsStatus = useWsStore((s) => s.status);
-
-  useEffect(() => {
-    linesRef.current = lines;
-  }, [lines]);
 
   useEffect(() => {
     setNlChatBusy(false);
@@ -68,6 +50,18 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     }, NL_CHAT_BUSY_WATCHDOG_MS);
     return () => window.clearTimeout(id);
   }, [nlChatBusy]);
+
+  useEffect(() => {
+    routingCidRef.current = conversationId;
+    tRef.current = t;
+  }, [conversationId, t]);
+
+  const ensureWsConnected = useWsStore((s) => s.ensureConnected);
+  const wsStatus = useWsStore((s) => s.status);
+
+  useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
 
   const appendLine = useCallback((line: NlChatLine) => {
     setLines((prev) => {
