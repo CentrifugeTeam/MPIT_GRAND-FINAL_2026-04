@@ -1,14 +1,18 @@
 import { create } from "zustand";
 
-import type { NlSqlWsPayload } from "@/entities/analytics/types";
+import type { NlSqlWsPayload } from "@/entities/analytics";
+
+export type AnalyticsEntryKind = "sql_job" | "nl_chat";
 
 export interface AnalyticsChatEntry {
   id: string;
+  kind: AnalyticsEntryKind;
   question: string;
-  /** Лимит строк для guard; null = не задавать */
+  /** Лимит строк для guard; null = не задавать (только sql_job) */
   maxRows: number | null;
   createdAt: number;
   jobId?: string;
+  conversationId?: string;
   result: NlSqlWsPayload | null;
 }
 

@@ -9,10 +9,13 @@ from app.api import analytics, auth, files, notification, websocket
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.services.analytics_mq_consumer import start_consumer, stop_consumer
+    from app.services.chat_mq import chat_bus
 
+    await chat_bus.start()
     start_consumer()
     yield
     await stop_consumer()
+    await chat_bus.stop()
 
 
 app = FastAPI(

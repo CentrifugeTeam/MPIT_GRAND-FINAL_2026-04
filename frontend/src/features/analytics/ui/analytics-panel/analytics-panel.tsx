@@ -22,11 +22,17 @@ export function AnalyticsPanel() {
         onCommitRename={p.commitRename}
         onCancelRename={p.cancelRename}
         onSelectEntry={p.selectEntry}
-        onStartNewChat={p.startNewChat}
+        onStartNewChat={() => void p.startNewChat()}
         onLoadHistory={() => void p.loadHistory()}
-        onConfirmDeleteAll={p.confirmDeleteAll}
+        onClearAllHistory={async () => {
+          if (!window.confirm(p.t("home.analytics.deleteAllHistoryConfirmNative"))) return;
+          await p.clearAllHistoryEntries();
+        }}
         onStartEditingRow={p.startEditingRow}
-        onConfirmDeleteOne={p.confirmDeleteOne}
+        onDeleteHistoryEntry={async (id) => {
+          if (!window.confirm(p.t("home.analytics.deleteChatConfirmNative"))) return;
+          await p.deleteHistoryEntry(id);
+        }}
         t={p.t}
       />
 
@@ -44,15 +50,12 @@ export function AnalyticsPanel() {
           hideInterpretationStrip={!!p.result}
           question={p.question}
           maxRowsStr={p.maxRowsStr}
-          busy={p.busy}
-          stageKey={p.stageKey}
-          stageLabel={p.stageLabel}
-          progress={p.progress}
-          activeId={p.activeId}
+          composerBusy={p.composerBusy}
+          nlChatLines={p.nlChatLines}
+          nlChatReady={p.nlChatReady}
           onQuestionChange={p.setQuestion}
           onMaxRowsChange={p.setMaxRowsStr}
-          onSubmit={p.run}
-          onRerun={p.rerun}
+          onSend={() => void p.sendComposerMessage()}
         />
 
         {p.result && (

@@ -64,8 +64,20 @@ def _migrate_nl_sql_jobs_max_rows() -> None:
 
 def init_platform_tables():
     from app.db.platform_base import PlatformBase
-    from app.db.platform_models import NlSqlJob  # noqa: F401
+    from app.db.platform_models import (  # noqa: F401
+        AnalyticsDataSource,
+        NlChatMessage,
+        NlChatSession,
+        NlSqlJob,
+    )
 
     PlatformBase.metadata.create_all(bind=_engine)
     _migrate_nl_sql_jobs_user_id_to_uuid()
     _migrate_nl_sql_jobs_max_rows()
+    from app.services.data_sources_store import (
+        seed_data_sources_if_empty,
+        sync_analytics_sources_from_env,
+    )
+
+    seed_data_sources_if_empty()
+    sync_analytics_sources_from_env()

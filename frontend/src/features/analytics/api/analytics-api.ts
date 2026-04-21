@@ -7,18 +7,17 @@ export type GlossaryMatchApi = {
   definition: string;
 };
 
-export type AskAsyncResponse = {
-  job_id: string;
-  status: string;
-  template_key?: string;
-  message?: string;
+export type InterpretQuestionResponse = {
   interpretation_confidence: number;
   interpretation_warnings: string[];
   interpretation_suggestions: string[];
   glossary_matches: GlossaryMatchApi[];
+  glossary_context: string | null;
 };
 
-export type JobHistoryItem = {
+export type SqlJobHistoryRow = {
+  entry_kind: "sql_job";
+  sort_at: string;
   job_id: string;
   user_id: string;
   question: string;
@@ -33,8 +32,22 @@ export type JobHistoryItem = {
   updated_at: string | null;
 };
 
-export type JobHistoryResponse = {
-  items: JobHistoryItem[];
+export type NlChatHistoryRow = {
+  entry_kind: "nl_chat";
+  sort_at: string;
+  conversation_id: string;
+  user_id: string;
+  question: string;
+  chat_title: string | null;
+  message_count: number;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type AnalyticsHistoryItem = SqlJobHistoryRow | NlChatHistoryRow;
+
+export type AnalyticsHistoryResponse = {
+  items: AnalyticsHistoryItem[];
   total: number;
 };
 
@@ -45,36 +58,23 @@ export type WebSocketTokenResponse = {
   message?: string;
 };
 
-export async function askAnalyticsAsync(
+export async function fetchInterpretQuestion(
   question: string,
   maxRows?: number | null,
+  analyticsSourceKey?: string | null,
 ) {
-  const body: { question: string; max_rows?: number } = { question };
-  if (
-    maxRows != null &&
-    Number.isFinite(maxRows) &&
-    maxRows > 0
-  ) {
-    body.max_rows = Math.min(50_000_000, Math.floor(maxRows));
-  }
-  const { data } = await api.post<AskAsyncResponse>(
-    "/api/analytics/ask-async",
-    body,
-  );
-  return data;
-}
-
-export async function rerunAnalyticsJobAsync(
-  jobId: string,
-  question: string,
-  maxRows?: number | null,
-) {
-  const body: { question: string; max_rows?: number } = { question };
+  const body: {
+    question: string;
+    max_rows?: number;
+    analytics_source_key?: string;
+  } = { question };
   if (maxRows != null && Number.isFinite(maxRows) && maxRows > 0) {
     body.max_rows = Math.min(50_000_000, Math.floor(maxRows));
   }
-  const { data } = await api.post<AskAsyncResponse>(
-    `/api/analytics/jobs/${jobId}/rerun`,
+  const sk = analyticsSourceKey?.trim();
+  if (sk) body.analytics_source_key = sk;
+  const { data } = await api.post<InterpretQuestionResponse>(
+    "/api/analytics/interpret-question",
     body,
   );
   return data;
@@ -85,8 +85,24 @@ export async function fetchWebSocketToken() {
   return data;
 }
 
+export type AnalyticsDataSourceItem = {
+  key: string;
+  display_name: string;
+  is_default: boolean;
+};
+
+export type AnalyticsDataSourcesResponse = {
+  items: AnalyticsDataSourceItem[];
+  default_key: string | null;
+};
+
+export async function fetchAnalyticsDataSources() {
+  const { data } = await api.get<AnalyticsDataSourcesResponse>("/api/analytics/data-sources");
+  return data;
+}
+
 export async function fetchAnalyticsHistory(limit = 50, offset = 0) {
-  const { data } = await api.get<JobHistoryResponse>("/api/analytics/history", {
+  const { data } = await api.get<AnalyticsHistoryResponse>("/api/analytics/history", {
     params: { limit, offset },
   });
   return data;
@@ -100,15 +116,36 @@ export async function deleteAllAnalyticsHistory() {
   await api.delete("/api/analytics/history");
 }
 
-export type GlossaryListResponse = {
-  version: number;
-  total: number;
-  entries: Record<string, unknown>[];
+export type CreateNlChatResponse = {
+  conversation_id: string;
+  created_at: string;
 };
 
-export async function fetchAnalyticsGlossary(q?: string, limit = 500) {
-  const { data } = await api.get<GlossaryListResponse>("/api/analytics/glossary", {
-    params: { q, limit },
-  });
+export async function createNlAnalyticsChat() {
+  const { data } = await api.post<CreateNlChatResponse>("/api/analytics/chats");
   return data;
+}
+
+export type NlChatMessagesResponse = {
+  items: Array<{
+    id: string;
+    role: string;
+    payload: Record<string, unknown>;
+    created_at: string;
+  }>;
+};
+
+export async function fetchNlChatMessages(conversationId: string) {
+  const { data } = await api.get<NlChatMessagesResponse>(
+    `/api/analytics/chats/${conversationId}/messages`,
+  );
+  return data;
+}
+
+export async function deleteNlChat(conversationId: string) {
+  await api.delete(`/api/analytics/chats/${conversationId}`);
+}
+
+export async function patchNlChatTitle(conversationId: string, title: string) {
+  await api.patch(`/api/analytics/chats/${conversationId}`, { title });
 }

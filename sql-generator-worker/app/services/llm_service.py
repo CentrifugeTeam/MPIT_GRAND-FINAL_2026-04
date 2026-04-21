@@ -57,6 +57,7 @@ async def generate_sql(
     question: str,
     tables: list[TableSchema],
     glossary_context: Optional[str] = None,
+    orchestrator_hints: Optional[str] = None,
 ) -> tuple[str, Optional[str], str]:
     """
     Возвращает (sql, explanation, raw_response_excerpt).
@@ -74,6 +75,11 @@ async def generate_sql(
     )
     if glossary_context and glossary_context.strip():
         user_content += "\n\n" + glossary_context.strip()
+    if orchestrator_hints and orchestrator_hints.strip():
+        user_content += (
+            "\n\nПодсказки аналитика по схеме (учти при генерации SQL):\n"
+            + orchestrator_hints.strip()
+        )
 
     payload = {
         "model": settings.LLM_MODEL,

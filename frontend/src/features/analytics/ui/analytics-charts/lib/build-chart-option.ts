@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 
-import type { ChartPayloadShape } from "@/entities/analytics/types";
+import type { ChartPayloadShape } from "@/entities/analytics";
 
 export type VizKind = "auto" | "bar" | "line" | "pie" | "scatter" | "area";
 

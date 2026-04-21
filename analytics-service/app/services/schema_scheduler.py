@@ -8,15 +8,21 @@ _scheduler: BackgroundScheduler | None = None
 
 def refresh_schema_cache() -> None:
     """Сброс кэша и повторное чтение information_schema (cron / ручной вызов)."""
-    from app.api.analytics import get_engine as ge
+    from app.services.analytics_db import get_analytics_engine
+    from app.services.data_sources_store import list_active_source_keys
 
     schema_cache.invalidate()
-    engine = ge()
-    try:
-        tables = introspect_public(engine)
-        schema_cache.set_cached(tables)
-    except Exception:
-        pass
+    keys = list_active_source_keys()
+    if not keys:
+        keys = [None]
+    for sk in keys:
+        raw = sk if sk else None
+        try:
+            engine = get_analytics_engine(raw)
+            tables = introspect_public(engine)
+            schema_cache.set_cached(tables, raw)
+        except Exception:
+            pass
 
 
 def start_schema_scheduler(cron_hour: int) -> None:

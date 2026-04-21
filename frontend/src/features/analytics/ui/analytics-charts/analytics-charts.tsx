@@ -6,7 +6,7 @@ import type { EChartsOption } from "echarts";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { ChartPayloadShape } from "@/entities/analytics/types";
+import type { ChartPayloadShape } from "@/entities/analytics";
 
 import {
   buildChartOption,

@@ -1,30 +1,5 @@
-import type { QueryInterpretation } from "@/entities/analytics/types";
-
 type TInterp = (key: string, opts?: Record<string, unknown>) => string;
-
-export type InterpretationHint = {
-  confidence: number;
-  warnings: string[];
-  suggestions: string[];
-  glossaryTermsCount?: number;
-};
-
-function toHint(interp: QueryInterpretation, glossaryTermsCount?: number): InterpretationHint {
-  return {
-    confidence: interp.confidence,
-    warnings: interp.warnings ?? [],
-    suggestions: interp.suggestions ?? [],
-    glossaryTermsCount,
-  };
-}
-
-export function interpretationToHint(
-  interp: QueryInterpretation | undefined,
-  glossaryTermsCount?: number,
-): InterpretationHint | null {
-  if (!interp || typeof interp.confidence !== "number") return null;
-  return toHint(interp, glossaryTermsCount);
-}
+import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
 
 export function InterpretationBanner({
   t,

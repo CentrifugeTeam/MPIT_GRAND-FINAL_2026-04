@@ -29,6 +29,18 @@ class Settings(BaseSettings):
     # Empty = любые таблицы из текущей схемы public с разрешёнными приставками в guard
     ALLOWED_TABLES: Optional[str] = None  # comma-separated list
 
+    # Источники данных (SELECT): таблица analytics_data_sources; при пустой БД — сид из env
+    DEFAULT_ANALYTICS_SOURCE_KEY: str = "default"
+    # JSON: [{"key":"files-db","display_name":"…","database_url":"postgresql://…"}]
+    ANALYTICS_SOURCES_JSON: str = ""
+    # Альтернатива JSON: files-db|postgresql://…||other|postgresql://…
+    ANALYTICS_SOURCES_INLINE: str = ""
+    # Если непусто — POST/PATCH/DELETE/default требуют заголовок X-Analytics-Sources-Write-Token
+    ANALYTICS_SOURCES_WRITE_TOKEN: str = ""
+
+    # Синхронизация сообщений NL-чата из nl-orchestrator-worker (заголовок X-Chat-Sync-Token)
+    INTERNAL_NL_CHAT_SYNC_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
 

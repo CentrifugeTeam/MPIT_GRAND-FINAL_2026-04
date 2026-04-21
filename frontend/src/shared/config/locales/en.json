@@ -15,12 +15,29 @@
     "empty": "No users found",
     "analytics": {
       "title": "Ask the database",
-      "subtitle": "Describe your question in natural language. We will build SQL, run it, and show the result with a chart when it makes sense.",
+      "subtitle": "One analytics chat: we interpret your question, then the model may run SQL and reply with text, a table, or a chart.",
       "questionLabel": "Your question",
       "placeholder": "E.g. how many users are there by role?",
       "submit": "Run query",
       "running": "Running…",
       "generatedSql": "Generated SQL",
+      "nlAnswerTitle": "Answer from data",
+      "reportTitle": "Short report",
+      "orchestratorRisksTitle": "Analyst notes (pre-SQL)",
+      "chatTitle": "Analytics chat (NL)",
+      "chatSubtitle": "Dialog with the model; it may fetch data via a separate SQL worker when needed.",
+      "chatEmpty": "Type your question below and press “Run query” or Enter.",
+      "chatEmptyAssistant": "Empty reply",
+      "chatIntegratedHint": "Replies appear in the thread: first the same heuristic question check as before SQL, then two LLM stages in the orchestrator — planning and a final answer over the data.",
+      "chatPlaceholder": "E.g. what KPIs do we have for last quarter by user?",
+      "chatSend": "Send",
+      "sendToChat": "Chat",
+      "chatSending": "…",
+      "chatRoleUser": "You",
+      "chatRoleAssistant": "Assistant",
+      "chatSqlQueued": "Database query queued…",
+      "chatWsError": "WebSocket connection failed.",
+      "chatSendError": "Failed to send message.",
       "chartTitle": "Chart",
       "tableTitle": "Result",
       "rowCount": "Rows: {{count}}",
@@ -82,6 +99,87 @@
         "ack": "Worker is running your question",
         "result": "Building the response",
         "done": "Complete"
+      }
+    },
+    "figma": {
+      "heroTitle": "Hello, what shall we explore?",
+      "heroSubtitle": "Ask about your metrics in plain language",
+      "search": "Search",
+      "searchPlaceholder": "Search chats…",
+      "newChat": "New chat",
+      "reports": "Reports",
+      "reportsSoon": "Coming soon",
+      "history": "History",
+      "openSidebar": "Open sidebar",
+      "newChatTooltip": "Start a new chat",
+      "searchModalActions": "Actions",
+      "searchModalNewPrivate": "Start a new chat",
+      "searchModalHistory": "History",
+      "send": "Send",
+      "source": "Source",
+      "dataSourceDefault": "default",
+      "dataSourcesLoading": "Loading data sources…",
+      "voiceTooltip": "Voice input",
+      "voiceTitle": "Voice input is in development",
+      "voiceSubtitle": "We plan to ship it in a future release.",
+      "voiceClose": "Close",
+      "shareTooltip": "Copy link to this chat",
+      "shareDisabledTooltip": "Link is available after you send the first message",
+      "chatMenuTooltip": "Chat actions",
+      "chatMenuAria": "Chat menu",
+      "linkCopied": "Link copied",
+      "sourceModalTitle": "Data source",
+      "sourceModalHint": "Schema and SQL use the database you select.",
+      "sourceModalApply": "Apply",
+      "sourceModalCancel": "Cancel",
+      "sourceModalClose": "Close",
+      "maxRowsShort": "Row limit",
+      "faq": {
+        "users": {
+          "label": "User data",
+          "items": [
+            "New customers in 2026",
+            "Users by region",
+            "Churn last quarter",
+            "Active users by demographics"
+          ]
+        },
+        "budget": {
+          "label": "Budget questions",
+          "items": [
+            "Total marketing budget 2026",
+            "Budget split by department",
+            "Overruns last month",
+            "Next quarter forecast"
+          ]
+        },
+        "trips": {
+          "label": "Trip data",
+          "items": [
+            "Trips this month",
+            "Cancelled trips in June",
+            "Average trip duration",
+            "Top destinations 2026"
+          ]
+        },
+        "performance": {
+          "label": "Performance analytics",
+          "items": [
+            "Team KPIs Q1",
+            "Campaign effectiveness January",
+            "Support response time",
+            "Server performance last week"
+          ]
+        },
+        "sales": {
+          "label": "Sales analytics",
+          "items": [
+            "Sales comparison Q1",
+            "Demand forecast next month",
+            "Top products by revenue",
+            "Funnel conversion"
+          ]
+        }
       }
     }
   },

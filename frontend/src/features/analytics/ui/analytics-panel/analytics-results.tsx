@@ -3,17 +3,13 @@ import { Card } from "@heroui/react";
 import type {
   ChartPayloadShape,
   NlSqlWsPayload,
-} from "@/entities/analytics/types";
+} from "@/entities/analytics";
 import { SqlBlock } from "@/shared/ui/sql-block";
 import { DataTablePreview } from "@/shared/ui/data-table-preview";
+import type { InterpretationHint } from "@/features/analytics/lib/interpretation-hint";
 
 import { ANALYTICS_TABLE_PREVIEW_MAX } from "../../config/constants";
 import { AnalyticsCharts } from "../analytics-charts";
-import type { InterpretationHint } from "@/features/analytics/ui/analytics-panel/interpretation-banner";
-import {
-  InterpretationBanner,
-  interpretationToHint,
-} from "./interpretation-banner";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -22,7 +18,7 @@ export type AnalyticsResultsProps = {
   result: NlSqlWsPayload;
   showChart: boolean;
   chartPayload: ChartPayloadShape | undefined;
-  /** Если в ответе нет interpretation (ошибка до воркера), показываем оценку с ask-async */
+  /** Если в ответе нет interpretation (например ошибка до воркера), показываем запасной hint с панели */
   interpretationFallback?: InterpretationHint | null;
 };
 
@@ -31,15 +27,50 @@ export function AnalyticsResults({
   result,
   showChart,
   chartPayload,
-  interpretationFallback,
+  interpretationFallback: _interpretationFallback,
 }: AnalyticsResultsProps) {
   const cp = chartPayload;
+  /* Плашка «ясность формулировки» — временно скрыта
   const interpHint =
     interpretationToHint(result.interpretation) ?? interpretationFallback ?? null;
+  */
 
   return (
     <div className="space-y-4">
-      <InterpretationBanner t={t} hint={interpHint} variant="compact" />
+      {/* <InterpretationBanner t={t} hint={interpHint} variant="compact" /> */}
+
+      {result.status === "done" && result.nl_answer && (
+        <Card className="border border-border bg-surface p-5 shadow-sm">
+          <h3 className="mb-2 text-sm font-medium text-foreground">
+            {t("home.analytics.nlAnswerTitle")}
+          </h3>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {result.nl_answer}
+          </p>
+        </Card>
+      )}
+
+      {result.status === "done" && result.report && (
+        <Card className="border border-border bg-surface p-5 shadow-sm">
+          <h3 className="mb-2 text-sm font-medium text-foreground">
+            {t("home.analytics.reportTitle")}
+          </h3>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
+            {result.report}
+          </p>
+        </Card>
+      )}
+
+      {result.status === "done" && result.orchestrator?.risks_ru && (
+        <Card className="border border-border bg-surface/80 p-4 shadow-sm">
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">
+            {t("home.analytics.orchestratorRisksTitle")}
+          </h3>
+          <p className="whitespace-pre-wrap text-sm text-foreground">
+            {result.orchestrator.risks_ru}
+          </p>
+        </Card>
+      )}
 
       {result.status === "error" && (
         <Card className="border-danger/40 bg-danger/5 p-4">

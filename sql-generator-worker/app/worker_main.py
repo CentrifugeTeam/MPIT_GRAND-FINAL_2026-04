@@ -1,5 +1,6 @@
 """
-ML / SQL generator worker: очередь nl_sql_generate_request → LLM → guardrails → SELECT → результат в nl_sql_jobs и nl_sql_generate_result.
+ML / SQL generator worker: очередь nl_sql_generate_request → LLM (только SQL) → guardrails → SELECT → результат.
+При наличии conversation_id дублирует результат в nl_sql_generate_result_chat для nl-orchestrator-worker.
 """
 from __future__ import annotations
 
@@ -13,39 +14,57 @@ import pika
 from sqlalchemy import create_engine
 
 from app.core.config import get_settings
-from app.core.queues import QUEUE_GENERATE_REQUEST, QUEUE_GENERATE_RESULT
+from app.core.queues import (
+    QUEUE_GENERATE_REQUEST,
+    QUEUE_GENERATE_RESULT,
+    QUEUE_GENERATE_RESULT_CHAT,
+)
 from app.schemas.analytics import TableSchema
 from app.services.chart_builder import build_chart
 from app.services.job_db import update_job_row
 from app.services.llm_service import generate_sql
+from app.services.analytics_source_resolve import resolve_analytics_database_url
 from app.services.query_executor import execute_select
 from app.services.sql_guard import allowed_table_set, validate_and_prepare_sql
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sql_generator_worker")
 
-_engine_cache = None
+_engine_by_url: dict[str, object] = {}
 _RABBIT_CONNECT_RETRY_BASE_SEC = 1.0
 _RABBIT_CONNECT_RETRY_MAX_SEC = 15.0
 
 
-def get_data_engine():
-    global _engine_cache
-    if _engine_cache is None:
-        _engine_cache = create_engine(
-            get_settings().ANALYTICS_DATABASE_URL, pool_pre_ping=True
-        )
-    return _engine_cache
+def get_data_engine_for_url(url: str):
+    global _engine_by_url
+    if url not in _engine_by_url:
+        _engine_by_url[url] = create_engine(url, pool_pre_ping=True)
+    return _engine_by_url[url]
+
+
+def _is_chat_job(payload: dict) -> bool:
+    return bool(payload.get("conversation_id"))
 
 
 async def run_pipeline(payload: dict) -> dict:
     settings = get_settings()
+    raw_sk = payload.get("analytics_source_key")
+    sk = raw_sk.strip() if isinstance(raw_sk, str) else None
+    if sk == "":
+        sk = None
+    db_url = resolve_analytics_database_url(sk)
+    data_engine = get_data_engine_for_url(db_url)
+
     job_id = uuid.UUID(payload["job_id"])
     user_id = payload["user_id"]
     question = payload["question"]
     tables = [TableSchema.model_validate(t) for t in payload["schema_tables"]]
+    chat_job = _is_chat_job(payload)
+    hints = payload.get("orchestrator_hints")
+    hints_str = hints if isinstance(hints, str) else None
 
-    update_job_row(job_id, status="processing")
+    if not chat_job:
+        update_job_row(job_id, status="processing")
 
     try:
         gctx = payload.get("glossary_context")
@@ -53,6 +72,7 @@ async def run_pipeline(payload: dict) -> dict:
             question,
             tables,
             glossary_context=gctx if isinstance(gctx, str) else None,
+            orchestrator_hints=hints_str,
         )
         allowed = allowed_table_set()
         mr = payload.get("max_rows")
@@ -64,7 +84,7 @@ async def run_pipeline(payload: dict) -> dict:
             schema_tables=tables,
         )
         cols, rows = execute_select(
-            get_data_engine(),
+            data_engine,
             sql,
             timeout_ms=settings.QUERY_TIMEOUT_MS,
         )
@@ -85,15 +105,16 @@ async def run_pipeline(payload: dict) -> dict:
         if isinstance(interp_in, dict):
             result_payload["interpretation"] = interp_in
 
-        update_job_row(
-            job_id,
-            status="done",
-            sql=sql,
-            explanation=explanation,
-            result_payload=result_payload,
-        )
+        if not chat_job:
+            update_job_row(
+                job_id,
+                status="done",
+                sql=sql,
+                explanation=explanation,
+                result_payload=result_payload,
+            )
 
-        return {
+        out: dict = {
             "job_id": str(job_id),
             "user_id": user_id,
             "status": "done",
@@ -101,10 +122,16 @@ async def run_pipeline(payload: dict) -> dict:
             **result_payload,
             "error": None,
         }
+        if chat_job:
+            out["conversation_id"] = str(payload["conversation_id"])
+            if payload.get("sql_turn_id"):
+                out["sql_turn_id"] = str(payload["sql_turn_id"])
+        return out
     except Exception as e:
         logger.exception("pipeline failed")
         err = str(e)
-        update_job_row(job_id, status="error", error=err)
+        if not chat_job:
+            update_job_row(job_id, status="error", error=err)
         err_out: dict = {
             "job_id": str(job_id),
             "user_id": user_id,
@@ -123,6 +150,10 @@ async def run_pipeline(payload: dict) -> dict:
         interp_in = payload.get("interpretation")
         if isinstance(interp_in, dict):
             err_out["interpretation"] = interp_in
+        if chat_job:
+            err_out["conversation_id"] = str(payload["conversation_id"])
+            if payload.get("sql_turn_id"):
+                err_out["sql_turn_id"] = str(payload["sql_turn_id"])
         return err_out
 
 
@@ -138,6 +169,14 @@ def on_message(ch, method, properties, body: bytes) -> None:
             body=out,
             properties=pika.BasicProperties(delivery_mode=2),
         )
+        if payload.get("conversation_id"):
+            ch.queue_declare(queue=QUEUE_GENERATE_RESULT_CHAT, durable=True)
+            ch.basic_publish(
+                exchange="",
+                routing_key=QUEUE_GENERATE_RESULT_CHAT,
+                body=out,
+                properties=pika.BasicProperties(delivery_mode=2),
+            )
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception:
         logger.exception("on_message")
@@ -165,6 +204,7 @@ def main() -> None:
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_GENERATE_REQUEST, durable=True)
     channel.queue_declare(queue=QUEUE_GENERATE_RESULT, durable=True)
+    channel.queue_declare(queue=QUEUE_GENERATE_RESULT_CHAT, durable=True)
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue=QUEUE_GENERATE_REQUEST, on_message_callback=on_message)
     logger.info("Worker listening on %s", QUEUE_GENERATE_REQUEST)

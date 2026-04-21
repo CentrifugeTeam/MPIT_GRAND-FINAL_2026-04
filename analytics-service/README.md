@@ -1,18 +1,15 @@
 # Analytics service (NL → SQL)
 
-## Синхронные ручки (как раньше)
+## HTTP API (актуально)
 
-- `GET /api/analytics/schema` — контекст БД (кэш 24 ч + ежедневный cron `SCHEMA_CRON_HOUR` UTC).
-- `POST /api/analytics/generate-sql`, `/execute`, `/ask` — LLM/выполнение inline.
+- `GET /api/analytics/schema` — схема `public` для BFF (подстановка в `chat_message`) и кэш; cron `SCHEMA_CRON_HOUR` UTC.
+- `POST /api/analytics/interpret-question` — эвристика вопроса + глоссарий для NL-чата (без задачи в очереди).
+- История и чаты: `GET/DELETE /api/analytics/history`, `POST /api/analytics/chats`, `GET/PATCH/DELETE /api/analytics/chats/{id}[/messages]`.
+- `DELETE /api/analytics/jobs/{job_id}` — удалить старую запись `sql_job` из истории.
+- `POST /api/analytics/internal/nl-chat-sync` — только для **nl-orchestrator-worker** (токен `X-Chat-Sync-Token`).
 
-## Асинхронный пайплайн (как на схеме)
-
-1. `POST /api/analytics/ask-async` — заголовок **`X-User-Id`** (ставит BFF из JWT): создаётся задача в `nl_sql_jobs`, шаблон из `template_parser`, сообщение в **`nl_sql_generate_request`**.
-2. **sql-generator-worker** забирает задачу, вызывает LLM, guardrails, выполняет SQL, пишет результат в `nl_sql_jobs`, публикует в **`nl_sql_generate_result`**.
-3. **BFF** слушает `nl_sql_generate_result` и шлёт клиенту WebSocket-сообщение `type: nl_sql_result` (комната `job:<job_id>` и дубль по `user_id`).
-
-Опрос статуса: `GET /api/analytics/jobs/{job_id}` + заголовок `X-User-Id`.
+Постановка SQL в очередь **не** через этот сервис: сообщение в **`nl_sql_generate_request`** публикует **nl-orchestrator-worker** после `chat_message`.
 
 ## Переменные окружения
 
-См. `app/core/config.py`: `PLATFORM_DATABASE_URL`, RabbitMQ, `LLM_*`, лимиты запросов.
+См. `app/core/config.py`: `ANALYTICS_DATABASE_URL` / платформа, RabbitMQ (опционально для будущих сценариев), лимиты запросов, `INTERNAL_NL_CHAT_SYNC_TOKEN`.

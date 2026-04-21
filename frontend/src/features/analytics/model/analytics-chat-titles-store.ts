@@ -16,15 +16,17 @@ export const useAnalyticsChatTitlesStore = create<AnalyticsChatTitlesState>()(
         set((s) => {
           const next = title.trim();
           if (!next) {
-            const { [jobId]: _, ...rest } = s.titles;
-            return { titles: rest };
+            const copy = { ...s.titles };
+            delete copy[jobId];
+            return { titles: copy };
           }
           return { titles: { ...s.titles, [jobId]: next } };
         }),
       removeTitle: (jobId) =>
         set((s) => {
-          const { [jobId]: _, ...rest } = s.titles;
-          return { titles: rest };
+          const copy = { ...s.titles };
+          delete copy[jobId];
+          return { titles: copy };
         }),
       clearAllTitles: () => set({ titles: {} }),
     }),

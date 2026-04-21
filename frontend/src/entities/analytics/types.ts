@@ -5,6 +5,14 @@ export type QueryInterpretation = {
   suggestions?: string[];
 };
 
+/** Результат LLM-аналитика до генерации SQL (если включён в воркере). */
+export type OrchestratorPayload = {
+  proceed?: boolean;
+  user_message_ru?: string;
+  sql_generator_hints_ru?: string;
+  risks_ru?: string;
+};
+
 /** Ответ воркера / BFF по WebSocket `nl_sql_result` (плоский JSON). */
 export type NlSqlWsPayload = {
   type?: string;
@@ -22,6 +30,9 @@ export type NlSqlWsPayload = {
   chart_payload?: ChartPayloadShape;
   guard_warnings?: string[];
   interpretation?: QueryInterpretation;
+  orchestrator?: OrchestratorPayload;
+  nl_answer?: string | null;
+  report?: string | null;
 };
 
 export type ChartPayloadShape = {

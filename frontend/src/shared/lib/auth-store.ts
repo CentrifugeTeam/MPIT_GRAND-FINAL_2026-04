@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AuthResponse } from "@/entities/auth/types";
+import type { AuthSessionPayload } from "@/shared/types/auth-session";
 
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   expiresAt: number | null;
   userUuid: string | null;
-  setSession: (data: AuthResponse) => void;
+  setSession: (data: AuthSessionPayload) => void;
   clearSession: () => void;
   isAuthenticated: () => boolean;
 }

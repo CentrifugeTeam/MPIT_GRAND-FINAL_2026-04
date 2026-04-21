@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 
 import type { AnalyticsChatEntry } from "@/features/analytics/model/analytics-chat-store";
 
-import { formatChatTime } from "../../lib/format-chat-time";
+import { AnalyticsSidebarRow } from "./analytics-sidebar-row";
 
 export type AnalyticsSidebarProps = {
   entries: AnalyticsChatEntry[];
@@ -22,9 +22,9 @@ export type AnalyticsSidebarProps = {
   onSelectEntry: (id: string) => void;
   onStartNewChat: () => void;
   onLoadHistory: () => void;
-  onConfirmDeleteAll: () => void;
+  onClearAllHistory: () => void;
   onStartEditingRow: (e: AnalyticsChatEntry) => void;
-  onConfirmDeleteOne: (jobId: string) => void;
+  onDeleteHistoryEntry: (rowId: string) => void;
   t: (key: string) => string;
 };
 
@@ -44,9 +44,9 @@ export function AnalyticsSidebar({
   onSelectEntry,
   onStartNewChat,
   onLoadHistory,
-  onConfirmDeleteAll,
+  onClearAllHistory,
   onStartEditingRow,
-  onConfirmDeleteOne,
+  onDeleteHistoryEntry,
   t,
 }: AnalyticsSidebarProps) {
   return (
@@ -93,7 +93,7 @@ export function AnalyticsSidebar({
               <Dropdown.Item
                 textValue={t("home.analytics.deleteAllHistory")}
                 onAction={() => {
-                  if (entries.length > 0) void onConfirmDeleteAll();
+                  if (entries.length > 0) void onClearAllHistory();
                 }}
               >
                 <span className="flex items-center gap-2 text-danger">
@@ -109,105 +109,26 @@ export function AnalyticsSidebar({
         {entries.length === 0 && (
           <p className="text-muted px-2 py-4 text-xs">{t("home.analytics.sidebarEmpty")}</p>
         )}
-        {entries.map((e) => {
-          const rowLabel = titles[e.id] ?? e.question;
-          const isEditing = editingRowId === e.id;
-          return (
-            <div
-              key={e.id}
-              className={`group relative isolate flex min-h-[4.25rem] items-stretch gap-1 rounded-xl border transition-colors ${
-                activeId === e.id
-                  ? "border-border/80 bg-surface"
-                  : "border-transparent hover:bg-surface"
-              }`}
-            >
-              {isEditing ? (
-                <div className="flex min-w-0 flex-1 items-center px-2 py-1.5">
-                  <input
-                    ref={renameInputRef}
-                    value={renameDraft}
-                    onChange={(ev) => onRenameDraft(ev.target.value)}
-                    onFocus={(ev) => {
-                      onRenameFocus(true);
-                      ev.target.select();
-                    }}
-                    onBlur={() => {
-                      onRenameFocus(false);
-                      onCommitRename();
-                    }}
-                    className={`min-w-0 flex-1 rounded-md text-[13px] font-medium leading-snug outline-none transition-[background-color,border-color,box-shadow,padding] ${
-                      renameFieldFocused
-                        ? "border border-border bg-surface px-2 py-1 shadow-sm"
-                        : "border border-transparent bg-transparent px-1 py-0.5"
-                    }`}
-                    onKeyDown={(ev) => {
-                      if (ev.key === "Enter") {
-                        ev.preventDefault();
-                        onCommitRename();
-                      }
-                      if (ev.key === "Escape") {
-                        ev.preventDefault();
-                        onCancelRename();
-                      }
-                    }}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onSelectEntry(e.id)}
-                  className="hover:bg-default/25 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg px-2.5 pb-2 pt-2.5 text-left text-sm transition-colors"
-                >
-                  <div className="min-h-[2.75rem] shrink-0">
-                    <div className="line-clamp-2 text-[13px] font-medium leading-snug">
-                      {rowLabel}
-                    </div>
-                  </div>
-                  <div className="border-border/50 text-muted mt-auto shrink-0 space-y-0.5 border-t pt-2 text-[11px] tabular-nums">
-                    <div className="break-words leading-relaxed">
-                      {formatChatTime(e.createdAt)}
-                    </div>
-                    {e.maxRows != null && (
-                      <div className="text-muted/85">LIMIT {e.maxRows}</div>
-                    )}
-                  </div>
-                </button>
-              )}
-              {!isEditing && (
-                <Dropdown.Root>
-                  <Dropdown.Trigger
-                    aria-label={t("home.analytics.chatRowMenuAria")}
-                    className="mr-0.5 my-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-70 transition-opacity hover:bg-default hover:opacity-100 group-hover:opacity-100"
-                  >
-                    <Icon icon="mdi:dots-vertical" width={16} />
-                  </Dropdown.Trigger>
-                  <Dropdown.Popover placement="bottom end">
-                    <Dropdown.Menu>
-                      <Dropdown.Item
-                        textValue={t("home.analytics.renameChat")}
-                        onAction={() => onStartEditingRow(e)}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Icon icon="mdi:pencil-outline" width={18} />
-                          {t("home.analytics.renameChat")}
-                        </span>
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        textValue={t("home.analytics.deleteChat")}
-                        onAction={() => void onConfirmDeleteOne(e.id)}
-                      >
-                        <span className="flex items-center gap-2 text-danger">
-                          <Icon icon="mdi:delete-outline" width={18} />
-                          {t("home.analytics.deleteChat")}
-                        </span>
-                      </Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-              )}
-            </div>
-          );
-        })}
+        {entries.map((e) => (
+          <AnalyticsSidebarRow
+            key={e.id}
+            entry={e}
+            rowLabel={titles[e.id] ?? e.question}
+            activeId={activeId}
+            editingRowId={editingRowId}
+            renameDraft={renameDraft}
+            renameFieldFocused={renameFieldFocused}
+            renameInputRef={renameInputRef}
+            onRenameDraft={onRenameDraft}
+            onRenameFocus={onRenameFocus}
+            onCommitRename={onCommitRename}
+            onCancelRename={onCancelRename}
+            onSelectEntry={onSelectEntry}
+            onStartEditingRow={onStartEditingRow}
+            onDeleteHistoryEntry={onDeleteHistoryEntry}
+            t={t}
+          />
+        ))}
       </div>
     </aside>
   );

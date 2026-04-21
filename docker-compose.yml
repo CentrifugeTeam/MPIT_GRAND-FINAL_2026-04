@@ -92,8 +92,8 @@ services:
     ports:
       - "8009:8009"
     environment:
-      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
-      - PLATFORM_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - ANALYTICS_DATABASE_URL=${ANALYTICS_DATABASE_URL:-postgresql://postgres:postgres@postgres-files:5432/files_db}
+      - PLATFORM_DATABASE_URL=${PLATFORM_DATABASE_URL:-postgresql://postgres:postgres@postgres-db:5432/postgres-db}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
@@ -103,8 +103,14 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
+      - INTERNAL_NL_CHAT_SYNC_TOKEN=${INTERNAL_NL_CHAT_SYNC_TOKEN:-dev-nl-chat-sync}
+      - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
+      - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-files-db}
+      - ANALYTICS_SOURCES_INLINE=${ANALYTICS_SOURCES_INLINE:-files-db|postgresql://postgres:postgres@postgres-files:5432/files_db||postgres-main|postgresql://postgres:postgres@postgres-db:5432/postgres-db}
     depends_on:
       postgres-db:
+        condition: service_healthy
+      postgres-files:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
@@ -120,7 +126,7 @@ services:
       dockerfile: Dockerfile
     container_name: sql-generator-worker
     environment:
-      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
+      - ANALYTICS_DATABASE_URL=postgresql://postgres:postgres@postgres-files:5432/files_db
       - PLATFORM_DATABASE_URL=postgresql://postgres:postgres@postgres-db:5432/postgres-db
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
@@ -132,8 +138,35 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
+      postgres-files:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  nl-orchestrator-worker:
+    build:
+      context: ./nl-orchestrator-worker
+      dockerfile: Dockerfile
+    container_name: nl-orchestrator-worker
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - CHAT_MAX_HISTORY_MESSAGES=${CHAT_MAX_HISTORY_MESSAGES:-20}
+      - CHAT_SQL_MAX_ROWS=${CHAT_SQL_MAX_ROWS:-5000}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASSWORD=admin123
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - INTERNAL_NL_CHAT_SYNC_TOKEN=${INTERNAL_NL_CHAT_SYNC_TOKEN:-dev-nl-chat-sync}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      analytics-service:
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped
@@ -153,6 +186,7 @@ services:
       - NOTIFICATION_SERVICE_URL=http://notification-service:8007
       - FILES_SERVICE_URL=http://files-service:8006
       - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - RABBITMQ_HOST=rabbitmq
@@ -162,6 +196,8 @@ services:
       files-service:
         condition: service_started
       analytics-service:
+        condition: service_started
+      nl-orchestrator-worker:
         condition: service_started
       rabbitmq:
         condition: service_started

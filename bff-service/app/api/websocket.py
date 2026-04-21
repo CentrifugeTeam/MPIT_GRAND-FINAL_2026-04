@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+import uuid
+
 import jwt
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 
 from app.schemas.websocket import WebSocketInfo, WebSocketConnections, WebSocketToken
 from app.api.auth import get_current_user
 from app.services.websocket_service import WebSocketService
 from app.core.config import get_settings
 from app.core.connection_manager import manager
+from app.services.analytics_schema_client import fetch_public_schema
+from app.services.chat_mq import chat_bus
 
 router = APIRouter()
 websocket_service = WebSocketService()
@@ -40,7 +44,7 @@ async def get_websocket_token(current_user: dict = Depends(get_current_user)):
 async def get_websocket_info(current_user: dict = Depends(get_current_user)):
     return WebSocketInfo(
         websocket_url=websocket_service.get_websocket_url(),
-        message="WebSocket на BFF: после подключения отправьте watch_job для комнаты job:<uuid>",
+        message="WebSocket BFF: watch_job → job:<uuid>; join_chat → chat:<uuid> для NL-чата",
         user_id=current_user.get("uuid"),
         email=current_user.get("email"),
     )
@@ -138,6 +142,99 @@ async def websocket_endpoint(websocket: WebSocket):
                             websocket,
                             {"type": "room_joined", "room": room},
                         )
+                elif message_type == "join_chat":
+                    cid = data.get("conversation_id")
+                    if cid:
+                        room = f"chat:{cid}"
+                        await manager.join_room(websocket, room)
+                        await _safe_send_json(
+                            websocket,
+                            {
+                                "type": "join_chat_ack",
+                                "conversation_id": cid,
+                                "room": room,
+                            },
+                        )
+                    else:
+                        await _safe_send_json(
+                            websocket,
+                            {"type": "error", "message": "conversation_id required"},
+                        )
+                elif message_type == "leave_chat":
+                    cid = data.get("conversation_id")
+                    if cid:
+                        await manager.leave_room(websocket, f"chat:{cid}")
+                        await _safe_send_json(
+                            websocket,
+                            {"type": "left_chat", "conversation_id": cid},
+                        )
+                elif message_type == "chat_message":
+                    conv = data.get("conversation_id")
+                    content = data.get("content")
+                    history = data.get("history") or []
+                    if not conv or not content:
+                        await _safe_send_json(
+                            websocket,
+                            {
+                                "type": "error",
+                                "message": "conversation_id and content required",
+                            },
+                        )
+                    else:
+                        ask = data.get("analytics_source_key")
+                        sk = (
+                            str(ask).strip()
+                            if isinstance(ask, str) and str(ask).strip()
+                            else None
+                        )
+                        try:
+                            schema_tables = await fetch_public_schema(sk)
+                        except Exception as e:
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "error",
+                                    "message": f"schema: {e}",
+                                },
+                            )
+                        else:
+                            mid = data.get("message_id") or str(uuid.uuid4())
+                            max_rows = data.get("max_rows")
+                            max_rows_out: int | None = None
+                            if isinstance(max_rows, int) and max_rows > 0:
+                                max_rows_out = min(50_000_000, max_rows)
+                            gc = data.get("glossary_context")
+                            glossary_context = (
+                                str(gc) if isinstance(gc, str) and gc.strip() else None
+                            )
+                            incoming: dict = {
+                                "message_id": mid,
+                                "user_id": user_id,
+                                "conversation_id": str(conv),
+                                "content": str(content),
+                                "history": history
+                                if isinstance(history, list)
+                                else [],
+                                "schema_tables": schema_tables,
+                            }
+                            if max_rows_out is not None:
+                                incoming["max_rows"] = max_rows_out
+                            if glossary_context is not None:
+                                incoming["glossary_context"] = glossary_context
+                            if sk is not None:
+                                incoming["analytics_source_key"] = sk
+                            raw_lbl = data.get("analytics_source_label")
+                            if isinstance(raw_lbl, str) and raw_lbl.strip():
+                                incoming["analytics_source_label"] = raw_lbl.strip()
+                            await chat_bus.publish_incoming(incoming)
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "chat_message_ack",
+                                    "message_id": mid,
+                                    "conversation_id": str(conv),
+                                },
+                            )
                 else:
                     await _safe_send_json(
                         websocket,

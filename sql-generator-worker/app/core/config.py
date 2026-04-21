@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = "https://api.openai.com/v1"
     LLM_MODEL: str = "gpt-4o-mini"
+
     QUERY_TIMEOUT_MS: int = 30000
     ALLOWED_TABLES: str | None = None
 

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     NOTIFICATION_SERVICE_URL: str = "http://notification-service:8007"
     FILES_SERVICE_URL: str = "http://files-service:8006"
     ANALYTICS_SERVICE_URL: str = "http://analytics-service:8009"
+    # Проксируется в analytics-service при CRUD /api/analytics/data-sources (ADMIN в BFF)
+    ANALYTICS_SOURCES_WRITE_TOKEN: str = ""
 
     RABBITMQ_HOST: str = "rabbitmq"
     RABBITMQ_USER: str = "admin"

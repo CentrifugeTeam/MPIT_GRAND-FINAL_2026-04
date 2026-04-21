@@ -1,5 +1,5 @@
-import { AnalyticsPanel } from "@/features/analytics/ui/analytics-panel/analytics-panel";
+import { AnalyticsWorkspace } from "@/widgets/analytics-workspace";
 
 export function HomePage() {
-  return <AnalyticsPanel />;
+  return <AnalyticsWorkspace />;
 }

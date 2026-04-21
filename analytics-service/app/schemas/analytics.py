@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuestionRequest(BaseModel):
@@ -11,6 +11,10 @@ class QuestionRequest(BaseModel):
         ge=1,
         le=50_000_000,
         description="Лимит строк в guard (LIMIT). Не указано — без принудительного LIMIT.",
+    )
+    analytics_source_key: Optional[str] = Field(
+        None,
+        description="Ключ источника данных (для согласованности с NL-чатом); опционально.",
     )
 
 
@@ -102,6 +106,23 @@ class AskAsyncResponse(BaseModel):
     )
 
 
+class InterpretQuestionResponse(BaseModel):
+    """Разбор вопроса + глоссарий для NL-чата без постановки sql_job (как начало ask-async)."""
+
+    interpretation_confidence: float = Field(
+        ...,
+        ge=0,
+        le=1,
+    )
+    interpretation_warnings: list[str] = Field(default_factory=list)
+    interpretation_suggestions: list[str] = Field(default_factory=list)
+    glossary_matches: list[GlossaryMatchItem] = Field(default_factory=list)
+    glossary_context: Optional[str] = Field(
+        default=None,
+        description="Текст для LLM генератора SQL (как в ask-async).",
+    )
+
+
 class GlossaryListResponse(BaseModel):
     version: int = 1
     total: int = 0
@@ -141,3 +162,62 @@ class JobHistoryItem(BaseModel):
 class JobHistoryResponse(BaseModel):
     items: list[JobHistoryItem]
     total: int
+
+
+class AnalyticsHistoryItem(BaseModel):
+    """Единая строка истории: классическая задача SQL или NL-чат."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    entry_kind: Literal["sql_job", "nl_chat"]
+    sort_at: datetime
+    job_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    user_id: Optional[str] = None
+    question: str = ""
+    max_rows: Optional[int] = None
+    template_key: Optional[str] = None
+    status: Optional[str] = None
+    sql: Optional[str] = None
+    explanation: Optional[str] = None
+    error: Optional[str] = None
+    result: Optional[dict[str, Any]] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    chat_title: Optional[str] = None
+    message_count: Optional[int] = None
+
+
+class AnalyticsHistoryResponse(BaseModel):
+    items: list[AnalyticsHistoryItem]
+    total: int
+
+
+class CreateNlChatResponse(BaseModel):
+    conversation_id: str
+    created_at: datetime
+
+
+class NlChatTitlePatch(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+
+
+class NlChatMessageApi(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    role: str
+    payload: dict[str, Any]
+    created_at: datetime
+
+
+class NlChatTranscriptResponse(BaseModel):
+    items: list[NlChatMessageApi]
+
+
+class NlInternalChatSyncBody(BaseModel):
+    action: Literal["user_message", "assistant_message", "system_message"]
+    user_id: str
+    conversation_id: str
+    client_message_id: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
