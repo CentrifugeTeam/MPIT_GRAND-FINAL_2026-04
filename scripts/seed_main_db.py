@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CSV = REPO_ROOT / "sql-generator-worker" / "dataset" / "train.csv"
+DEFAULT_CSV = REPO_ROOT / "dataset" / "train.csv"
 DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5447/main_db"
 
 COLS = [
@@ -178,7 +178,7 @@ def main() -> int:
         "--csv",
         type=Path,
         default=DEFAULT_CSV,
-        help="Path to CSV (default: sql-generator-worker/dataset/train.csv)",
+        help="Path to CSV (default: dataset/train.csv)",
     )
     p.add_argument("--limit", type=int, default=None, help="Max data rows after header")
     p.add_argument(

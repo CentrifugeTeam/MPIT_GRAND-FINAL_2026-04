@@ -1,1 +1,2 @@
+# GitHub/GitLab отклоняют обычные blob >100 MiB. LFS хранит указатель в git, сам файл — на LFS-сервере.
 dataset/*.csv filter=lfs diff=lfs merge=lfs -text

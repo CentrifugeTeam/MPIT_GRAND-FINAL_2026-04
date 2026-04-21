@@ -1,4 +1,1 @@
 .gitnexus
-
-# Dataset too large for GitHub (>100MB); place train.csv locally or download separately.
-sql-generator-worker/dataset/train.csv

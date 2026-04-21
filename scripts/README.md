@@ -1,5 +1,13 @@
 # Скрипты
 
+## Большой `dataset/*.csv` в git (>100 MiB)
+
+Обычный git push на GitHub падает на файлах **>100 MiB**. В репозитории включён **Git LFS** для `dataset/*.csv` (см. корневой `.gitattributes`).
+
+Один раз на машине: `git lfs install`. Клонирование: `git clone` подтянет LFS-файлы автоматически; если нет — `git lfs pull`.
+
+Уже закоммиченный CSV без LFS нужно перенести: `git lfs migrate import --include="dataset/*.csv" --everything` (переписывает историю; согласуйте с командой).
+
 ## Витрина `main_db` при `docker compose up`
 
 Один сервис **`main-db-bootstrap`** вызывает [`seed_main_db.py`](seed_main_db.py): DDL `drivee_orders` + загрузка из CSV. Лимит и порог «уже достаточно строк» задаётся **`CSV_SEED_LIMIT`** (и опционально `MAIN_DB_SEED_DSN`, `MAIN_DB_CSV_PATH` в `docker-compose.yml` / `.env`).
@@ -27,7 +35,7 @@ python scripts/seed_main_db.py --limit 5000
 Параметры:
 
 - `--dsn` — URL подключения (по умолчанию `postgresql://postgres:postgres@localhost:5447/main_db`)
-- `--csv` — путь к CSV (по умолчанию `sql-generator-worker/dataset/train.csv` относительно корня репо)
+- `--csv` — путь к CSV (по умолчанию `dataset/train.csv` относительно корня репо)
 - `--limit N` — только первые N строк данных (после заголовка)
 - `--skip-if-count-ge N` — не вставлять, если в таблице уже ≥ N строк
 - `--wait-seconds S` — ждать доступность БД до S секунд
