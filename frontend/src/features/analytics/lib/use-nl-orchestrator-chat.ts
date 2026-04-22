@@ -102,6 +102,11 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   }, [conversationId, t]);
 
   useEffect(() => {
+    if (conversationId) return;
+    setLines([]);
+  }, [conversationId]);
+
+  useEffect(() => {
     if (!conversationId) return;
     let cancelled = false;
     void ensureWsConnected()
