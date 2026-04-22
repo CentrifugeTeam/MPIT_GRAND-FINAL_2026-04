@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router";
 
 import { FigmaAnalyticsSidebar, useAnalyticsPanel } from "@/features/analytics";
+import { ReportTaskItem } from "./report-task-item";
 
 export function ReportsDashboard() {
   const p = useAnalyticsPanel();
@@ -45,38 +46,66 @@ export function ReportsDashboard() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <section className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl border border-border bg-background p-5">
-          <div className="flex items-center justify-between gap-4">
-            {!sidebarOpen && (
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[12px] transition-all hover:bg-content2 active:scale-[0.97]"
-                aria-label={p.t("home.figma.openSidebar")}
-              >
-                <Icon icon="mdi:menu" width={18} className="text-foreground" />
-              </button>
-            )}
-            <h1 className="text-2xl font-semibold text-foreground">
-              {p.t("reports.title")}
-            </h1>
-            <Modal>
-              <Button variant="outline">
-                <Icon icon="mdi:plus" width={16} className="mr-1" />
-                {p.t("reports.createTask")}
-              </Button>
-              <Modal.Backdrop>
-                <Modal.Container>
-                  <Modal.Dialog className="sm:max-w-[480px]">
-                    <Modal.CloseTrigger />
-                    <Modal.Header>
-                      <Modal.Heading>{p.t("reports.createTask")}</Modal.Heading>
-                    </Modal.Header>
-                    <Modal.Body />
-                    <Modal.Footer />
-                  </Modal.Dialog>
-                </Modal.Container>
-              </Modal.Backdrop>
-            </Modal>
+          <div className="w-full max-w-[900px] mx-auto">
+            <div className="flex items-center justify-between gap-4">
+              {!sidebarOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[12px] transition-all hover:bg-content2 active:scale-[0.97]"
+                  aria-label={p.t("home.figma.openSidebar")}
+                >
+                  <Icon
+                    icon="mdi:menu"
+                    width={18}
+                    className="text-foreground"
+                  />
+                </button>
+              )}
+              <h1 className="text-2xl font-semibold text-foreground">
+                {p.t("reports.title")}
+              </h1>
+              <Modal>
+                <Button variant="outline">
+                  <Icon icon="mdi:plus" width={16} className="mr-1" />
+                  {p.t("reports.createTask")}
+                </Button>
+                <Modal.Backdrop>
+                  <Modal.Container>
+                    <Modal.Dialog className="sm:max-w-[480px]">
+                      <Modal.CloseTrigger />
+                      <Modal.Header>
+                        <Modal.Heading>
+                          {p.t("reports.createTask")}
+                        </Modal.Heading>
+                      </Modal.Header>
+                      <Modal.Body />
+                      <Modal.Footer />
+                    </Modal.Dialog>
+                  </Modal.Container>
+                </Modal.Backdrop>
+              </Modal>
+            </div>
+            <div className="mt-4 flex flex-col gap-4">
+              <ReportTaskItem
+                title={p.t("reports.tasks.productivityBoost.title")}
+                schedule={p.t("reports.tasks.productivityBoost.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.tasks.weeklySportsUpdate.title")}
+                schedule={p.t("reports.tasks.weeklySportsUpdate.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyProductivityTip.title")}
+                schedule={p.t(
+                  "reports.suggested.dailyProductivityTip.schedule",
+                )}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+            </div>
           </div>
         </section>
       </div>
