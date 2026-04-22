@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@heroui/react";
+import { Button, Modal } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router";
 
@@ -59,10 +59,24 @@ export function ReportsDashboard() {
             <h1 className="text-2xl font-semibold text-foreground">
               {p.t("reports.title")}
             </h1>
-            <Button variant="outline">
-              <Icon icon="mdi:plus" width={16} className="mr-1" />
-              {p.t("reports.createTask")}
-            </Button>
+            <Modal>
+              <Button variant="outline">
+                <Icon icon="mdi:plus" width={16} className="mr-1" />
+                {p.t("reports.createTask")}
+              </Button>
+              <Modal.Backdrop>
+                <Modal.Container>
+                  <Modal.Dialog className="sm:max-w-[480px]">
+                    <Modal.CloseTrigger />
+                    <Modal.Header>
+                      <Modal.Heading>{p.t("reports.createTask")}</Modal.Heading>
+                    </Modal.Header>
+                    <Modal.Body />
+                    <Modal.Footer />
+                  </Modal.Dialog>
+                </Modal.Container>
+              </Modal.Backdrop>
+            </Modal>
           </div>
         </section>
       </div>
