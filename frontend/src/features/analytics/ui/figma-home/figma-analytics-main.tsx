@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
+import { ScrollShadow } from "@heroui/react";
 
 import type { AnalyticsDataSourceItem } from "../../api/analytics-api";
 import type {
@@ -106,7 +107,7 @@ export function FigmaAnalyticsMain({
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-solid border-[#28282c] bg-[#060607] bg-[url(/mpit.png)] bg-cover bg-no-repeat">
-        <div className="w-full h-full opacity-30 absolute inset-0 bg-black" />
+        <div className="w-full h-full opacity-30 absolute inset-0 bg-black pointer-events-none" />
 
         {/* Бургер-кнопка при свёрнутом сайдбаре — абсолютно позиционирована в левом верхнем углу */}
         {!sidebarOpen && (
@@ -140,7 +141,10 @@ export function FigmaAnalyticsMain({
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {/* Плашка «ясность формулировки» — временно скрыта */}
-              <div className="min-h-0 flex-1 max-h-[calc(100vh-240px)] overflow-y-auto overscroll-y-contain px-3 sm:px-5">
+              <ScrollShadow
+                className="min-h-0 flex-1 max-h-[calc(100vh-240px)] overscroll-y-contain px-3 sm:px-5"
+                hideScrollBar
+              >
                 <div className={chatColClass} style={chatColStyle}>
                   <NlChatTranscriptBlock
                     t={t}
@@ -149,7 +153,7 @@ export function FigmaAnalyticsMain({
                     emptyLabel={t("home.analytics.chatEmpty")}
                   />
                 </div>
-              </div>
+              </ScrollShadow>
             </div>
             <div className="shrink-0 px-5 pb-4 pt-3">
               <div className="mx-auto w-full" style={chatColStyle}>
