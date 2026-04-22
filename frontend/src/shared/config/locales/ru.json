@@ -190,6 +190,21 @@
   "reports": {
     "title": "Задачи",
     "createTask": "Создать задачу",
+    "addReport": "Добавить отчёт",
+    "modal": {
+      "titlePlaceholder": "Введите название отчёта...",
+      "tabsAriaLabel": "Тип расписания",
+      "tabOnce": "Один раз",
+      "tabDaily": "Ежедневно",
+      "tabWeekly": "Раз в неделю",
+      "tabMonthly": "Ежемесячно",
+      "tabYearly": "Раз в год",
+      "timeLabel": "Выберите время",
+      "dateLabel": "Выберите дату",
+      "queryLabel": "Запрос",
+      "queryPlaceholder": "Напишите ваш запрос...",
+      "submitButton": "Создать отчёт"
+    },
     "sidebar": {
       "title": "Рабочая панель",
       "toggleAria": "Свернуть боковую панель",
