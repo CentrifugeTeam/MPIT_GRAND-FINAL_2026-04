@@ -187,6 +187,48 @@
       }
     }
   },
+  "reports": {
+    "title": "Задачи",
+    "createTask": "Создать задачу",
+    "sidebar": {
+      "title": "Рабочая панель",
+      "toggleAria": "Свернуть боковую панель",
+      "search": "Поиск",
+      "chat": "Чат",
+      "voice": "Голос",
+      "imagine": "Изображения",
+      "projects": "Проекты",
+      "newProject": "Новый проект",
+      "history": "История",
+      "newConversation": "Новый диалог",
+      "audioConversation": "Аудио-диалог",
+      "casualGreeting": "Короткое приветствие"
+    },
+    "tasks": {
+      "productivityBoost": {
+        "title": "Повышение продуктивности",
+        "schedule": "Каждый день в 7:50",
+        "description": "Фокусируйтесь на следующем действии",
+        "nextRun": "3 часа назад"
+      },
+      "weeklySportsUpdate": {
+        "title": "Еженедельный обзор спорта",
+        "schedule": "Среда в 19:00"
+      }
+    },
+    "suggested": {
+      "dailyProductivityTip": {
+        "title": "Ежедневный совет по продуктивности",
+        "schedule": "Каждый день в 9:20",
+        "description": "Подберите один практический совет на день для работы в быстром ритме."
+      },
+      "dailyStockTracker": {
+        "title": "Ежедневный трекер рынка",
+        "schedule": "Каждый день в 14:20",
+        "description": "Собирайте краткую сводку по выбранным тикерам и ключевым изменениям."
+      }
+    }
+  },
   "settings": {
     "title": "Настройки",
     "darkMode": "Тёмная тема",

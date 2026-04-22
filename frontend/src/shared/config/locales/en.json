@@ -187,6 +187,48 @@
       }
     }
   },
+  "reports": {
+    "title": "Tasks",
+    "createTask": "Create task",
+    "sidebar": {
+      "title": "Workspace panel",
+      "toggleAria": "Collapse sidebar",
+      "search": "Search",
+      "chat": "Chat",
+      "voice": "Voice",
+      "imagine": "Imagine",
+      "projects": "Projects",
+      "newProject": "New project",
+      "history": "History",
+      "newConversation": "New conversation",
+      "audioConversation": "Audio conversation",
+      "casualGreeting": "Quick greeting"
+    },
+    "tasks": {
+      "productivityBoost": {
+        "title": "Productivity Boost",
+        "schedule": "Daily at 7:50 AM",
+        "description": "Stay focused on the next action.",
+        "nextRun": "3 hours ago"
+      },
+      "weeklySportsUpdate": {
+        "title": "Weekly Sports Update",
+        "schedule": "Wednesday at 7:00 PM"
+      }
+    },
+    "suggested": {
+      "dailyProductivityTip": {
+        "title": "Receive a Daily Productivity Tip",
+        "schedule": "Daily at 9:20 AM",
+        "description": "Suggest one practical tip for a high-paced workday."
+      },
+      "dailyStockTracker": {
+        "title": "Create a Daily Stock Tracker",
+        "schedule": "Daily at 2:20 PM",
+        "description": "Provide a compact update for selected tickers and notable changes."
+      }
+    }
+  },
   "settings": {
     "title": "Settings",
     "darkMode": "Dark Mode",
