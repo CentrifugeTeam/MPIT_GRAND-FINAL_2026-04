@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Button,
   Calendar,
@@ -8,7 +9,6 @@ import {
   Input,
   Label,
   ListBox,
-  Modal,
   Select,
   Tabs,
   TextArea,
@@ -81,6 +81,15 @@ export function CreateReportModal({ dataSources = [], refetch }: Props) {
     setMonthDay(1);
     setScheduleTab("once");
   }
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") resetAndClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen]);
 
   function handleSubmit() {
     if (!reportName.trim() || !query.trim() || !sourceKey) return;
@@ -282,11 +291,32 @@ export function CreateReportModal({ dataSources = [], refetch }: Props) {
         {t("reports.addReport")}
       </Button>
 
-      <Modal isOpen={isOpen} onOpenChange={setIsOpen}>
-        <Modal.Backdrop>
-          <Modal.Container>
-            <Modal.Dialog className="w-full max-w-xl rounded-3xl border border-zinc-800 bg-zinc-950 p-0 gap-0 shadow-none">
-              <div className="flex flex-col gap-4 px-[17px] pb-[17px] pt-[9px]">
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className="fixed inset-0 z-100 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="absolute inset-0"
+              style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={resetAndClose}
+            />
+            <motion.div
+              className="relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950"
+              initial={{ opacity: 0, scale: 1.05, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+            >
+                  <div className="flex flex-col gap-4 px-[17px] pb-[17px] pt-[9px]">
                 {/* Title row */}
                 <div className="flex items-center gap-2 pl-1">
                   <Input
@@ -297,12 +327,12 @@ export function CreateReportModal({ dataSources = [], refetch }: Props) {
                     className="min-w-0 flex-1 border-none bg-transparent text-lg font-medium text-foreground outline-none ring-0 placeholder:text-muted focus:outline-none focus:ring-0"
                   />
                   <Button
-                    slot="close"
                     variant="ghost"
                     size="sm"
                     isIconOnly
                     aria-label={t("common.close")}
                     className="size-10 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-foreground"
+                    onPress={resetAndClose}
                   >
                     <Icon icon="mdi:close" width={16} />
                   </Button>
@@ -496,10 +526,10 @@ export function CreateReportModal({ dataSources = [], refetch }: Props) {
                   </Button>
                 </div>
               </div>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
