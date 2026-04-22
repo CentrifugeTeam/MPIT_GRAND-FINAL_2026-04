@@ -61,8 +61,6 @@ def build_chart(
     x_key: str | None = None
     for col in columns:
         val = first_row.get(col)
-        if val is None and col not in first_row:
-            continue
         if not _is_numeric(val):
             x_key = col
             break

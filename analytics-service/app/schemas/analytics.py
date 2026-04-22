@@ -5,6 +5,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class QuestionRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "question": "Покажи выручку по месяцам за 2025",
+                "max_rows": 1000,
+                "analytics_source_key": "main-db",
+            }
+        }
+    )
     question: str = Field(..., min_length=1, description="Вопрос на естественном языке")
     max_rows: Optional[int] = Field(
         None,
@@ -15,16 +24,6 @@ class QuestionRequest(BaseModel):
     analytics_source_key: Optional[str] = Field(
         None,
         description="Ключ источника данных (для согласованности с NL-чатом); опционально.",
-    )
-
-
-class ExecuteSqlRequest(BaseModel):
-    sql: str = Field(..., min_length=1, description="Только SELECT / WITH ... SELECT")
-    max_rows: Optional[int] = Field(
-        None,
-        ge=1,
-        le=50_000_000,
-        description="Лимит строк при применении guard; не указано — без принудительного LIMIT.",
     )
 
 
@@ -44,66 +43,11 @@ class SchemaResponse(BaseModel):
     cached: bool = False
 
 
-class GenerateSqlResponse(BaseModel):
-    sql: str
-    explanation: Optional[str] = None
-    raw_llm_excerpt: Optional[str] = None
-
-
-class ExecuteSqlResponse(BaseModel):
-    sql: str
-    columns: list[str]
-    rows: list[dict[str, Any]]
-    row_count: int
-    guard_warnings: list[str] = Field(default_factory=list)
-
-
-class ChartSpec(BaseModel):
-    type: Literal["line", "bar", "table"] = "table"
-    x_key: Optional[str] = None
-    series: list[dict[str, str]] = Field(default_factory=list)
-
-
-class AskResponse(BaseModel):
-    question: str
-    sql: str
-    explanation: Optional[str] = None
-    columns: list[str]
-    rows: list[dict[str, Any]]
-    row_count: int
-    chart: ChartSpec
-    chart_payload: dict[str, Any]
-    guard_warnings: list[str] = Field(default_factory=list)
-
-
-class ErrorDetail(BaseModel):
-    detail: str
-
-
 class GlossaryMatchItem(BaseModel):
     id: Optional[str] = None
     title: Optional[str] = None
     category: Optional[str] = None
     definition: str = ""
-
-
-class AskAsyncResponse(BaseModel):
-    job_id: str
-    status: str = "pending"
-    template_key: Optional[str] = None
-    message: str = "Задача поставлена в очередь генерации SQL"
-    interpretation_confidence: float = Field(
-        ...,
-        ge=0,
-        le=1,
-        description="Эвристическая уверенность в однозначности запроса (1 = хорошо).",
-    )
-    interpretation_warnings: list[str] = Field(default_factory=list)
-    interpretation_suggestions: list[str] = Field(default_factory=list)
-    glossary_matches: list[GlossaryMatchItem] = Field(
-        default_factory=list,
-        description="Термины из корпоративного глоссария, релевантные вопросу.",
-    )
 
 
 class InterpretQuestionResponse(BaseModel):
@@ -123,53 +67,12 @@ class InterpretQuestionResponse(BaseModel):
     )
 
 
-class GlossaryListResponse(BaseModel):
-    version: int = 1
-    total: int = 0
-    entries: list[dict[str, Any]] = Field(default_factory=list)
-
-
-class JobStatusResponse(BaseModel):
-    job_id: str
-    user_id: str
-    question: str
-    max_rows: Optional[int] = None
-    template_key: Optional[str] = None
-    status: str
-    sql: Optional[str] = None
-    explanation: Optional[str] = None
-    error: Optional[str] = None
-    result: Optional[dict[str, Any]] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
-class JobHistoryItem(BaseModel):
-    job_id: str
-    user_id: str
-    question: str
-    max_rows: Optional[int] = None
-    template_key: Optional[str] = None
-    status: str
-    sql: Optional[str] = None
-    explanation: Optional[str] = None
-    error: Optional[str] = None
-    result: Optional[dict[str, Any]] = None
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-
-class JobHistoryResponse(BaseModel):
-    items: list[JobHistoryItem]
-    total: int
-
-
 class AnalyticsHistoryItem(BaseModel):
     """Единая строка истории: классическая задача SQL или NL-чат."""
 
     model_config = ConfigDict(extra="ignore")
 
-    entry_kind: Literal["sql_job", "nl_chat"]
+    entry_kind: Literal["sql_job", "nl_chat", "report_task"]
     sort_at: datetime
     job_id: Optional[str] = None
     conversation_id: Optional[str] = None
@@ -186,6 +89,14 @@ class AnalyticsHistoryItem(BaseModel):
     updated_at: Optional[datetime] = None
     chat_title: Optional[str] = None
     message_count: Optional[int] = None
+    chat_type: Optional[Literal["chat", "report"]] = None
+    cron_expr: Optional[str] = None
+    cron_timezone: Optional[str] = None
+    repeat_limit: Optional[int] = None
+    runs_count: Optional[int] = None
+    next_run_at: Optional[datetime] = None
+    last_run_at: Optional[datetime] = None
+    is_active: Optional[bool] = None
 
 
 class AnalyticsHistoryResponse(BaseModel):
@@ -199,7 +110,63 @@ class CreateNlChatResponse(BaseModel):
 
 
 class NlChatTitlePatch(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"title": "Отчет по выручке"}})
     title: str = Field(..., min_length=1, max_length=500)
+
+
+class ReportScheduleBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "cron_expr": "0 9 * * 1",
+                "cron_timezone": "UTC",
+                "repeat_limit": 20,
+                "is_active": True,
+            }
+        }
+    )
+    cron_expr: str = Field(..., min_length=1, max_length=255)
+    cron_timezone: str = Field(default="UTC", min_length=1, max_length=64)
+    repeat_limit: Optional[int] = Field(default=None, ge=1, le=1_000_000)
+    is_active: bool = True
+
+
+class CreateNlChatBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "chat_type": "report",
+                "schedule": {
+                    "cron_expr": "0 9 * * 1",
+                    "cron_timezone": "UTC",
+                    "repeat_limit": 20,
+                    "is_active": True,
+                },
+                "notification_email": "user@example.com",
+            }
+        }
+    )
+    chat_type: Literal["chat", "report"] = "chat"
+    schedule: Optional[ReportScheduleBody] = None
+    notification_email: Optional[str] = None
+
+
+class NlReportPatch(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "Еженедельный отчет по заказам",
+                "schedule": {
+                    "cron_expr": "30 8 * * 1",
+                    "cron_timezone": "UTC",
+                    "repeat_limit": 12,
+                    "is_active": True,
+                },
+            }
+        }
+    )
+    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    schedule: Optional[ReportScheduleBody] = None
 
 
 class NlChatMessageApi(BaseModel):
@@ -216,6 +183,17 @@ class NlChatTranscriptResponse(BaseModel):
 
 
 class NlInternalChatSyncBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "action": "assistant_message",
+                "user_id": "00000000-0000-0000-0000-000000000001",
+                "conversation_id": "11111111-1111-1111-1111-111111111111",
+                "client_message_id": "msg-123",
+                "payload": {"text": "Готово, отчет сформирован."},
+            }
+        }
+    )
     action: Literal["user_message", "assistant_message", "system_message"]
     user_id: str
     conversation_id: str

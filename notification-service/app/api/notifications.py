@@ -11,8 +11,10 @@ from app.schemas import (
 )
 from app.crud import notification_crud, notification_settings_crud
 from app.services.rabbitmq_service import RabbitMQService
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/{user_id}", response_model=NotificationResponse)
 async def create_notification(
@@ -111,7 +113,11 @@ async def send_notification_to_queue(
 
             rabbitmq_service.publish_message("email_queue", message)
         except Exception as rabbitmq_error:
-            pass
+            logger.exception("Failed to publish notification to RabbitMQ")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to enqueue notification: {rabbitmq_error}",
+            )
 
         return {"message": "Notification sent to queue", "notification_id": str(db_notification.id)}
     except Exception as e:

@@ -92,7 +92,8 @@ class RabbitMQService:
             )
             self.channel.start_consuming()
         except Exception as e:
-            pass
+            logger.exception("RabbitMQ consumer failed")
+            raise
 
     def process_notification(self, message: Dict[str, Any]):
         """Обработать уведомление"""
@@ -115,12 +116,16 @@ class RabbitMQService:
                     return
                 elif notification_type == "email" and not settings.email_notifications:
                     return
+                elif notification_type == "report" and not settings.email_notifications:
+                    return
 
             # Отправляем email
             if email:
                 success = False
                 if notification_type == "registration":
                     success = email_service.send_registration_email(email)
+                elif notification_type == "report":
+                    success = email_service.send_report_notification(email, title, message_text)
                 else:
                     success = email_service.send_system_notification(email, title, message_text)
 
@@ -148,7 +153,8 @@ class RabbitMQService:
                             break
 
         except Exception as e:
-            pass
+            logger.exception("Failed processing notification")
+            raise
         finally:
             db.close()
 

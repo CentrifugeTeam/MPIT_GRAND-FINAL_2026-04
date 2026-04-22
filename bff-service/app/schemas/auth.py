@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
-from uuid import UUID
 from enum import Enum
 
 class UserRole(str, Enum):
@@ -8,15 +7,28 @@ class UserRole(str, Enum):
     ADMIN = "ADMIN"
 
 class UserCreate(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "user@example.com",
+                "password": "StrongPass123!",
+                "confirm_password": "StrongPass123!",
+            }
+        }
+    )
     email: EmailStr
     password: str
     confirm_password: str
 
 class UserLogin(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"email": "user@example.com", "password": "StrongPass123!"}}
+    )
     email: EmailStr
     password: str
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"email": "new.email@example.com"}})
     email: Optional[EmailStr] = None
 
 class UserResponse(BaseModel):
@@ -36,7 +48,9 @@ class TokenResponse(BaseModel):
     user_uuid: str
 
 class RefreshTokenRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"refresh_token": "eyJhbGciOi..."}})
     refresh_token: str
 
 class RoleUpdate(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"role": "ADMIN"}})
     role: UserRole

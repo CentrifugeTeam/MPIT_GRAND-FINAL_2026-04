@@ -37,10 +37,3 @@ def invalidate() -> None:
     with _cache_lock:
         _payloads.clear()
         _cached_at.clear()
-
-
-def invalidate_key(source_key: Optional[str] = None) -> None:
-    k = _norm_key(source_key)
-    with _cache_lock:
-        _payloads.pop(k, None)
-        _cached_at.pop(k, None)

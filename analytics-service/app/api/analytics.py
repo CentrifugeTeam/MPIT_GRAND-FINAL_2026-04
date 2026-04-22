@@ -6,11 +6,13 @@ from app.core.config import get_settings
 from app.schemas.analytics import (
     AnalyticsHistoryItem,
     AnalyticsHistoryResponse,
+    CreateNlChatBody,
     CreateNlChatResponse,
     GlossaryMatchItem,
     InterpretQuestionResponse,
     NlChatMessageApi,
     NlChatTitlePatch,
+    NlReportPatch,
     NlChatTranscriptResponse,
     NlInternalChatSyncBody,
     QuestionRequest,
@@ -33,6 +35,7 @@ from app.services.chat_store import (
     get_session_for_user,
     list_messages,
     update_session_title,
+    update_report_session,
 )
 from app.services.history_unified import list_unified_history
 from app.services.job_store import delete_all_jobs_for_user, delete_job
@@ -158,9 +161,17 @@ async def internal_nl_chat_sync(
 
 @router.post("/chats", response_model=CreateNlChatResponse)
 async def create_nl_chat_route(
+    body: CreateNlChatBody | None = None,
     x_user_id: str = Header(..., alias="X-User-Id"),
 ):
-    cid = create_empty_session(x_user_id)
+    payload = body or CreateNlChatBody()
+    schedule_payload = payload.schedule.model_dump() if payload.schedule else None
+    cid = create_empty_session(
+        x_user_id,
+        chat_type=payload.chat_type,
+        schedule=schedule_payload,
+        notification_email=payload.notification_email,
+    )
     meta = get_session_for_user(x_user_id, cid)
     if not meta:
         raise HTTPException(status_code=500, detail="session create failed")
@@ -193,6 +204,25 @@ async def patch_nl_chat_title_route(
     ok = update_session_title(x_user_id, str(conversation_id), body.title)
     if not ok:
         raise HTTPException(status_code=404, detail="Чат не найден")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/chats/{conversation_id}/report", status_code=status.HTTP_204_NO_CONTENT)
+async def patch_report_chat_route(
+    conversation_id: uuid.UUID,
+    body: NlReportPatch,
+    x_user_id: str = Header(..., alias="X-User-Id"),
+):
+    if body.title is None and body.schedule is None:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    ok = update_report_session(
+        x_user_id,
+        str(conversation_id),
+        title=body.title,
+        schedule=body.schedule.model_dump() if body.schedule else None,
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="Report task not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -170,7 +170,6 @@ def on_message(ch, method, properties, body: bytes) -> None:
             properties=pika.BasicProperties(delivery_mode=2),
         )
         if payload.get("conversation_id"):
-            ch.queue_declare(queue=QUEUE_GENERATE_RESULT_CHAT, durable=True)
             ch.basic_publish(
                 exchange="",
                 routing_key=QUEUE_GENERATE_RESULT_CHAT,

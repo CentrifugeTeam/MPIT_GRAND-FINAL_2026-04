@@ -327,7 +327,3 @@ def validate_and_prepare_sql(
         raise ValueError("Не удалось сгенерировать SQL")
 
     return out, warnings
-
-
-def preview_strip(raw: str) -> str:
-    return _extract_sql_from_markdown(raw)

@@ -14,10 +14,6 @@ from typing import Any
 _DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "metrics_glossary.json"
 
 
-def get_version() -> int:
-    return int(_raw_glossary().get("version", 1))
-
-
 @lru_cache(maxsize=1)
 def _raw_glossary() -> dict[str, Any]:
     if not _DATA_PATH.is_file():
@@ -29,29 +25,6 @@ def _raw_glossary() -> dict[str, Any]:
 def get_all_entries() -> list[dict[str, Any]]:
     data = _raw_glossary()
     return list(data.get("entries", []))
-
-
-def search_entries(query: str | None, *, limit: int = 500) -> list[dict[str, Any]]:
-    """Фильтрация по подстроке title/synonyms/definition (без регистра)."""
-    entries = get_all_entries()
-    if not query or not query.strip():
-        return entries[:limit]
-    ql = query.strip().lower()
-    out: list[dict[str, Any]] = []
-    for e in entries:
-        hay = " ".join(
-            [
-                e.get("title") or "",
-                " ".join(e.get("synonyms") or []),
-                (e.get("definition") or "")[:400],
-                e.get("category") or "",
-            ]
-        ).lower()
-        if ql in hay:
-            out.append(e)
-        if len(out) >= limit:
-            break
-    return out
 
 
 def match_entries_for_question(question: str, *, max_terms: int = 14) -> list[dict[str, Any]]:

@@ -42,6 +42,12 @@ class DataSourcesListResponse(BaseModel):
 
 
 class DataSourceCreateBody(BaseModel):
+    model_config = {"json_schema_extra": {"example": {
+        "key": "main-db",
+        "display_name": "Warehouse (main_db)",
+        "database_url": "postgresql://postgres:postgres@main-db:5432/main_db",
+        "set_as_default": True
+    }}}
     key: str = Field(..., min_length=1, max_length=64)
     display_name: str = Field("", max_length=255)
     database_url: str = Field(..., min_length=8)
@@ -49,12 +55,18 @@ class DataSourceCreateBody(BaseModel):
 
 
 class DataSourcePatchBody(BaseModel):
+    model_config = {"json_schema_extra": {"example": {
+        "display_name": "Warehouse (updated)",
+        "database_url": "postgresql://postgres:postgres@main-db:5432/main_db",
+        "is_default": False
+    }}}
     display_name: str | None = Field(None, max_length=255)
     database_url: str | None = Field(None, min_length=8)
     is_default: bool | None = None
 
 
 class DefaultSourceBody(BaseModel):
+    model_config = {"json_schema_extra": {"example": {"key": "main-db"}}}
     key: str = Field(..., min_length=1, max_length=64)
 
 

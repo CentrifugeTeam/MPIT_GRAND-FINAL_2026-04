@@ -1,12 +1,70 @@
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.analytics_service import AnalyticsProxy
 from app.api.auth import get_current_user
 
 router = APIRouter()
 _proxy = AnalyticsProxy()
+
+
+class InterpretQuestionBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "question": "Покажи выручку по месяцам за 2025",
+                "max_rows": 1000,
+                "analytics_source_key": "main-db",
+            }
+        }
+    )
+    question: str = Field(..., min_length=1)
+    max_rows: int | None = Field(default=None, ge=1)
+    analytics_source_key: str | None = None
+
+
+class PatchChatTitleBody(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"title": "Еженедельный отчет"}})
+    title: str = Field(..., min_length=1, max_length=500)
+
+
+class DataSourceCreateBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "key": "main-db",
+                "display_name": "Warehouse (main_db)",
+                "database_url": "postgresql://postgres:postgres@main-db:5432/main_db",
+                "set_as_default": True,
+            }
+        }
+    )
+    key: str
+    display_name: str
+    database_url: str
+    set_as_default: bool = False
+
+
+class DataSourcePatchBody(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "display_name": "Warehouse (updated)",
+                "database_url": "postgresql://postgres:postgres@main-db:5432/main_db",
+                "is_default": False,
+            }
+        }
+    )
+    display_name: str | None = None
+    database_url: str | None = None
+    is_default: bool | None = None
+
+
+class DefaultSourceBody(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"key": "main-db"}})
+    key: str
 
 
 def _require_admin(current_user: dict) -> None:
@@ -19,11 +77,11 @@ def _require_admin(current_user: dict) -> None:
 
 @router.post("/interpret-question")
 async def interpret_question(
-    body: dict[str, Any],
+    body: InterpretQuestionBody,
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Разбор вопроса и глоссарий для NL-чата (без sql_job)."""
-    return await _proxy.interpret_question(body)
+    return await _proxy.interpret_question(body.model_dump(exclude_none=True))
 
 
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
@@ -65,11 +123,11 @@ async def get_nl_chat_messages(
 @router.patch("/chats/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def patch_nl_chat_title(
     conversation_id: str,
-    body: dict[str, Any] = Body(...),
+    body: PatchChatTitleBody = Body(...),
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    title = str(body.get("title") or "").strip()
+    title = body.title.strip()
     if not title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title required")
     await _proxy.patch_nl_chat_title(uid, conversation_id, title)
@@ -105,21 +163,21 @@ async def list_data_sources(
 
 @router.post("/data-sources")
 async def create_data_source(
-    body: dict[str, Any],
+    body: DataSourceCreateBody,
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     _require_admin(current_user)
-    return await _proxy.create_data_source(body)
+    return await _proxy.create_data_source(body.model_dump(exclude_none=True))
 
 
 @router.patch("/data-sources/{source_key}")
 async def patch_data_source(
     source_key: str,
-    body: dict[str, Any],
+    body: DataSourcePatchBody,
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     _require_admin(current_user)
-    return await _proxy.patch_data_source(source_key, body)
+    return await _proxy.patch_data_source(source_key, body.model_dump(exclude_none=True))
 
 
 @router.delete("/data-sources/{source_key}", status_code=status.HTTP_204_NO_CONTENT)
@@ -134,9 +192,9 @@ async def delete_data_source(
 
 @router.put("/data-sources/default", status_code=status.HTTP_204_NO_CONTENT)
 async def put_default_data_source(
-    body: dict[str, Any],
+    body: DefaultSourceBody,
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     _require_admin(current_user)
-    await _proxy.put_default_data_source(body)
+    await _proxy.put_default_data_source(body.model_dump(exclude_none=True))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

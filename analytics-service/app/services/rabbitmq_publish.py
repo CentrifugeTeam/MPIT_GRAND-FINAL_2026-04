@@ -6,7 +6,6 @@ from typing import Any
 import aio_pika
 
 from app.core.config import get_settings
-from app.core.queues import QUEUE_GENERATE_REQUEST
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +43,15 @@ class RabbitPublish:
         if self._connection and not self._connection.is_closed:
             await self._connection.close()
 
-    async def publish_generate_request(self, payload: dict[str, Any]) -> None:
+    async def publish_json(self, routing_key: str, payload: dict[str, Any]) -> None:
         await self.connect()
         assert self._connection is not None
         ch = await self._connection.channel()
-        await ch.declare_queue(QUEUE_GENERATE_REQUEST, durable=True)
+        await ch.declare_queue(routing_key, durable=True)
         body = json.dumps(payload, default=str).encode("utf-8")
         await ch.default_exchange.publish(
             aio_pika.Message(body=body, delivery_mode=aio_pika.DeliveryMode.PERSISTENT),
-            routing_key=QUEUE_GENERATE_REQUEST,
+            routing_key=routing_key,
         )
         await ch.close()
 

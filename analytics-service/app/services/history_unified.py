@@ -33,8 +33,9 @@ def _job_to_item(row: dict[str, Any]) -> dict[str, Any]:
 def _chat_to_item(row: dict[str, Any]) -> dict[str, Any]:
     st = row.get("updated_at") or row["created_at"]
     preview = (row.get("preview_text") or row.get("title") or "").strip()
+    chat_type = str(row.get("chat_type") or "chat")
     return {
-        "entry_kind": "nl_chat",
+        "entry_kind": "report_task" if chat_type == "report" else "nl_chat",
         "sort_at": st,
         "conversation_id": row["conversation_id"],
         "user_id": row["user_id"],
@@ -43,6 +44,14 @@ def _chat_to_item(row: dict[str, Any]) -> dict[str, Any]:
         "message_count": int(row.get("message_count") or 0),
         "created_at": row["created_at"],
         "updated_at": row.get("updated_at"),
+        "chat_type": chat_type,
+        "cron_expr": row.get("cron_expr"),
+        "cron_timezone": row.get("cron_timezone"),
+        "repeat_limit": row.get("repeat_limit"),
+        "runs_count": row.get("runs_count"),
+        "next_run_at": row.get("next_run_at"),
+        "last_run_at": row.get("last_run_at"),
+        "is_active": row.get("is_active"),
         "job_id": None,
         "max_rows": None,
         "template_key": None,

@@ -199,6 +199,7 @@ services:
       - RABBITMQ_PASSWORD=admin123
       - ANALYTICS_SERVICE_URL=http://analytics-service:8009
       - INTERNAL_NL_CHAT_SYNC_TOKEN=${INTERNAL_NL_CHAT_SYNC_TOKEN:-dev-nl-chat-sync}
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8007
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -228,6 +229,10 @@ services:
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - RABBITMQ_HOST=rabbitmq
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
     depends_on:
       auth-service:
         condition: service_started
@@ -239,6 +244,36 @@ services:
         condition: service_started
     volumes:
       - ./bff-service:/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  notification-worker:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: notification-worker
+    command: ["python", "email_worker.py"]
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres-db
+      - DB_HOST=postgres-db
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASSWORD=admin123
+      - RABBITMQ_HOST=rabbitmq
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
     networks:
       - app-network
     restart: unless-stopped

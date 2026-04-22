@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import httpx
-import sys
 from app.schemas.auth import UserCreate, UserLogin, UserUpdate, UserResponse, UserListResponse, RoleUpdate, TokenResponse, RefreshTokenRequest
 from app.services.auth_service import AuthService
 from app.core.config import get_settings

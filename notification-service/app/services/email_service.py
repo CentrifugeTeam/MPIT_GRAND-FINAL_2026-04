@@ -1,4 +1,5 @@
 import smtplib
+import html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
@@ -66,6 +67,23 @@ class EmailService:
             <p>{message}</p>
             <br>
             <p>С уважением,<br>Команда сервиса</p>
+        </body>
+        </html>
+        """
+        return self.send_email(to_email, subject, body, is_html=True)
+
+    def send_report_notification(self, to_email: str, title: str, message: str) -> bool:
+        safe_title = (title or "Плановый отчет").strip()
+        safe_message = html.escape((message or "").strip()).replace("\n", "<br>")
+        subject = f"Отчет: {safe_title}"
+        body = f"""
+        <html>
+        <body>
+            <h2>Отчет готов</h2>
+            <p><b>{html.escape(safe_title)}</b></p>
+            <p>{safe_message}</p>
+            <br>
+            <p>Если нужны детали, откройте раздел аналитики на сайте.</p>
         </body>
         </html>
         """

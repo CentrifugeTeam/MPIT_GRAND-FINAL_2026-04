@@ -10,6 +10,7 @@ class NotificationType(str, enum.Enum):
     REGISTRATION = "registration"
     SYSTEM = "system"
     EMAIL = "email"
+    REPORT = "report"
 
 class NotificationStatus(str, enum.Enum):
     PENDING = "pending"

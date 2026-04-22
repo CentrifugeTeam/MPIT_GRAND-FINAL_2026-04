@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 class WebSocketInfo(BaseModel):
@@ -8,6 +8,16 @@ class WebSocketInfo(BaseModel):
     email: Optional[str] = None
 
 class WebSocketToken(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "ws_url": "ws://localhost:8000/api/websocket/ws",
+                "token": "eyJhbGciOi...",
+                "expires_in": 3600,
+                "message": "WebSocket token generated",
+            }
+        }
+    )
     ws_url: str
     token: str
     expires_in: int

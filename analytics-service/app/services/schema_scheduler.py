@@ -1,7 +1,12 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from app.core.queues import QUEUE_REPORT_TASK_INCOMING
 from app.services.db_schema import introspect_public
 from app.services import schema_cache
+from app.services.chat_store import reserve_due_report_sessions
+from app.services.rabbitmq_publish import rabbit_publish
+
+import asyncio
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -25,6 +30,28 @@ def refresh_schema_cache() -> None:
             pass
 
 
+def dispatch_due_report_tasks() -> None:
+    due_rows = reserve_due_report_sessions(limit=100)
+    if not due_rows:
+        return
+    for row in due_rows:
+        prompt = str(row.get("preview_text") or row.get("title") or "").strip()
+        if not prompt:
+            prompt = "Сформируй плановый отчет по текущим данным."
+        payload = {
+            "conversation_id": row["conversation_id"],
+            "user_id": row["user_id"],
+            "message_id": f"report-{row['conversation_id']}-{row['runs_count']}",
+            "content": prompt,
+            "scheduled_report": True,
+            "notification_email": row.get("notification_email"),
+        }
+        try:
+            asyncio.run(rabbit_publish.publish_json(QUEUE_REPORT_TASK_INCOMING, payload))
+        except Exception:
+            continue
+
+
 def start_schema_scheduler(cron_hour: int) -> None:
     global _scheduler
     if _scheduler is not None:
@@ -36,6 +63,13 @@ def start_schema_scheduler(cron_hour: int) -> None:
         hour=cron_hour,
         minute=0,
         id="schema_refresh_24h",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        dispatch_due_report_tasks,
+        "interval",
+        minutes=1,
+        id="report_tasks_dispatch",
         replace_existing=True,
     )
     _scheduler.start()

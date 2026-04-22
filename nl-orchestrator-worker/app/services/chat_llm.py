@@ -67,7 +67,6 @@ _CONV_ONE_WORD = frozenset(
         "bye",
         "thanks",
         "thx",
-        "спасибо",
         "мерси",
         "норм",
         "нормально",

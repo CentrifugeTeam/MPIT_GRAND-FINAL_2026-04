@@ -21,6 +21,7 @@ from app.core.queues import (
     QUEUE_CHAT_OUT,
     QUEUE_GENERATE_REQUEST,
     QUEUE_GENERATE_RESULT_CHAT,
+    QUEUE_REPORT_TASK_INCOMING,
 )
 from app.schemas.analytics import TableSchema
 from app.services.chat_llm import finalize_after_sql, plan_turn
@@ -35,6 +36,8 @@ class PendingCtx:
     message_id_in: str
     user_text: str
     user_id: str
+    scheduled_report: bool = False
+    notification_email: Optional[str] = None
 
 
 pending: Dict[str, PendingCtx] = {}
@@ -116,6 +119,34 @@ async def _sync_chat_event(
         logger.warning("chat history sync failed: %s", e)
 
 
+async def _send_report_notification(
+    *,
+    user_id: str,
+    email: Optional[str],
+    title: str,
+    message: str,
+) -> None:
+    if not email:
+        return
+    s = get_settings()
+    base = (s.NOTIFICATION_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return
+    url = f"{base}/notifications/{user_id}/notify"
+    body = {
+        "type": "report",
+        "title": title[:200] or "Плановый отчет",
+        "message": message[:2000],
+        "email": email,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(url, json=body)
+            r.raise_for_status()
+    except Exception as e:
+        logger.warning("report notification failed: %s", e)
+
+
 async def _handle_chat_incoming(
     message: aio_pika.IncomingMessage,
     pub_channel: aio_pika.Channel,
@@ -126,6 +157,12 @@ async def _handle_chat_incoming(
         uid = str(data.get("user_id") or "").strip()
         mid = str(data.get("message_id") or uuid.uuid4())
         content = str(data.get("content") or "").strip()
+        scheduled_report = bool(data.get("scheduled_report"))
+        notification_email = (
+            str(data.get("notification_email")).strip()
+            if data.get("notification_email")
+            else None
+        )
         if not conv or not content:
             return
         await _sync_chat_event("user_message", uid, conv, mid, {"text": content})
@@ -170,6 +207,8 @@ async def _handle_chat_incoming(
                     message_id_in=mid,
                     user_text=content,
                     user_id=uid,
+                    scheduled_report=scheduled_report,
+                    notification_email=notification_email,
                 )
             hints = (plan.get("sql_hints_ru") or "").strip() or None
             raw_max = data.get("max_rows")
@@ -186,7 +225,6 @@ async def _handle_chat_incoming(
                 "job_id": job_id,
                 "user_id": uid,
                 "question": sql_q,
-                "template_key": None,
                 "schema_tables": tables_raw,
                 "max_rows": sql_max_rows,
                 "conversation_id": conv,
@@ -195,7 +233,6 @@ async def _handle_chat_incoming(
                 "glossary_context": data.get("glossary_context")
                 if isinstance(data.get("glossary_context"), str)
                 else None,
-                "interpretation": None,
                 "analytics_source_key": analytics_source_key,
             }
             await pub_channel.default_exchange.publish(
@@ -391,6 +428,27 @@ async def _handle_sql_chat_result(
             ctx.message_id_in,
             sync_pl,
         )
+        if status == "done" and ctx.scheduled_report:
+            has_table = bool(rows_ws)
+            has_chart = (
+                (chart_out.get("type") in ("bar", "line"))
+                or bool((chart_payload_ws or {}).get("series"))
+                or bool((chart_payload_ws or {}).get("labels"))
+            )
+            summary = (final.get("report_ru") or final.get("reply_ru") or "Отчет готов.").strip()
+            summary = summary[:900]
+            if has_table or has_chart:
+                summary = (
+                    f"{summary}\n\n"
+                    "Полный отчет с таблицами и визуализациями доступен в веб-интерфейсе. "
+                    "Откройте раздел аналитики на сайте."
+                )
+            await _send_report_notification(
+                user_id=ctx.user_id,
+                email=ctx.notification_email,
+                title=ctx.user_text[:180] or "Плановый отчет",
+                message=summary,
+            )
 
 
 async def _amain() -> None:
@@ -417,6 +475,7 @@ async def _amain() -> None:
         await ch_cons.set_qos(prefetch_count=2)
         await ch_pub.declare_queue(QUEUE_CHAT_OUT, durable=True)
         q_in = await ch_cons.declare_queue(QUEUE_CHAT_INCOMING, durable=True)
+        q_report = await ch_cons.declare_queue(QUEUE_REPORT_TASK_INCOMING, durable=True)
         q_sql = await ch_cons.declare_queue(QUEUE_GENERATE_RESULT_CHAT, durable=True)
 
         async def on_chat(msg: aio_pika.IncomingMessage) -> None:
@@ -432,10 +491,12 @@ async def _amain() -> None:
                 logger.exception("sql chat result handler failed")
 
         await q_in.consume(on_chat)
+        await q_report.consume(on_chat)
         await q_sql.consume(on_sql)
         logger.info(
-            "nl-orchestrator-worker ready (queues: %s, %s → %s)",
+            "nl-orchestrator-worker ready (queues: %s, %s, %s → %s)",
             QUEUE_CHAT_INCOMING,
+            QUEUE_REPORT_TASK_INCOMING,
             QUEUE_GENERATE_RESULT_CHAT,
             QUEUE_GENERATE_REQUEST,
         )

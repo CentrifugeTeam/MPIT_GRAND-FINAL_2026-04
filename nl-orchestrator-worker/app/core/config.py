@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     ANALYTICS_SERVICE_URL: str = ""
     INTERNAL_NL_CHAT_SYNC_TOKEN: str = ""
+    NOTIFICATION_SERVICE_URL: str = ""
 
     class Config:
         env_file = ".env"
