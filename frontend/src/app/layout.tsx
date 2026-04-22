@@ -5,7 +5,7 @@ export function RootLayout() {
   const isFullBleed = pathname.startsWith("/home") || pathname === "/reports";
 
   return (
-    <div className="flex min-h-screen flex-col text-foreground">
+    <div className="flex h-screen overflow-hidden flex-col text-foreground">
       <main
         className={
           isFullBleed
