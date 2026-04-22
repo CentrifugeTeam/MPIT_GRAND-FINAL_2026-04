@@ -1,4 +1,4 @@
-import { AnalyticsWorkspace } from "@/widgets/analytics-workspace";
+import { AnalyticsWorkspace } from '@/widgets/analytics-workspace';
 
 export function HomePage() {
   return <AnalyticsWorkspace />;

@@ -1,6 +1,7 @@
 import { Icon } from '@iconify/react';
 import { useNavigate } from 'react-router';
 
+import { useAnalyticsChatStore } from '../../model/analytics-chat-store';
 import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from '../../config/figma-sidebar-styles';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 
@@ -18,6 +19,12 @@ export function FigmaSidebarPrimaryNav({
   t,
 }: FigmaSidebarPrimaryNavProps) {
   const navigate = useNavigate();
+  const setActive = useAnalyticsChatStore(s => s.setActive);
+
+  const handleNavigateToReports = () => {
+    setActive(null);
+    void navigate('/reports');
+  };
 
   return (
     <div className='flex w-full flex-col gap-[4px] items-center'>
@@ -63,7 +70,10 @@ export function FigmaSidebarPrimaryNav({
       {isOpen ? (
         <button
           type='button'
-          onClick={() => void onStartNewChat()}
+          onClick={() => {
+            navigate('/home');
+            void onStartNewChat();
+          }}
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
@@ -99,7 +109,7 @@ export function FigmaSidebarPrimaryNav({
       {isOpen ? (
         <button
           type='button'
-          onClick={() => void navigate('/reports')}
+          onClick={handleNavigateToReports}
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
@@ -121,7 +131,7 @@ export function FigmaSidebarPrimaryNav({
           <span className='inline-flex w-full justify-center'>
             <button
               type='button'
-              onClick={() => void navigate('/reports')}
+              onClick={handleNavigateToReports}
               className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
             >
               <Icon

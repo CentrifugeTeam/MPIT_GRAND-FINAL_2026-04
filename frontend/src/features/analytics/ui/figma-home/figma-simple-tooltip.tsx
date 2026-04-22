@@ -16,6 +16,7 @@ type Props = {
 };
 
 const GAP = 8;
+const VIEWPORT_MARGIN = 8;
 const TOOLTIP_Z = 50_000;
 
 type Coords = { top: number; left: number; transform: string };
@@ -59,6 +60,7 @@ export function FigmaSimpleTooltip({ label, children, side = "bottom" }: Props) 
   const [coords, setCoords] = useState<Coords | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const anchorRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
   const id = useId();
 
   const updatePosition = useCallback(() => {
@@ -84,6 +86,42 @@ export function FigmaSimpleTooltip({ label, children, side = "bottom" }: Props) 
       window.removeEventListener("resize", onScrollOrResize);
     };
   }, [open, updatePosition]);
+
+  // After tooltip renders, clamp its position so it stays fully within the viewport.
+  // We read the actual rendered rect (after CSS transform) and shift `left`/`top`
+  // by overriding the transform to `none` with an already-clamped pixel value.
+  useLayoutEffect(() => {
+    const tip = tooltipRef.current;
+    if (!tip || !coords) return;
+    const tipRect = tip.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let newLeft = tipRect.left;
+    let newTop = tipRect.top;
+    let changed = false;
+
+    if (tipRect.right > vw - VIEWPORT_MARGIN) {
+      newLeft = vw - VIEWPORT_MARGIN - tipRect.width;
+      changed = true;
+    } else if (tipRect.left < VIEWPORT_MARGIN) {
+      newLeft = VIEWPORT_MARGIN;
+      changed = true;
+    }
+
+    if (tipRect.bottom > vh - VIEWPORT_MARGIN) {
+      newTop = vh - VIEWPORT_MARGIN - tipRect.height;
+      changed = true;
+    } else if (tipRect.top < VIEWPORT_MARGIN) {
+      newTop = VIEWPORT_MARGIN;
+      changed = true;
+    }
+
+    if (changed) {
+      // Switch to transform:none so we control exact pixel placement
+      setCoords({ top: newTop, left: newLeft, transform: "none" });
+    }
+  }, [coords]);
 
   const clearLeave = useCallback(() => {
     if (leaveTimer.current) {
@@ -116,6 +154,7 @@ export function FigmaSimpleTooltip({ label, children, side = "bottom" }: Props) 
     typeof document !== "undefined" &&
     createPortal(
       <span
+        ref={tooltipRef}
         id={id}
         role="tooltip"
         style={{
@@ -125,7 +164,7 @@ export function FigmaSimpleTooltip({ label, children, side = "bottom" }: Props) 
           transform: coords.transform,
           zIndex: TOOLTIP_Z,
         }}
-        className={`pointer-events-none max-w-[min(280px,calc(100vw-16px))] rounded-lg border border-solid border-[#3f3f46] bg-[#27272a] px-2.5 py-1.5 font-sans text-[11px] font-medium text-[#fcfcfc] shadow-[0_4px_24px_rgba(0,0,0,0.35)] ${wrap}`}
+        className={`pointer-events-none rounded-lg border border-solid border-[#3f3f46] bg-[#27272a] px-2.5 py-1.5 font-sans text-[11px] font-medium text-[#fcfcfc] shadow-[0_4px_24px_rgba(0,0,0,0.35)] ${wrap}`}
       >
         {label}
       </span>,

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
+import { Icon } from '@iconify/react';
 
 import type { AnalyticsDataSourceItem } from '../../api/analytics-api';
 import type {
@@ -15,6 +16,7 @@ import { FigmaChatHeaderRow } from './figma-chat-header-row';
 import { FigmaNlComposer } from './figma-nl-composer';
 import { FigmaSourceModal } from './figma-source-modal';
 import { FigmaSuggestionBlock } from './figma-suggestion-block';
+import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 import { FIGMA_CHAT_COLUMN_MAX_PX } from './figma-tokens';
 import { FigmaVoiceStubPanel } from './figma-voice-stub-panel';
 
@@ -104,13 +106,35 @@ export function FigmaAnalyticsMain({
   return (
     <div className='relative flex h-full min-h-0 w-full flex-1 flex-col'>
       <div className='relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-solid border-[#28282c] bg-[#060607] bg-[url(/mpit.png)] bg-cover bg-no-repeat'>
+        <div className='w-full h-full opacity-30 absolute inset-0 bg-black' />
+
+        {/* Бургер-кнопка при свёрнутом сайдбаре — абсолютно позиционирована в левом верхнем углу */}
+        {!sidebarOpen && (
+          <div className='absolute top-5 left-5 z-10'>
+            <FigmaSimpleTooltip
+              label={t('home.figma.openSidebar')}
+              side='bottom'
+            >
+              <button
+                type='button'
+                onClick={onOpenSidebar}
+                className='flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/60 active:scale-[0.97]'
+              >
+                <Icon
+                  icon='mdi:menu'
+                  className='text-[#fcfcfc]'
+                  width={22}
+                />
+              </button>
+            </FigmaSimpleTooltip>
+          </div>
+        )}
+
         {hasChat ? (
           <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='shrink-0 px-5 pt-5'>
               <FigmaChatHeaderRow
                 t={t}
-                sidebarOpen={sidebarOpen}
-                onOpenSidebar={onOpenSidebar}
                 nlConversationId={nlConversationId}
                 onShareChat={onShareChat}
                 historyBusy={historyBusy}
@@ -145,11 +169,9 @@ export function FigmaAnalyticsMain({
           </div>
         ) : (
           <div className='relative flex min-h-0 flex-1 flex-col overflow-y-auto'>
-            <div className='flex w-full flex-col gap-10 p-5 pb-10'>
+            <div className='relative flex w-full h-full flex-col gap-10 p-5 pb-10 items-center justify-center'>
               <FigmaChatHeaderRow
                 t={t}
-                sidebarOpen={sidebarOpen}
-                onOpenSidebar={onOpenSidebar}
                 nlConversationId={nlConversationId}
                 onShareChat={onShareChat}
                 historyBusy={historyBusy}
