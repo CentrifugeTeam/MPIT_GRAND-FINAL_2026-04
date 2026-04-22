@@ -42,7 +42,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
   const [interpretationHint, setInterpretationHint] =
     useState<InterpretationHint | null>(null);
   const disconnectWs = useWsStore(s => s.disconnect);
-  const [preferDraftNl, setPreferDraftNl] = useState(false);
+  const [preferDraftNl, setPreferDraftNl] = useState(() => initialConversationId == null);
 
   useEffect(() => {
     if (initialConversationId == null) return;

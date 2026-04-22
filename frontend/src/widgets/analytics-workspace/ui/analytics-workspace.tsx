@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import {
@@ -16,7 +16,19 @@ export function AnalyticsWorkspace() {
 
   const { entries, historyBusy, selectEntry } = p;
 
-  useLayoutEffect(() => {
+  // Navigate to /home/:id when a new conversation is first created
+  const navigatedConvRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (p.nlConversationId && !routeChatId && navigatedConvRef.current !== p.nlConversationId) {
+      navigatedConvRef.current = p.nlConversationId;
+      void navigate(`/home/${p.nlConversationId}`, { replace: true });
+    }
+    if (!p.nlConversationId) {
+      navigatedConvRef.current = null;
+    }
+  }, [p.nlConversationId, routeChatId, navigate]);
+
+  useEffect(() => {
     if (historyBusy) return;
     const cid = routeChatId?.trim();
     if (!cid) return;
@@ -63,7 +75,7 @@ export function AnalyticsWorkspace() {
             }
             p.selectEntry(entryId);
           }}
-          onStartNewChat={() => void p.startNewChat()}
+          onStartNewChat={() => { p.startNewChat(); void navigate('/home'); }}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
           onStartEditingRow={p.startEditingRow}
@@ -94,7 +106,7 @@ export function AnalyticsWorkspace() {
             onRefreshHistory={() => void p.loadHistory()}
             onQuestionChange={p.setQuestion}
             onSend={() => void p.sendComposerMessage()}
-            onStartNewChat={() => void p.startNewChat()}
+            onStartNewChat={() => { p.startNewChat(); void navigate('/home'); }}
           />
 
           {p.result && (
