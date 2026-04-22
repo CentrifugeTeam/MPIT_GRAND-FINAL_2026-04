@@ -2,7 +2,7 @@ import { Outlet, useLocation } from "react-router";
 
 export function RootLayout() {
   const { pathname } = useLocation();
-  const isFullBleed = pathname === "/home" || pathname === "/reports";
+  const isFullBleed = pathname.startsWith("/home") || pathname === "/reports";
 
   return (
     <div className="flex min-h-screen flex-col text-foreground">

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useCallback, useLayoutEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 
 import {
   AnalyticsResults,
@@ -9,33 +9,26 @@ import {
 } from "@/features/analytics";
 
 export function AnalyticsWorkspace() {
-  const p = useAnalyticsPanel();
+  const { id: routeChatId } = useParams<{ id?: string }>();
+  const p = useAnalyticsPanel({ initialConversationId: routeChatId ?? null });
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const { entries, historyBusy, selectEntry } = p;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (historyBusy) return;
-    const cid = params.get("analyticsChat")?.trim();
+    const cid = routeChatId?.trim();
     if (!cid) return;
-    if (entries.some((e) => e.id === cid)) {
-      selectEntry(cid);
-    }
-    setParams(
-      (prev) => {
-        const n = new URLSearchParams(prev);
-        n.delete("analyticsChat");
-        return n;
-      },
-      { replace: true },
-    );
-  }, [entries, historyBusy, selectEntry, params, setParams]);
+    const matched = entries.find((e) => (e.conversationId ?? e.id) === cid);
+    if (matched) selectEntry(matched.id);
+  }, [entries, historyBusy, routeChatId, selectEntry]);
 
   const handleShareChat = useCallback(async () => {
     if (!p.nlConversationId) return;
     const u = new URL(window.location.href);
-    u.searchParams.set("analyticsChat", p.nlConversationId);
+    u.pathname = `/home/${p.nlConversationId}`;
+    u.search = "";
     try {
       await navigator.clipboard.writeText(u.toString());
     } catch {
@@ -61,7 +54,15 @@ export function AnalyticsWorkspace() {
           onRenameFocus={p.setRenameFieldFocused}
           onCommitRename={p.commitRename}
           onCancelRename={p.cancelRename}
-          onSelectEntry={p.selectEntry}
+          onSelectEntry={(entryId) => {
+            const entry = p.entries.find((e) => e.id === entryId);
+            const chatId = entry?.conversationId;
+            if (chatId) {
+              void navigate(`/home/${chatId}`);
+              return;
+            }
+            p.selectEntry(entryId);
+          }}
           onStartNewChat={() => void p.startNewChat()}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}

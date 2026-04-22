@@ -17,9 +17,15 @@ import { useWsStore } from '@/shared/lib/ws-store';
 
 import type { InterpretationHint } from '../lib/interpretation-hint';
 
-export function useAnalyticsPanel() {
+type UseAnalyticsPanelOptions = {
+  initialConversationId?: string | null;
+};
+
+export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
+  const initialConversationId = options?.initialConversationId?.trim() || null;
   const { t } = useTranslation();
-  const [nlConversationId, setNlConversationId] = useState<string | null>(null);
+  const [nlConversationId, setNlConversationId] =
+    useState<string | null>(initialConversationId);
   const {
     lines: nlChatLines,
     nlChatBusy,
@@ -37,6 +43,17 @@ export function useAnalyticsPanel() {
     useState<InterpretationHint | null>(null);
   const disconnectWs = useWsStore(s => s.disconnect);
   const [preferDraftNl, setPreferDraftNl] = useState(false);
+
+  useEffect(() => {
+    if (initialConversationId == null) return;
+    setPreferDraftNl(false);
+    setNlConversationId(initialConversationId);
+    setActive(null);
+    setQuestion('');
+    setMaxRowsStr('');
+    setResult(null);
+    setInterpretationHint(null);
+  }, [initialConversationId, setActive]);
 
   const {
     dataSources,

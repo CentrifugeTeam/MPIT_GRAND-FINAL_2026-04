@@ -28,7 +28,12 @@ export function ReportsDashboard() {
           onRenameFocus={p.setRenameFieldFocused}
           onCommitRename={p.commitRename}
           onCancelRename={p.cancelRename}
-          onSelectEntry={p.selectEntry}
+          onSelectEntry={(entryId) => {
+            const entry = p.entries.find((e) => e.id === entryId);
+            const chatId = entry?.conversationId;
+            if (!chatId) return;
+            void navigate(`/home/${chatId}`);
+          }}
           onStartNewChat={() => void navigate("/home")}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
