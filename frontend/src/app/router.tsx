@@ -9,6 +9,7 @@ import { SettingsPage } from "@/pages/settings";
 import { NotFoundPage } from "@/pages/not-found";
 import { LoginPage } from "@/pages/auth/login";
 import { RegisterPage } from "@/pages/auth/register";
+import { ReportsPage } from "@/pages/reports";
 
 export function AppRouter() {
   return (
@@ -28,6 +29,7 @@ export function AppRouter() {
           <Route element={<RootLayout />}>
             <Route path="home" element={<HomePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
           </Route>
           {/* Authenticated user on unknown route → /home */}
           <Route path="*" element={<Navigate to="/home" replace />} />
@@ -38,3 +40,4 @@ export function AppRouter() {
     </BrowserRouter>
   );
 }
+

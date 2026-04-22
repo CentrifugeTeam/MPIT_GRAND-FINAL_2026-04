@@ -1,4 +1,5 @@
 import { Icon } from '@iconify/react';
+import { useNavigate } from 'react-router';
 
 import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from '../../config/figma-sidebar-styles';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
@@ -16,6 +17,8 @@ export function FigmaSidebarPrimaryNav({
   onStartNewChat,
   t,
 }: FigmaSidebarPrimaryNavProps) {
+  const navigate = useNavigate();
+
   return (
     <div className='flex w-full flex-col gap-[4px] items-center'>
       {isOpen ? (
@@ -96,9 +99,8 @@ export function FigmaSidebarPrimaryNav({
       {isOpen ? (
         <button
           type='button'
-          disabled
-          title={t('home.figma.reportsSoon')}
-          className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} cursor-not-allowed text-left opacity-50`}
+          onClick={() => void navigate('/reports')}
+          className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
             <Icon
@@ -113,14 +115,14 @@ export function FigmaSidebarPrimaryNav({
         </button>
       ) : (
         <FigmaSimpleTooltip
-          label={t('home.figma.reportsSoon')}
+          label={t('home.figma.reports')}
           side='right'
         >
           <span className='inline-flex w-full justify-center'>
             <button
               type='button'
-              disabled
-              className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} cursor-not-allowed justify-center p-2 opacity-50`}
+              onClick={() => void navigate('/reports')}
+              className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
             >
               <Icon
                 icon='mdi:file-chart-outline'
