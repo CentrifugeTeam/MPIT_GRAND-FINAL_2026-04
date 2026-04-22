@@ -103,7 +103,7 @@ export function FigmaAnalyticsMain({
 
   return (
     <div className='relative flex h-full min-h-0 w-full flex-1 flex-col'>
-      <div className='relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-solid border-[#28282c] bg-[#060607]'>
+      <div className='relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-solid border-[#28282c] bg-[#060607] bg-[url(/mpit.png)] bg-cover bg-no-repeat'>
         {hasChat ? (
           <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='shrink-0 px-5 pt-5'>
@@ -134,7 +134,7 @@ export function FigmaAnalyticsMain({
                 </div>
               </div>
             </div>
-            <div className='shrink-0 bg-[#060607] px-5 pb-4 pt-3'>
+            <div className='shrink-0 px-5 pb-4 pt-3'>
               <div
                 className='mx-auto w-full'
                 style={chatColStyle}
@@ -177,7 +177,6 @@ export function FigmaAnalyticsMain({
           </div>
         )}
       </div>
-
       <AnimatePresence>
         {sourceModalOpen && (
           <FigmaSourceModal
@@ -190,7 +189,6 @@ export function FigmaAnalyticsMain({
           />
         )}
       </AnimatePresence>
-
       <AnimatePresence>
         {voiceOpen && (
           <FigmaVoiceStubPanel
