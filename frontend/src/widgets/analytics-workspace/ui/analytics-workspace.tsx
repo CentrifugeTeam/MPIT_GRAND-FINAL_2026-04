@@ -19,7 +19,11 @@ export function AnalyticsWorkspace() {
   // Navigate to /home/:id when a new conversation is first created
   const navigatedConvRef = useRef<string | null>(null);
   useEffect(() => {
-    if (p.nlConversationId && !routeChatId && navigatedConvRef.current !== p.nlConversationId) {
+    if (
+      p.nlConversationId &&
+      !routeChatId &&
+      navigatedConvRef.current !== p.nlConversationId
+    ) {
       navigatedConvRef.current = p.nlConversationId;
       void navigate(`/home/${p.nlConversationId}`, { replace: true });
     }
@@ -75,7 +79,10 @@ export function AnalyticsWorkspace() {
             }
             p.selectEntry(entryId);
           }}
-          onStartNewChat={() => { p.startNewChat(); void navigate('/home'); }}
+          onStartNewChat={() => {
+            p.startNewChat();
+            void navigate("/home");
+          }}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
           onStartEditingRow={p.startEditingRow}
@@ -85,44 +92,47 @@ export function AnalyticsWorkspace() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <FigmaAnalyticsMain
-            t={p.t}
-            sidebarOpen={sidebarOpen}
-            onOpenSidebar={() => setSidebarOpen(true)}
-            interpretationHint={p.interpretationHint}
-            hideInterpretationStrip={!!p.result}
-            question={p.question}
-            composerBusy={p.composerBusy}
-            nlChatLines={p.nlChatLines}
-            nlChatReady={p.nlChatReady}
-            dataSources={p.dataSources}
-            selectedSourceKey={p.selectedSourceKey}
-            selectedSourceLabel={p.selectedSourceLabel}
-            onSourceKeyChange={p.setSelectedSourceKey}
-            dataSourcesLoaded={p.dataSourcesLoaded}
-            nlConversationId={p.nlConversationId}
-            onShareChat={handleShareChat}
-            historyBusy={p.historyBusy}
-            onRefreshHistory={() => void p.loadHistory()}
-            onQuestionChange={p.setQuestion}
-            onSend={() => void p.sendComposerMessage()}
-            onStartNewChat={() => { p.startNewChat(); void navigate('/home'); }}
-          />
+        <FigmaAnalyticsMain
+          t={p.t}
+          sidebarOpen={sidebarOpen}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          interpretationHint={p.interpretationHint}
+          hideInterpretationStrip={!!p.result}
+          question={p.question}
+          composerBusy={p.composerBusy}
+          nlChatLines={p.nlChatLines}
+          nlChatReady={p.nlChatReady}
+          dataSources={p.dataSources}
+          selectedSourceKey={p.selectedSourceKey}
+          selectedSourceLabel={p.selectedSourceLabel}
+          onSourceKeyChange={p.setSelectedSourceKey}
+          dataSourcesLoaded={p.dataSourcesLoaded}
+          nlConversationId={p.nlConversationId}
+          onShareChat={handleShareChat}
+          historyBusy={p.historyBusy}
+          onRefreshHistory={() => void p.loadHistory()}
+          onQuestionChange={p.setQuestion}
+          onSend={() => void p.sendComposerMessage()}
+          onStartNewChat={() => {
+            p.startNewChat();
+            void navigate("/home");
+          }}
+        />
 
-          {p.result && (
-            <div className="shrink-0 border-t border-border">
-              <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
-                <AnalyticsResults
-                  t={p.t}
-                  result={p.result}
-                  showChart={p.showChart}
-                  chartPayload={p.chartPayload}
-                  interpretationFallback={p.interpretationHint}
-                />
-              </div>
+        {p.result && (
+          <div className="shrink-0 border-t border-border">
+            <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
+              <AnalyticsResults
+                t={p.t}
+                result={p.result}
+                showChart={p.showChart}
+                chartPayload={p.chartPayload}
+                interpretationFallback={p.interpretationHint}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

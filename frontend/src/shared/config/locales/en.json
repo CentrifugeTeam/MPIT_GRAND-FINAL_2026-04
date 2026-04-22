@@ -220,6 +220,12 @@
       "casualGreeting": "Quick greeting"
     },
     "tasks": {
+      "tripCount": {
+        "title": "Number of completed trips",
+        "schedule": "Daily at 3:00 PM",
+        "description": "Trip count for April 2024",
+        "lastRunTime": "5 minutes ago"
+      },
       "productivityBoost": {
         "title": "Productivity Boost",
         "schedule": "Daily at 7:50 AM",
