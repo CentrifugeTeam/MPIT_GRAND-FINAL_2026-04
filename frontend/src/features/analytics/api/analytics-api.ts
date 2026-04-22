@@ -157,3 +157,142 @@ export async function deleteNlChat(conversationId: string) {
 export async function patchNlChatTitle(conversationId: string, title: string) {
   await api.patch(`/api/analytics/chats/${conversationId}`, { title });
 }
+
+export type ReportTaskScheduleType =
+  | "once"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "yearly";
+
+export type ReportTaskSchedule = {
+  schedule_type: ReportTaskScheduleType;
+  timezone: string;
+  once_at?: string | null;
+  daily_time?: string | null;
+  weekly_day?: number | null;
+  weekly_time?: string | null;
+  monthly_day?: number | null;
+  monthly_time?: string | null;
+  yearly_date_ddmm?: string | null;
+  yearly_time?: string | null;
+};
+
+export type ReportTask = {
+  id: string;
+  title: string;
+  instruction: string;
+  user_id: string;
+  analytics_source_key: string;
+  schedule_type: ReportTaskScheduleType;
+  timezone: string;
+  once_at: string | null;
+  daily_time: string | null;
+  weekly_day: number | null;
+  weekly_time: string | null;
+  monthly_day: number | null;
+  monthly_time: string | null;
+  yearly_date_ddmm: string | null;
+  yearly_time: string | null;
+  is_active: boolean;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  runs_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportTaskListResponse = {
+  items: ReportTask[];
+  total: number;
+};
+
+export type ReportRun = {
+  id: string;
+  task_id: string | null;
+  user_id: string;
+  status: "pending" | "running" | "done" | "failed";
+  query_text: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  result_summary: string | null;
+  result_payload: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportRunListResponse = {
+  items: ReportRun[];
+  total: number;
+};
+
+export type CreateReportTaskBody = {
+  title: string;
+  instruction: string;
+  analytics_source_key: string;
+  is_active?: boolean;
+  schedule: ReportTaskSchedule;
+};
+
+export type CreateReportBody = {
+  task_id?: string | null;
+  status?: ReportRun["status"];
+  query_text: string;
+  result_summary?: string | null;
+  result_payload?: Record<string, unknown> | null;
+  error?: string | null;
+};
+
+export async function createReportTask(body: CreateReportTaskBody) {
+  const { data } = await api.post<ReportTask>("/api/analytics/tasks", body);
+  return data;
+}
+
+export async function fetchReportTasks(limit = 50, offset = 0) {
+  const { data } = await api.get<ReportTaskListResponse>("/api/analytics/tasks", {
+    params: { limit, offset },
+  });
+  return data;
+}
+
+export async function patchReportTask(taskId: string, body: Partial<CreateReportTaskBody>) {
+  await api.patch(`/api/analytics/tasks/${taskId}`, body);
+}
+
+export async function deleteReportTask(taskId: string) {
+  await api.delete(`/api/analytics/tasks/${taskId}`);
+}
+
+export async function fetchTaskReports(taskId: string, limit = 50, offset = 0) {
+  const { data } = await api.get<ReportRunListResponse>(
+    `/api/analytics/tasks/${taskId}/reports`,
+    { params: { limit, offset } },
+  );
+  return data;
+}
+
+export async function fetchReports(limit = 50, offset = 0) {
+  const { data } = await api.get<ReportRunListResponse>("/api/analytics/reports", {
+    params: { limit, offset },
+  });
+  return data;
+}
+
+export async function createReport(body: CreateReportBody) {
+  const { data } = await api.post<ReportRun>("/api/analytics/reports", body);
+  return data;
+}
+
+export async function fetchReportById(reportId: string) {
+  const { data } = await api.get<ReportRun>(`/api/analytics/reports/${reportId}`);
+  return data;
+}
+
+export async function patchReport(reportId: string, body: Partial<CreateReportBody>) {
+  await api.patch(`/api/analytics/reports/${reportId}`, body);
+}
+
+export async function deleteReport(reportId: string) {
+  await api.delete(`/api/analytics/reports/${reportId}`);
+}

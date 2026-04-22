@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.auth import get_current_user
 from app.services.analytics_service import AnalyticsProxy
@@ -11,22 +11,63 @@ _proxy = AnalyticsProxy()
 
 
 class TaskScheduleBody(BaseModel):
-    schedule_type: str
-    timezone: str | None = "UTC"
-    once_at: str | None = None
-    daily_time: str | None = None
-    monthly_day: int | None = None
-    monthly_time: str | None = None
-    yearly_date_ddmm: str | None = None
-    yearly_time: str | None = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "description": (
+                "Allowed schedule_type values: once, daily, weekly, monthly, yearly. "
+                "Required fields: once->once_at, daily->daily_time, "
+                "weekly->weekly_day + weekly_time, monthly->monthly_day + monthly_time, "
+                "yearly->yearly_date_ddmm + yearly_time."
+            ),
+            "examples": [
+                {"schedule_type": "daily", "timezone": "Europe/Moscow", "daily_time": "09:00"},
+                {"schedule_type": "weekly", "timezone": "Europe/Moscow", "weekly_day": 1, "weekly_time": "09:00"},
+            ],
+        }
+    )
+    schedule_type: Literal["once", "daily", "weekly", "monthly", "yearly"] = Field(
+        ...,
+        description="one of: once, daily, weekly, monthly, yearly",
+    )
+    timezone: str | None = Field(default="UTC", description="IANA timezone, e.g. Europe/Moscow")
+    once_at: str | None = Field(default=None, description="ISO datetime for once")
+    daily_time: str | None = Field(default=None, description="HH:MM for daily")
+    weekly_day: int | None = Field(default=None, ge=1, le=7, description="ISO weekday 1..7 for weekly")
+    weekly_time: str | None = Field(default=None, description="HH:MM for weekly")
+    monthly_day: int | None = Field(default=None, ge=1, le=31, description="Day 1..31 for monthly")
+    monthly_time: str | None = Field(default=None, description="HH:MM for monthly")
+    yearly_date_ddmm: str | None = Field(default=None, description="dd:mm for yearly")
+    yearly_time: str | None = Field(default=None, description="HH:MM for yearly")
 
 
 class CreateReportTaskBody(BaseModel):
-    title: str = Field(..., min_length=1, max_length=500)
-    instruction: str = Field(..., min_length=1)
-    analytics_source_key: str = Field(..., min_length=1, max_length=64)
-    is_active: bool = True
-    schedule: TaskScheduleBody
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "title": "Weekly churn report",
+                "instruction": "Покажи отток пользователей за неделю",
+                "analytics_source_key": "main-db",
+                "is_active": True,
+                "schedule": {
+                    "schedule_type": "weekly",
+                    "timezone": "Europe/Moscow",
+                    "once_at": None,
+                    "daily_time": None,
+                    "weekly_day": 1,
+                    "weekly_time": "09:00",
+                    "monthly_day": None,
+                    "monthly_time": None,
+                    "yearly_date_ddmm": None,
+                    "yearly_time": None,
+                },
+            }
+        }
+    )
+    title: str = Field(..., min_length=1, max_length=500, description="Task title shown in UI.")
+    instruction: str = Field(..., min_length=1, description="LLM instruction/query executed by schedule.")
+    analytics_source_key: str = Field(..., min_length=1, max_length=64, description="Target data source key.")
+    is_active: bool = Field(default=True, description="Enable or disable scheduled execution.")
+    schedule: TaskScheduleBody = Field(..., description="Schedule configuration.")
 
 
 class PatchReportTaskBody(BaseModel):

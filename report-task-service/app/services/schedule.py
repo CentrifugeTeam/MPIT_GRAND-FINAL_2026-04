@@ -22,6 +22,20 @@ def _next_daily(now_local: datetime, hhmm: str) -> datetime:
     return candidate.astimezone(UTC)
 
 
+def _next_weekly(now_local: datetime, weekday_iso: int, hhmm: str) -> datetime:
+    if weekday_iso < 1 or weekday_iso > 7:
+        raise ValueError("weekly_day must be in range 1..7")
+    h, m = _parse_hhmm(hhmm)
+    days_ahead = weekday_iso - now_local.isoweekday()
+    candidate = now_local.replace(hour=h, minute=m, second=0, microsecond=0)
+    if days_ahead < 0:
+        days_ahead += 7
+    candidate = candidate + timedelta(days=days_ahead)
+    if candidate <= now_local:
+        candidate = candidate + timedelta(days=7)
+    return candidate.astimezone(UTC)
+
+
 def _next_monthly(now_local: datetime, day: int, hhmm: str) -> datetime:
     h, m = _parse_hhmm(hhmm)
     year = now_local.year
@@ -63,6 +77,8 @@ def calculate_next_run(
     timezone: str | None,
     once_at: datetime | None,
     daily_time: str | None,
+    weekly_day: int | None,
+    weekly_time: str | None,
     monthly_day: int | None,
     monthly_time: str | None,
     yearly_date_ddmm: str | None,
@@ -85,6 +101,10 @@ def calculate_next_run(
         if not daily_time:
             raise ValueError("daily_time required")
         return _next_daily(now_local, daily_time)
+    if schedule_type == "weekly":
+        if weekly_day is None or not weekly_time:
+            raise ValueError("weekly_day/weekly_time required")
+        return _next_weekly(now_local, weekly_day, weekly_time)
     if schedule_type == "monthly":
         if monthly_day is None or not monthly_time:
             raise ValueError("monthly_day/monthly_time required")

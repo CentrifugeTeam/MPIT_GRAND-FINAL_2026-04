@@ -21,6 +21,8 @@ def _task_to_dict(row: ReportTask) -> dict[str, Any]:
         "timezone": row.timezone,
         "once_at": row.once_at,
         "daily_time": row.daily_time,
+        "weekly_day": row.weekly_day,
+        "weekly_time": row.weekly_time,
         "monthly_day": row.monthly_day,
         "monthly_time": row.monthly_time,
         "yearly_date_ddmm": row.yearly_date_ddmm,
@@ -41,6 +43,8 @@ def create_task(user_id: str, body: dict[str, Any]) -> dict[str, Any]:
         timezone=sc.get("timezone"),
         once_at=sc.get("once_at"),
         daily_time=sc.get("daily_time"),
+        weekly_day=sc.get("weekly_day"),
+        weekly_time=sc.get("weekly_time"),
         monthly_day=sc.get("monthly_day"),
         monthly_time=sc.get("monthly_time"),
         yearly_date_ddmm=sc.get("yearly_date_ddmm"),
@@ -56,6 +60,8 @@ def create_task(user_id: str, body: dict[str, Any]) -> dict[str, Any]:
             timezone=sc.get("timezone") or "UTC",
             once_at=sc.get("once_at"),
             daily_time=sc.get("daily_time"),
+            weekly_day=sc.get("weekly_day"),
+            weekly_time=sc.get("weekly_time"),
             monthly_day=sc.get("monthly_day"),
             monthly_time=sc.get("monthly_time"),
             yearly_date_ddmm=sc.get("yearly_date_ddmm"),
@@ -124,6 +130,8 @@ def patch_task(user_id: str, task_id: str, patch: dict[str, Any]) -> bool:
                 "timezone": sc.get("timezone") or "UTC",
                 "once_at": sc.get("once_at"),
                 "daily_time": sc.get("daily_time"),
+                "weekly_day": sc.get("weekly_day"),
+                "weekly_time": sc.get("weekly_time"),
                 "monthly_day": sc.get("monthly_day"),
                 "monthly_time": sc.get("monthly_time"),
                 "yearly_date_ddmm": sc.get("yearly_date_ddmm"),
@@ -135,6 +143,8 @@ def patch_task(user_id: str, task_id: str, patch: dict[str, Any]) -> bool:
             timezone=sc.get("timezone"),
             once_at=sc.get("once_at"),
             daily_time=sc.get("daily_time"),
+            weekly_day=sc.get("weekly_day"),
+            weekly_time=sc.get("weekly_time"),
             monthly_day=sc.get("monthly_day"),
             monthly_time=sc.get("monthly_time"),
             yearly_date_ddmm=sc.get("yearly_date_ddmm"),
@@ -167,7 +177,7 @@ def reserve_due_tasks(limit: int = 100) -> list[dict[str, Any]]:
             text(
                 """
                 SELECT id, user_id, instruction, analytics_source_key, schedule_type, timezone,
-                       once_at, daily_time, monthly_day, monthly_time, yearly_date_ddmm, yearly_time,
+                       once_at, daily_time, weekly_day, weekly_time, monthly_day, monthly_time, yearly_date_ddmm, yearly_time,
                        runs_count
                 FROM report_tasks
                 WHERE is_active = TRUE
@@ -187,6 +197,8 @@ def reserve_due_tasks(limit: int = 100) -> list[dict[str, Any]]:
                 timezone=row["timezone"],
                 once_at=row["once_at"],
                 daily_time=row["daily_time"],
+                weekly_day=row["weekly_day"],
+                weekly_time=row["weekly_time"],
                 monthly_day=row["monthly_day"],
                 monthly_time=row["monthly_time"],
                 yearly_date_ddmm=row["yearly_date_ddmm"],

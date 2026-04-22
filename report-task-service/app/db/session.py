@@ -17,7 +17,39 @@ def init_tables() -> None:
     from app.db.models import ReportRun, ReportTask  # noqa: F401
 
     PlatformBase.metadata.create_all(bind=_engine)
+    _migrate_report_tasks_weekly_schema()
     _migrate_report_runs_schema()
+
+
+def _migrate_report_tasks_weekly_schema() -> None:
+    with _engine.connect() as conn:
+        weekly_day_col = conn.execute(
+            text(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema='public'
+                  AND table_name='report_tasks'
+                  AND column_name='weekly_day'
+                """
+            )
+        ).fetchone()
+        weekly_time_col = conn.execute(
+            text(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema='public'
+                  AND table_name='report_tasks'
+                  AND column_name='weekly_time'
+                """
+            )
+        ).fetchone()
+    with _engine.begin() as conn:
+        if not weekly_day_col:
+            conn.execute(text("ALTER TABLE report_tasks ADD COLUMN weekly_day INTEGER"))
+        if not weekly_time_col:
+            conn.execute(text("ALTER TABLE report_tasks ADD COLUMN weekly_time VARCHAR(8)"))
 
 
 def _migrate_report_runs_schema() -> None:

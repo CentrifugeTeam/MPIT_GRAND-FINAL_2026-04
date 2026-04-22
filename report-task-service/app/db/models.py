@@ -18,6 +18,8 @@ class ReportTask(PlatformBase):
     schedule_type = Column(String(16), nullable=False)
     once_at = Column(DateTime, nullable=True)
     daily_time = Column(String(8), nullable=True)
+    weekly_day = Column(Integer, nullable=True)
+    weekly_time = Column(String(8), nullable=True)
     monthly_day = Column(Integer, nullable=True)
     monthly_time = Column(String(8), nullable=True)
     yearly_date_ddmm = Column(String(5), nullable=True)
