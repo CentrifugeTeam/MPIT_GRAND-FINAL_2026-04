@@ -199,11 +199,26 @@
       "tabWeekly": "Раз в неделю",
       "tabMonthly": "Ежемесячно",
       "tabYearly": "Раз в год",
+      "dbLabel": "База данных",
+      "dbPlaceholder": "Выберите базу",
       "timeLabel": "Выберите время",
       "dateLabel": "Выберите дату",
+      "calendarAriaLabel": "Дата",
       "queryLabel": "Запрос",
       "queryPlaceholder": "Напишите ваш запрос...",
-      "submitButton": "Создать отчёт"
+      "submitButton": "Создать отчёт",
+      "dayOfMonthLabel": "День исполнения",
+      "dayOfMonthTooltip": "День месяца (1–31)",
+      "weekdayLabel": "День недели",
+      "weekdays": {
+        "monday": "Понедельник",
+        "tuesday": "Вторник",
+        "wednesday": "Среда",
+        "thursday": "Четверг",
+        "friday": "Пятница",
+        "saturday": "Суббота",
+        "sunday": "Воскресенье"
+      }
     },
     "sidebar": {
       "title": "Рабочая панель",
@@ -220,6 +235,12 @@
       "casualGreeting": "Короткое приветствие"
     },
     "tasks": {
+      "tripCount": {
+        "title": "Количество совершенных поездок",
+        "schedule": "Ежедневно в 15:00",
+        "description": "Количество поездок за апрель 2024",
+        "lastRunTime": "5 минут назад"
+      },
       "productivityBoost": {
         "title": "Повышение продуктивности",
         "schedule": "Каждый день в 7:50",
