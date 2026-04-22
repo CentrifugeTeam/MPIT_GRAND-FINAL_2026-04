@@ -1,37 +1,42 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
-from app.models import UserRole
+
 
 class UserBase(BaseModel):
     email: EmailStr
-    role: Optional[UserRole] = UserRole.USER
+    role: str = Field(default="USER", max_length=64)
+
 
 class UserCreate(UserBase):
     password: str
     confirm_password: str
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
-    role: Optional[UserRole] = None
+    role: Optional[str] = Field(default=None, max_length=64)
+
 
 class UserResponse(UserBase):
     uuid: UUID
     is_active: bool
     is_verified: bool
     created_at: datetime
-    updated_at: Optional[datetime]
+    updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
+
 
 class UserListResponse(BaseModel):
     users: list[UserResponse]
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -40,23 +45,61 @@ class TokenResponse(BaseModel):
     expires_in: int
     user_uuid: str
 
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+
 class PasswordReset(BaseModel):
     email: EmailStr
+
 
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
     confirm_password: str
 
-class RoleUpdate(BaseModel):
-    role: str
 
-    @field_validator('role')
+class RoleUpdate(BaseModel):
+    role: str = Field(..., max_length=64)
+
+    @field_validator("role")
     @classmethod
-    def validate_role(cls, v):
-        if v.upper() not in ['USER', 'ADMIN']:
-            raise ValueError('Role must be USER or ADMIN')
-        return v.upper()
+    def normalize_role(cls, v: str) -> str:
+        return v.strip().upper().replace(" ", "_")
+
+
+class RoleDefinitionBase(BaseModel):
+    key: str = Field(..., max_length=64, description="UPPER_SNAKE_CASE key")
+    title: str = Field(..., max_length=255)
+    description: Optional[str] = None
+
+
+class RoleDefinitionCreate(RoleDefinitionBase):
+    @field_validator("key")
+    @classmethod
+    def normalize_key(cls, v: str) -> str:
+        k = v.strip().upper().replace(" ", "_")
+        if not k.replace("_", "").isalnum():
+            raise ValueError("Invalid role key")
+        return k
+
+
+class RoleDefinitionUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=255)
+    description: Optional[str] = None
+
+
+class RoleDefinitionResponse(BaseModel):
+    key: str
+    title: str
+    description: Optional[str] = None
+    is_system: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class RoleDefinitionListResponse(BaseModel):
+    roles: list[RoleDefinitionResponse]

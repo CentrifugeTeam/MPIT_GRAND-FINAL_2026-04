@@ -24,7 +24,7 @@ from app.core.queues import (
     QUEUE_REPORT_TASK_INCOMING_V1,
 )
 from app.schemas.analytics import TableSchema
-from app.services.chat_llm import finalize_after_sql, plan_turn
+from app.services.chat_llm import clarify_ambiguous_question, finalize_after_sql, plan_turn
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nl_orchestrator_worker")
@@ -168,7 +168,12 @@ async def _resolve_user_email(user_id: str) -> Optional[str]:
     return None
 
 
-async def _fetch_schema_tables(source_key: str | None) -> list[dict[str, Any]]:
+async def _fetch_schema_tables(
+    source_key: str | None,
+    *,
+    user_id: str,
+    user_role: str | None,
+) -> list[dict[str, Any]]:
     s = get_settings()
     base = (s.ANALYTICS_SERVICE_URL or "").strip().rstrip("/")
     if not base:
@@ -176,9 +181,17 @@ async def _fetch_schema_tables(source_key: str | None) -> list[dict[str, Any]]:
     params: dict[str, Any] = {}
     if source_key:
         params["source_key"] = source_key
+    headers = {
+        "X-User-Id": str(user_id),
+        "X-User-Role": (user_role or "USER").strip(),
+    }
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            r = await client.get(f"{base}/api/analytics/schema", params=params)
+            r = await client.get(
+                f"{base}/api/analytics/schema",
+                params=params,
+                headers=headers,
+            )
             r.raise_for_status()
             data = r.json()
     except Exception as e:
@@ -186,6 +199,38 @@ async def _fetch_schema_tables(source_key: str | None) -> list[dict[str, Any]]:
         return []
     tables = data.get("tables") if isinstance(data, dict) else None
     return tables if isinstance(tables, list) else []
+
+
+async def _fetch_interpretation(
+    question: str,
+    *,
+    user_id: str,
+    user_role: str | None,
+    source_key: str | None,
+) -> dict[str, Any] | None:
+    s = get_settings()
+    base = (s.ANALYTICS_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return None
+    body: dict[str, Any] = {"question": question.strip()}
+    if source_key:
+        body["analytics_source_key"] = source_key
+    headers = {
+        "X-User-Id": str(user_id),
+        "X-User-Role": (user_role or "USER").strip(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(
+                f"{base}/api/analytics/interpret-question",
+                json=body,
+                headers=headers,
+            )
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        logger.warning("interpret fetch failed: %s", e)
+        return None
 
 
 async def _report_run_done(
@@ -242,6 +287,7 @@ async def _handle_chat_incoming(
         data = json.loads(message.body.decode("utf-8"))
         conv = str(data.get("conversation_id") or "").strip()
         uid = str(data.get("user_id") or "").strip()
+        user_role = str(data.get("user_role") or "USER").strip()
         mid = str(data.get("message_id") or uuid.uuid4())
         content = str(data.get("content") or "").strip()
         scheduled_report = bool(data.get("scheduled_report"))
@@ -249,15 +295,15 @@ async def _handle_chat_incoming(
             return
         if conv != "__report_run__":
             await _sync_chat_event("user_message", uid, conv, mid, {"text": content})
+        raw_source = data.get("analytics_source_key")
+        sk_key = (
+            str(raw_source).strip()
+            if isinstance(raw_source, str) and str(raw_source).strip()
+            else None
+        )
         tables_raw = data.get("schema_tables") or []
         if not tables_raw:
-            raw_source = data.get("analytics_source_key")
-            sk = (
-                str(raw_source).strip()
-                if isinstance(raw_source, str) and str(raw_source).strip()
-                else None
-            )
-            tables_raw = await _fetch_schema_tables(sk)
+            tables_raw = await _fetch_schema_tables(sk_key, user_id=uid, user_role=user_role)
         if not tables_raw:
             err_txt = "Нет схемы БД в запросе. Обновите страницу или откройте чат из раздела аналитики."
             if conv != "__report_run__":
@@ -295,6 +341,62 @@ async def _handle_chat_incoming(
                 await _report_run_failed(report_id, err_txt)
             return
         tables = [TableSchema.model_validate(x) for x in tables_raw]
+        s_cfg = get_settings()
+        thr = float(getattr(s_cfg, "INTERPRET_CONFIDENCE_THRESHOLD", 0.45) or 0.45)
+        interp_json = await _fetch_interpretation(
+            content,
+            user_id=uid,
+            user_role=user_role,
+            source_key=sk_key,
+        )
+        if (
+            interp_json
+            and conv != "__report_run__"
+            and float(interp_json.get("interpretation_confidence") or 1.0) < thr
+        ):
+            warns = interp_json.get("interpretation_warnings") or []
+            sugs = interp_json.get("interpretation_suggestions") or []
+            if isinstance(warns, list) and warns:
+                try:
+                    clarify = await clarify_ambiguous_question(
+                        content,
+                        [str(x) for x in warns],
+                        [str(x) for x in sugs if isinstance(sugs, list)],
+                    )
+                except Exception:
+                    clarify = "Уточните, пожалуйста, метрику, период и разрез (группировку) для запроса к базе."
+                if conv != "__report_run__":
+                    await _publish_json(
+                        pub_channel,
+                        {
+                            "type": "chat_assistant",
+                            "conversation_id": conv,
+                            "message_id": mid,
+                            "text": clarify,
+                            "sql": None,
+                            "status": "done",
+                        },
+                    )
+                    await _sync_chat_event(
+                        "assistant_message",
+                        uid,
+                        conv,
+                        mid,
+                        {
+                            "text": clarify,
+                            "report": "",
+                            "sql": None,
+                            "status": "done",
+                            "error": None,
+                            "row_count": 0,
+                            "chart": {"type": "table"},
+                            "chart_payload": {},
+                            "columns": [],
+                            "rows": [],
+                        },
+                    )
+                return
+
         hist_raw = data.get("history") or []
         history_norm: List[Dict[str, str]] = []
         for h in hist_raw:
@@ -327,18 +429,28 @@ async def _handle_chat_incoming(
                 )
             hints = (plan.get("sql_hints_ru") or "").strip() or None
             raw_max = data.get("max_rows")
+            cap = int(getattr(get_settings(), "ORCH_GLOBAL_MAX_ROWS", 100_000) or 100_000)
             if isinstance(raw_max, int) and raw_max > 0:
-                sql_max_rows = min(50_000_000, raw_max)
+                sql_max_rows = min(cap, raw_max)
             else:
                 d = get_settings().CHAT_SQL_MAX_ROWS
-                sql_max_rows = min(50_000_000, d) if isinstance(d, int) and d > 0 else 50_000
+                sql_max_rows = min(cap, d) if isinstance(d, int) and d > 0 else min(cap, 50_000)
             raw_src = data.get("analytics_source_key")
             analytics_source_key = (
                 str(raw_src).strip() if isinstance(raw_src, str) and str(raw_src).strip() else None
             )
+            allowed_names: list[str] = []
+            for tr in tables_raw:
+                if isinstance(tr, dict) and tr.get("name"):
+                    allowed_names.append(str(tr["name"]).strip().lower())
+            access_policy = {
+                "allowed_tables": allowed_names or ["*"],
+                "denied_columns": {},
+            }
             sql_payload: Dict[str, Any] = {
                 "job_id": job_id,
                 "user_id": uid,
+                "user_role": user_role,
                 "question": sql_q,
                 "schema_tables": tables_raw,
                 "max_rows": sql_max_rows,
@@ -349,6 +461,7 @@ async def _handle_chat_incoming(
                 if isinstance(data.get("glossary_context"), str)
                 else None,
                 "analytics_source_key": analytics_source_key,
+                "access_policy": access_policy,
             }
             await pub_channel.default_exchange.publish(
                 Message(

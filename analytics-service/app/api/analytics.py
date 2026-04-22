@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response, status
@@ -15,7 +16,10 @@ from app.schemas.analytics import (
     NlChatTranscriptResponse,
     NlInternalChatSyncBody,
     QuestionRequest,
+    QueryQualityRequest,
+    QueryQualityResponse,
     SchemaResponse,
+    TableSchema,
 )
 from app.services.db_schema import introspect_public
 from app.services import schema_cache
@@ -25,6 +29,9 @@ from app.services.metrics_glossary import (
     public_match_models,
 )
 from app.services.question_interpretation import analyze_question
+from app.services.sensitive_redaction import redact_sensitive_text
+from app.services.access_policy import admin_bypass, filter_schema_tables
+from app.services import access_policy_store as access_policy_store_mod
 from app.services.chat_store import (
     append_message,
     create_empty_session,
@@ -39,6 +46,7 @@ from app.services.history_unified import list_unified_history
 from app.services.job_store import delete_all_jobs_for_user, delete_job
 
 router = APIRouter()
+logger = logging.getLogger("analytics.api")
 
 
 def _slim_assistant_payload_for_db(p: dict) -> dict:
@@ -66,16 +74,36 @@ async def get_schema(
         None,
         description="Ключ источника из /data-sources; по умолчанию — default в БД",
     ),
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
 ):
     from app.services.analytics_db import get_analytics_engine
+    from app.db.platform_session import PlatformSessionLocal
 
     settings = get_settings()
     sk = (source_key or "").strip() or None
     if not sk:
         sk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip() or None
+    role = (x_user_role or "USER").strip().upper()
+    with PlatformSessionLocal() as pdb:
+        pol = access_policy_store_mod.resolve_effective_policy(
+            user_role=role, source_key=sk, db=pdb
+        )
+    if pol is None and not admin_bypass(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нет политики доступа к этому источнику для вашей роли",
+        )
+
     cached = schema_cache.get_cached(settings.SCHEMA_CACHE_TTL_SECONDS, sk)
     if cached is not None and not refresh:
-        return SchemaResponse(tables=cached, cached=True)
+        tables_out = list(cached)
+        if pol and not admin_bypass(role):
+            raw = [t.model_dump() for t in tables_out]
+            tables_out = [
+                TableSchema.model_validate(x)
+                for x in filter_schema_tables(raw, pol)
+            ]
+        return SchemaResponse(tables=tables_out, cached=True)
 
     engine = get_analytics_engine(sk)
     try:
@@ -87,20 +115,50 @@ async def get_schema(
         ) from e
 
     schema_cache.set_cached(tables, sk)
-    return SchemaResponse(tables=tables, cached=False)
+    tables_out = list(tables)
+    if pol and not admin_bypass(role):
+        raw = [t.model_dump() for t in tables_out]
+        tables_out = [TableSchema.model_validate(x) for x in filter_schema_tables(raw, pol)]
+    return SchemaResponse(tables=tables_out, cached=False)
 
 
 @router.post("/interpret-question", response_model=InterpretQuestionResponse)
-async def interpret_question_route(body: QuestionRequest):
+async def interpret_question_route(
+    body: QuestionRequest,
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
+):
     """
     Разбор вопроса и глоссарий для NL-чата (без sql_job).
     Используется фронтом перед отправкой chat_message.
     """
-    qtext = body.question.strip()
+    from app.db.platform_session import PlatformSessionLocal
+
+    settings = get_settings()
+    sk = (body.analytics_source_key or "").strip() or None
+    if not sk:
+        sk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip() or None
+    role = (x_user_role or "USER").strip().upper()
+    with PlatformSessionLocal() as pdb:
+        pol = access_policy_store_mod.resolve_effective_policy(
+            user_role=role, source_key=sk, db=pdb
+        )
+    if pol is None and not admin_bypass(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нет политики доступа к этому источнику для вашей роли",
+        )
+
+    qtext = redact_sensitive_text(body.question.strip())
     interp = analyze_question(qtext)
     gloss_matches = match_entries_for_question(qtext)
     glossary_ctx = format_glossary_for_llm(gloss_matches)
     gm = [GlossaryMatchItem(**x) for x in public_match_models(gloss_matches)]
+    logger.info(
+        "interpret_question role=%s source=%s confidence=%s",
+        role,
+        sk,
+        interp.confidence,
+    )
     return InterpretQuestionResponse(
         interpretation_confidence=interp.confidence,
         interpretation_warnings=interp.warnings,
@@ -108,6 +166,23 @@ async def interpret_question_route(body: QuestionRequest):
         glossary_matches=gm,
         glossary_context=glossary_ctx or None,
     )
+
+
+@router.post("/query-quality", response_model=QueryQualityResponse)
+async def query_quality_route(
+    body: QueryQualityRequest,
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
+):
+    from app.services.query_quality_llm import analyze_query_quality
+
+    _ = (x_user_role or "USER").strip().upper()
+    q = redact_sensitive_text(body.question.strip())
+    out = await analyze_query_quality(
+        question=q,
+        sql=body.sql,
+        interpretation_warnings=body.interpretation_warnings,
+    )
+    return QueryQualityResponse(**out)
 
 
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
@@ -145,7 +220,7 @@ async def internal_nl_chat_sync(
     if not uid or not cid:
         raise HTTPException(status_code=400, detail="user_id and conversation_id required")
     if body.action == "user_message":
-        tx = str(body.payload.get("text") or "").strip()
+        tx = redact_sensitive_text(str(body.payload.get("text") or "").strip())
         if tx:
             ensure_session(uid, cid, title_hint=tx[:200])
             append_message(uid, cid, "user", {"text": tx}, body.client_message_id)

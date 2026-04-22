@@ -37,9 +37,17 @@ class TaskScheduleBody(BaseModel):
     daily_time: Optional[str] = Field(default=None, description="Used only for schedule_type=daily. Format HH:MM.")
     weekly_day: Optional[int] = Field(default=None, ge=1, le=7, description="Used only for schedule_type=weekly. ISO weekday where 1=Monday ... 7=Sunday.")
     weekly_time: Optional[str] = Field(default=None, description="Used only for schedule_type=weekly. Format HH:MM.")
-    monthly_day: Optional[int] = Field(default=None, ge=1, le=31, description="Used only for schedule_type=monthly. Day of month.")
+    monthly_day: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=31,
+        description="Used only for schedule_type=monthly. Desired calendar day 1..31; in shorter months the run is on the last day of that month (e.g. 31 → 28/29 in February).",
+    )
     monthly_time: Optional[str] = Field(default=None, description="Used only for schedule_type=monthly. Format HH:MM.")
-    yearly_date_ddmm: Optional[str] = Field(default=None, description="Used only for schedule_type=yearly. Format dd:mm.")
+    yearly_date_ddmm: Optional[str] = Field(
+        default=None,
+        description="Used only for schedule_type=yearly. Format dd:mm. If the day does not exist in a given year, the run uses the last day of that month (e.g. 31:02 → 28/29 Feb).",
+    )
     yearly_time: Optional[str] = Field(default=None, description="Used only for schedule_type=yearly. Format HH:MM.")
 
     @model_validator(mode="after")

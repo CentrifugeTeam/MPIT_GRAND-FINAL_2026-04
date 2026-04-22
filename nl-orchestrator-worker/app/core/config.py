@@ -13,6 +13,8 @@ class Settings(BaseSettings):
 
     CHAT_MAX_HISTORY_MESSAGES: int = 20
     CHAT_SQL_MAX_ROWS: int = 10000
+    ORCH_GLOBAL_MAX_ROWS: int = 100_000
+    INTERPRET_CONFIDENCE_THRESHOLD: float = 0.45
 
     ANALYTICS_SERVICE_URL: str = ""
     AUTH_SERVICE_URL: str = "http://auth-service:8002"

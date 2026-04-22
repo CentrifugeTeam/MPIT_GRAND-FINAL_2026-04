@@ -64,3 +64,10 @@ ALGORITHM=HS256
 - **Files Service** → загрузка/скачивание файлов
 - **Notification Service** → отправка уведомлений
 
+## Guardrails
+
+- Во все вызовы analytics/report-task прокидываются заголовки `X-User-Id` и `X-User-Role` (роль из JWT).
+- WebSocket `chat_message` передаёт `user_role` в очередь оркестратора и при предзагрузке схемы вызывает analytics с теми же заголовками.
+- **Rate limiting:** при заданном `REDIS_URL` лимит запросов к `/api/*` в минуту на пользователя (JWT `uuid`) или по IP для запросов без валидного Bearer. Переменные: `REDIS_URL`, `RATE_LIMIT_PER_MINUTE` (см. `.example.env`).
+- **Аудит HTTP:** в stdout пишется одна JSON-строка на запрос (`request_audit`: `request_id`, `path`, `status_code`, `duration_ms`, `outcome`).
+

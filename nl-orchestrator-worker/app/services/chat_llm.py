@@ -173,6 +173,26 @@ async def _chat(messages: list[dict[str, str]], temperature: float = 0.2) -> str
         raise ValueError(f"Unexpected LLM: {json.dumps(data)[:600]}") from e
 
 
+async def clarify_ambiguous_question(
+    user_text: str,
+    warnings: list[str],
+    suggestions: list[str],
+) -> str:
+    """Короткий ответ-уточнение без SQL."""
+    hints = "\n".join(f"- {w}" for w in (warnings or [])[:6])
+    sug = "\n".join(f"- {s}" for s in (suggestions or [])[:6])
+    sys = (
+        "Пользователь задал короткий или неоднозначный аналитический вопрос по базе. "
+        "Сформулируй ОДИН короткий уточняющий вопрос по-русски (1–2 предложения), без SQL и без данных."
+    )
+    user = f"Вопрос:\n{user_text}\n\nЗамечания:\n{hints or '(нет)'}\n\nПодсказки:\n{sug or '(нет)'}"
+    raw = await _chat(
+        [{"role": "system", "content": sys}, {"role": "user", "content": user}],
+        temperature=0.3,
+    )
+    return raw.strip()[:2000]
+
+
 async def plan_turn(
     user_text: str,
     tables: list[TableSchema],

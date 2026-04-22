@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     ANALYTICS_DATABASE_URL: str = (
         "postgresql://postgres:postgres@postgres-db:5432/postgres-db"
     )
+    # Платформа (nl_sql_jobs, nl_query_audit, политики) — совпадает с analytics PLATFORM_DATABASE_URL
     PLATFORM_DATABASE_URL: str = (
         "postgresql://postgres:postgres@postgres-db:5432/postgres-db"
     )
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
 
     QUERY_TIMEOUT_MS: int = 30000
+    EXPLAIN_TIMEOUT_MS: int = 5000
+    GLOBAL_MAX_ROWS: int = 100_000
+    MAX_SQL_TEXT_BYTES: int = 256_000
+    MAX_PLANNER_TOTAL_COST: float = 0.0
+    QUERY_AUDIT_ENABLED: bool = True
     ALLOWED_TABLES: str | None = None
 
     # При отсутствии source_key в задаче — совпадает с analytics-service / BFF

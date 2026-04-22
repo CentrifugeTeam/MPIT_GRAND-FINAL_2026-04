@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Ежедневное обновление кэша схемы (час UTC, 0–23)
     SCHEMA_CRON_HOUR: int = 3
     QUERY_TIMEOUT_MS: int = 30000
+    # Жёсткий верх для max_rows в payload (согласован с sql-generator-worker GLOBAL_MAX_ROWS)
+    GLOBAL_MAX_ROWS: int = 100_000
+    MAX_SQL_TEXT_BYTES: int = 256_000
 
     # Empty = любые таблицы из текущей схемы public с разрешёнными приставками в guard
     ALLOWED_TABLES: Optional[str] = None  # comma-separated list

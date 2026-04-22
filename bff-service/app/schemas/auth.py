@@ -1,10 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
-from enum import Enum
 
-class UserRole(str, Enum):
-    USER = "USER"
-    ADMIN = "ADMIN"
 
 class UserCreate(BaseModel):
     model_config = ConfigDict(
@@ -53,4 +49,4 @@ class RefreshTokenRequest(BaseModel):
 
 class RoleUpdate(BaseModel):
     model_config = ConfigDict(json_schema_extra={"example": {"role": "ADMIN"}})
-    role: UserRole
+    role: str

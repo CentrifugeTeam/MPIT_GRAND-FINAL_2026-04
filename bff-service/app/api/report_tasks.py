@@ -34,9 +34,17 @@ class TaskScheduleBody(BaseModel):
     daily_time: str | None = Field(default=None, description="HH:MM for daily")
     weekly_day: int | None = Field(default=None, ge=1, le=7, description="ISO weekday 1..7 for weekly")
     weekly_time: str | None = Field(default=None, description="HH:MM for weekly")
-    monthly_day: int | None = Field(default=None, ge=1, le=31, description="Day 1..31 for monthly")
+    monthly_day: int | None = Field(
+        default=None,
+        ge=1,
+        le=31,
+        description="Day 1..31; shorter months use last day (e.g. 31 → Feb 28/29).",
+    )
     monthly_time: str | None = Field(default=None, description="HH:MM for monthly")
-    yearly_date_ddmm: str | None = Field(default=None, description="dd:mm for yearly")
+    yearly_date_ddmm: str | None = Field(
+        default=None,
+        description="dd:mm for yearly; if day is invalid for that month, last day of month is used.",
+    )
     yearly_time: str | None = Field(default=None, description="HH:MM for yearly")
 
 
@@ -106,7 +114,8 @@ async def create_report_task(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.create_report_task(uid, body.model_dump(exclude_none=True))
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.create_report_task(uid, body.model_dump(exclude_none=True), user_role=role)
 
 
 @router.get("/tasks")
@@ -116,7 +125,8 @@ async def list_report_tasks(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.list_report_tasks(uid, limit=limit, offset=offset)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.list_report_tasks(uid, limit=limit, offset=offset, user_role=role)
 
 
 @router.get("/tasks/{task_id}")
@@ -125,7 +135,8 @@ async def get_report_task(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.get_report_task(uid, task_id)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.get_report_task(uid, task_id, user_role=role)
 
 
 @router.patch("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -138,7 +149,8 @@ async def patch_report_task(
     if not payload:
         raise HTTPException(status_code=400, detail="Nothing to update")
     uid = current_user.get("uuid")
-    await _proxy.patch_report_task(uid, task_id, payload)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.patch_report_task(uid, task_id, payload, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -148,7 +160,8 @@ async def delete_report_task(
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    await _proxy.delete_report_task(uid, task_id)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.delete_report_task(uid, task_id, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -160,7 +173,8 @@ async def list_report_runs(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.list_report_runs(uid, task_id, limit=limit, offset=offset)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.list_report_runs(uid, task_id, limit=limit, offset=offset, user_role=role)
 
 
 @router.get("/reports/{report_id}")
@@ -169,7 +183,8 @@ async def get_report_run(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.get_report_run(uid, report_id)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.get_report_run(uid, report_id, user_role=role)
 
 
 @router.get("/reports")
@@ -179,7 +194,8 @@ async def list_reports(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.list_report_runs_for_user(uid, limit=limit, offset=offset)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.list_report_runs_for_user(uid, limit=limit, offset=offset, user_role=role)
 
 
 @router.post("/reports")
@@ -188,7 +204,8 @@ async def create_report(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.create_report_run(uid, body.model_dump(exclude_none=True))
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.create_report_run(uid, body.model_dump(exclude_none=True), user_role=role)
 
 
 @router.patch("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -201,7 +218,8 @@ async def patch_report(
     if not payload:
         raise HTTPException(status_code=400, detail="Nothing to update")
     uid = current_user.get("uuid")
-    await _proxy.patch_report_run(uid, report_id, payload)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.patch_report_run(uid, report_id, payload, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -211,5 +229,6 @@ async def delete_report(
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    await _proxy.delete_report_run(uid, report_id)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.delete_report_run(uid, report_id, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

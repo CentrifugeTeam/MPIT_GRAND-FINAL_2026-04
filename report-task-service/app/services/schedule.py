@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 from datetime import UTC, datetime
 from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -37,16 +38,19 @@ def _next_weekly(now_local: datetime, weekday_iso: int, hhmm: str) -> datetime:
 
 
 def _next_monthly(now_local: datetime, day: int, hhmm: str) -> datetime:
+    """Next run on calendar day `day` (1..31) each month, clamped to the month's length.
+
+    e.g. day=31 → Jan 31, Feb 28/29, Mar 31, Apr 30 — never skip a month.
+    """
     h, m = _parse_hhmm(hhmm)
     year = now_local.year
     month = now_local.month
     tz = now_local.tzinfo
     for _ in range(14):
-        try:
-            candidate = datetime(year, month, day, h, m, tzinfo=tz)
-        except ValueError:
-            candidate = None
-        if candidate and candidate > now_local:
+        last = calendar.monthrange(year, month)[1]
+        eff = min(day, last)
+        candidate = datetime(year, month, eff, h, m, tzinfo=tz)
+        if candidate > now_local:
             return candidate.astimezone(UTC)
         month += 1
         if month > 12:
@@ -62,10 +66,9 @@ def _next_yearly(now_local: datetime, date_ddmm: str, hhmm: str) -> datetime:
     h, m = _parse_hhmm(hhmm)
     tz = now_local.tzinfo
     for year in (now_local.year, now_local.year + 1):
-        try:
-            candidate = datetime(year, month, day, h, m, tzinfo=tz)
-        except ValueError:
-            continue
+        last = calendar.monthrange(year, month)[1]
+        eff = min(day, last)
+        candidate = datetime(year, month, eff, h, m, tzinfo=tz)
         if candidate > now_local:
             return candidate.astimezone(UTC)
     raise ValueError("Unable to compute next yearly run")

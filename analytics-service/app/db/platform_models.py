@@ -45,6 +45,22 @@ class NlChatSession(PlatformBase):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class AnalyticsAccessPolicy(PlatformBase):
+    """Per-role, per-source allowlist of tables + denied columns (JSONB)."""
+
+    __tablename__ = "analytics_access_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    role_key = Column(String(64), nullable=False, index=True)
+    source_key = Column(String(64), nullable=False, index=True)
+    allowed_tables = Column(JSONB, nullable=False)
+    denied_columns = Column(JSONB, nullable=False, server_default="{}")
+    max_rows_override = Column(Integer, nullable=True)
+    max_query_timeout_ms_override = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AnalyticsDataSource(PlatformBase):
     """Подключаемые БД для SELECT (NL→SQL). Ключ — в payload / query source_key."""
 

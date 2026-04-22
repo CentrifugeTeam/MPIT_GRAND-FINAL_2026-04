@@ -10,6 +10,12 @@ router = APIRouter()
 _proxy = AnalyticsProxy()
 
 
+class QueryQualityBody(BaseModel):
+    question: str = Field(..., min_length=1)
+    sql: str | None = None
+    interpretation_warnings: list[str] | None = None
+
+
 class InterpretQuestionBody(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -78,10 +84,30 @@ def _require_admin(current_user: dict) -> None:
 @router.post("/interpret-question")
 async def interpret_question(
     body: InterpretQuestionBody,
-    _user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Разбор вопроса и глоссарий для NL-чата (без sql_job)."""
-    return await _proxy.interpret_question(body.model_dump(exclude_none=True))
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.interpret_question(
+        body.model_dump(exclude_none=True),
+        user_id=uid,
+        user_role=role,
+    )
+
+
+@router.post("/query-quality")
+async def query_quality(
+    body: QueryQualityBody,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.query_quality(
+        body.model_dump(exclude_none=True),
+        user_id=uid,
+        user_role=role,
+    )
 
 
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
@@ -89,7 +115,8 @@ async def delete_all_history(
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    await _proxy.delete_all_history(uid)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.delete_all_history(uid, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -100,7 +127,8 @@ async def get_job_history(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.get_history(uid, limit=limit, offset=offset)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.get_history(uid, limit=limit, offset=offset, user_role=role)
 
 
 @router.post("/chats")
@@ -108,7 +136,8 @@ async def create_nl_chat(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.create_nl_chat(uid)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.create_nl_chat(uid, user_role=role)
 
 
 @router.get("/chats/{conversation_id}/messages")
@@ -117,7 +146,8 @@ async def get_nl_chat_messages(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     uid = current_user.get("uuid")
-    return await _proxy.get_nl_chat_messages(uid, conversation_id)
+    role = str(current_user.get("role") or "USER")
+    return await _proxy.get_nl_chat_messages(uid, conversation_id, user_role=role)
 
 
 @router.patch("/chats/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -130,7 +160,8 @@ async def patch_nl_chat_title(
     title = body.title.strip()
     if not title:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="title required")
-    await _proxy.patch_nl_chat_title(uid, conversation_id, title)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.patch_nl_chat_title(uid, conversation_id, title, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -140,7 +171,8 @@ async def delete_nl_chat(
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    await _proxy.delete_nl_chat(uid, conversation_id)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.delete_nl_chat(uid, conversation_id, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -150,7 +182,8 @@ async def delete_job(
     current_user: dict = Depends(get_current_user),
 ) -> Response:
     uid = current_user.get("uuid")
-    await _proxy.delete_job(job_id, uid)
+    role = str(current_user.get("role") or "USER")
+    await _proxy.delete_job(job_id, uid, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

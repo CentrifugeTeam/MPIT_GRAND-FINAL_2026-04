@@ -41,7 +41,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
     try:
         db_user = user_crud.create_user(db, user)
-        return UserResponse.from_orm(db_user)
+        return UserResponse.model_validate(db_user, from_attributes=True)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -57,7 +57,7 @@ async def get_user(user_uuid: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user, from_attributes=True)
 
 @router.get("/email/{email}", response_model=UserResponse)
 async def get_user_by_email(email: str, db: Session = Depends(get_db)):
@@ -68,7 +68,7 @@ async def get_user_by_email(email: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user, from_attributes=True)
 
 @router.get("/", response_model=UserListResponse)
 async def get_all_users(
@@ -78,7 +78,9 @@ async def get_all_users(
 ):
     """Получить всех пользователей"""
     users = user_crud.get_all_users(db, skip=skip, limit=limit)
-    return UserListResponse(users=[UserResponse.from_orm(user) for user in users])
+    return UserListResponse(
+        users=[UserResponse.model_validate(user, from_attributes=True) for user in users]
+    )
 
 @router.put("/{user_uuid}", response_model=UserResponse)
 async def update_user(
@@ -94,7 +96,7 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user, from_attributes=True)
 
 @router.put("/email/{email}", response_model=UserResponse)
 async def update_user_by_email(
@@ -116,7 +118,7 @@ async def update_user_by_email(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return UserResponse.from_orm(user)
+    return UserResponse.model_validate(user, from_attributes=True)
 
 @router.post("/{user_uuid}/verify")
 async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
@@ -155,7 +157,7 @@ async def update_user_role(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     token_data = {
         "email": user.email,
-        "role": user.role.value,
+        "role": str(user.role),
         "uuid": str(user.uuid)
     }
 

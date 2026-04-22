@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     RABBITMQ_PASSWORD: str = "admin123"
     RABBITMQ_PORT: int = 5672
 
+    # Redis (rate limiting). Пусто — лимит отключён.
+    REDIS_URL: str = ""
+    RATE_LIMIT_PER_MINUTE: int = 120
+
     class Config:
         env_file = ".env"
 

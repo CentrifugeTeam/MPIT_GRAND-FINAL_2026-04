@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.middleware.request_audit import RequestAuditMiddleware
+from app.api.access_policies import router as access_policies_router
 from app.api.analytics import router as analytics_router
 from app.api.data_sources import router as data_sources_router
 
@@ -41,9 +43,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestAuditMiddleware)
 
 app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(data_sources_router, prefix="/api/analytics", tags=["analytics-data-sources"])
+app.include_router(access_policies_router, prefix="/api/analytics", tags=["analytics-access-policies"])
 
 
 @app.get("/health")

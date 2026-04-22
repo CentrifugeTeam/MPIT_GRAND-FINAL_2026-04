@@ -87,6 +87,7 @@ async def websocket_endpoint(websocket: WebSocket):
             )
             user_id = payload.get("uuid")
             user_email = payload.get("email")
+            user_role = str(payload.get("role") or "USER")
 
             if not user_id:
                 await websocket.close(code=1008, reason="Invalid token payload")
@@ -219,7 +220,9 @@ async def websocket_endpoint(websocket: WebSocket):
                                 )
                                 sk = dk
                         try:
-                            schema_tables = await fetch_public_schema(sk)
+                            schema_tables = await fetch_public_schema(
+                                sk, user_id=str(user_id), user_role=user_role
+                            )
                         except Exception as e:
                             await _safe_send_json(
                                 websocket,
@@ -241,6 +244,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             incoming: dict = {
                                 "message_id": mid,
                                 "user_id": user_id,
+                                "user_role": user_role,
                                 "conversation_id": str(conv),
                                 "content": str(content),
                                 "history": history

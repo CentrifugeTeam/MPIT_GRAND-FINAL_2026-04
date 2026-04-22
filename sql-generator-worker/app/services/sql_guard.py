@@ -272,11 +272,92 @@ def allowed_table_set() -> Optional[Set[str]]:
     return {t.strip().lower() for t in raw.split(",") if t.strip()}
 
 
+def _count_union_nodes(node: exp.Expression) -> int:
+    n = 0
+    for x in node.walk():
+        if isinstance(x, exp.Union):
+            n += 1
+    return n
+
+
+def _parse_access_policy(raw: Any) -> tuple[Optional[Set[str]], dict[str, Set[str]]]:
+    """Returns (allowed_tables or None if wildcard, denied map table->set of cols)."""
+    if not isinstance(raw, dict):
+        return None, {}
+    at = raw.get("allowed_tables")
+    allowed: Optional[Set[str]] = None
+    if isinstance(at, list) and at:
+        s = {str(x).strip().lower() for x in at if str(x).strip()}
+        if "*" in s:
+            allowed = None
+        else:
+            allowed = s
+    dc_in = raw.get("denied_columns") or {}
+    denied: dict[str, Set[str]] = {}
+    if isinstance(dc_in, dict):
+        for k, v in dc_in.items():
+            key = str(k).strip().lower()
+            if isinstance(v, list):
+                denied[key] = {str(c).strip().lower() for c in v if str(c).strip()}
+    return allowed, denied
+
+
+def _root_select_has_star(node: exp.Expression) -> bool:
+    root = node
+    if isinstance(node, exp.With) and node.this:
+        root = node.this
+    if not isinstance(root, exp.Select):
+        return False
+    for sel in root.find_all(exp.Select):
+        for ex in sel.expressions:
+            if isinstance(ex, exp.Star) or (isinstance(ex, exp.Column) and ex.name == "*"):
+                return True
+    return False
+
+
+def _enforce_access_policy(
+    node: exp.Expression,
+    physical_tables: Set[str],
+    access_policy: Optional[dict[str, Any]],
+) -> None:
+    if not access_policy:
+        return
+    pol_allow, denied = _parse_access_policy(access_policy)
+    if pol_allow is not None and physical_tables:
+        extra = physical_tables - pol_allow
+        if extra:
+            raise ValueError(
+                f"Таблицы вне политики доступа: {', '.join(sorted(extra))}"
+            )
+    if denied and physical_tables:
+        star = _root_select_has_star(node)
+        if star:
+            for t in physical_tables:
+                banned = set(denied.get(t, set())) | set(denied.get("*", set()))
+                if banned:
+                    raise ValueError(
+                        "SELECT * запрещён: для используемых таблиц заданы запрещённые колонки; "
+                        "перечислите колонки явно."
+                    )
+        for col in node.find_all(exp.Column):
+            cname = (col.name or "").lower()
+            if not cname:
+                continue
+            tbl_raw = col.table
+            if tbl_raw:
+                base = str(tbl_raw).lower()
+                if base in physical_tables:
+                    banned = denied.get(base, set()) | denied.get("*", set())
+                    if cname in banned:
+                        raise ValueError(f"Колонка «{base}.{cname}» запрещена политикой доступа")
+
+
 def validate_and_prepare_sql(
     raw_sql: str,
     max_rows: Optional[int],
     allowed: Optional[Set[str]],
     schema_tables: Optional[Sequence[Any]] = None,
+    access_policy: Optional[dict[str, Any]] = None,
 ) -> Tuple[str, list[str]]:
     warnings: list[str] = []
     sql = _extract_sql_from_markdown(raw_sql)
@@ -299,13 +380,22 @@ def validate_and_prepare_sql(
     if bad:
         raise ValueError("; ".join(bad))
 
+    if _count_union_nodes(node) > 8:
+        raise ValueError("Слишком много UNION; упростите запрос")
+
     names = _table_names(node)
+    _enforce_access_policy(node, names, access_policy)
+
     if allowed is not None and names:
         extra = names - allowed
         if extra:
             raise ValueError(
                 f"Таблицы вне разрешённого списка: {', '.join(sorted(extra))}"
             )
+
+    s = get_settings()
+    if len(one.encode("utf-8")) > int(getattr(s, "MAX_SQL_TEXT_BYTES", 256_000) or 256_000):
+        raise ValueError("SQL слишком длинный")
 
     meta = _schema_meta(schema_tables)
     if meta:

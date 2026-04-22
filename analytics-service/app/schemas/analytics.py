@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class QuestionRequest(BaseModel):
@@ -26,6 +26,16 @@ class QuestionRequest(BaseModel):
         description="Ключ источника данных (для согласованности с NL-чатом); опционально.",
     )
 
+    @model_validator(mode="after")
+    def _clamp_max_rows_to_env_cap(self):
+        from app.core.config import get_settings
+
+        if self.max_rows is not None:
+            cap = max(1, int(get_settings().GLOBAL_MAX_ROWS))
+            if self.max_rows > cap:
+                self.max_rows = cap
+        return self
+
 
 class ColumnInfo(BaseModel):
     name: str
@@ -48,6 +58,19 @@ class GlossaryMatchItem(BaseModel):
     title: Optional[str] = None
     category: Optional[str] = None
     definition: str = ""
+
+
+class QueryQualityRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    sql: Optional[str] = None
+    interpretation_warnings: Optional[list[str]] = None
+
+
+class QueryQualityResponse(BaseModel):
+    summary: str = ""
+    risks: list[str] = Field(default_factory=list)
+    suggested_questions: list[str] = Field(default_factory=list)
+    suggested_sql_hints: str = ""
 
 
 class InterpretQuestionResponse(BaseModel):
