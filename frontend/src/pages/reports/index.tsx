@@ -1,8 +1,5 @@
+import { ReportsDashboard } from "@/features/reports";
+
 export function ReportsPage() {
-  return (
-    <div>
-      <h1>Отчёты</h1>
-      {/* содержимое страницы */}
-    </div>
-  );
+  return <ReportsDashboard />;
 }
