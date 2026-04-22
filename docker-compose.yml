@@ -154,6 +154,32 @@ services:
       - app-network
     restart: unless-stopped
 
+  report-task-service:
+    build:
+      context: ./report-task-service
+      dockerfile: Dockerfile
+      target: development
+    container_name: report-task-service
+    ports:
+      - "8010:8010"
+    environment:
+      - PLATFORM_DATABASE_URL=${PLATFORM_DATABASE_URL:-postgresql://postgres:postgres@postgres-db:5432/postgres-db}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASSWORD=admin123
+      - REPORT_TASK_INTERNAL_TOKEN=${REPORT_TASK_INTERNAL_TOKEN:-dev-report-internal-token}
+      - DISPATCH_INTERVAL_SECONDS=${DISPATCH_INTERVAL_SECONDS:-60}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./report-task-service:/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
   sql-generator-worker:
     build:
       context: ./sql-generator-worker
@@ -198,12 +224,17 @@ services:
       - RABBITMQ_USER=admin
       - RABBITMQ_PASSWORD=admin123
       - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - AUTH_SERVICE_URL=http://auth-service:8002
       - INTERNAL_NL_CHAT_SYNC_TOKEN=${INTERNAL_NL_CHAT_SYNC_TOKEN:-dev-nl-chat-sync}
       - NOTIFICATION_SERVICE_URL=http://notification-service:8007
+      - REPORT_TASK_SERVICE_URL=http://report-task-service:8010
+      - REPORT_TASK_INTERNAL_TOKEN=${REPORT_TASK_INTERNAL_TOKEN:-dev-report-internal-token}
     depends_on:
       rabbitmq:
         condition: service_healthy
       analytics-service:
+        condition: service_started
+      report-task-service:
         condition: service_started
     networks:
       - app-network
@@ -223,6 +254,7 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8002
       - NOTIFICATION_SERVICE_URL=http://notification-service:8007
       - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - REPORT_TASK_SERVICE_URL=http://report-task-service:8010
       - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-main-db}
       - NL_CHAT_BLOCKED_SOURCE_KEYS=${NL_CHAT_BLOCKED_SOURCE_KEYS:-postgres-main}
       - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
@@ -237,6 +269,8 @@ services:
       auth-service:
         condition: service_started
       analytics-service:
+        condition: service_started
+      report-task-service:
         condition: service_started
       nl-orchestrator-worker:
         condition: service_started

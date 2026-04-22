@@ -21,7 +21,7 @@ from app.core.queues import (
     QUEUE_CHAT_OUT,
     QUEUE_GENERATE_REQUEST,
     QUEUE_GENERATE_RESULT_CHAT,
-    QUEUE_REPORT_TASK_INCOMING,
+    QUEUE_REPORT_TASK_INCOMING_V1,
 )
 from app.schemas.analytics import TableSchema
 from app.services.chat_llm import finalize_after_sql, plan_turn
@@ -37,7 +37,8 @@ class PendingCtx:
     user_text: str
     user_id: str
     scheduled_report: bool = False
-    notification_email: Optional[str] = None
+    report_id: str | None = None
+    task_id: str | None = None
 
 
 pending: Dict[str, PendingCtx] = {}
@@ -147,6 +148,92 @@ async def _send_report_notification(
         logger.warning("report notification failed: %s", e)
 
 
+async def _resolve_user_email(user_id: str) -> Optional[str]:
+    s = get_settings()
+    base = (s.AUTH_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return None
+    url = f"{base}/users/{user_id}"
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        logger.warning("resolve user email failed for %s: %s", user_id, e)
+        return None
+    email = data.get("email") if isinstance(data, dict) else None
+    if isinstance(email, str) and email.strip():
+        return email.strip()
+    return None
+
+
+async def _fetch_schema_tables(source_key: str | None) -> list[dict[str, Any]]:
+    s = get_settings()
+    base = (s.ANALYTICS_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return []
+    params: dict[str, Any] = {}
+    if source_key:
+        params["source_key"] = source_key
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.get(f"{base}/api/analytics/schema", params=params)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        logger.warning("schema fetch failed: %s", e)
+        return []
+    tables = data.get("tables") if isinstance(data, dict) else None
+    return tables if isinstance(tables, list) else []
+
+
+async def _report_run_done(
+    report_id: str,
+    result_summary: str,
+    result_payload: dict[str, Any],
+) -> None:
+    s = get_settings()
+    base = (s.REPORT_TASK_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return
+    url = f"{base}/api/reports/internal/reports/{report_id}/result"
+    body = {
+        "status": "done",
+        "result_summary": result_summary[:2000] if result_summary else None,
+        "result_payload": result_payload,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(
+                url,
+                json=body,
+                headers={"X-Report-Internal-Token": s.REPORT_TASK_INTERNAL_TOKEN},
+            )
+            r.raise_for_status()
+    except Exception as e:
+        logger.warning("report run done callback failed (%s): %s", report_id, e)
+
+
+async def _report_run_failed(report_id: str, error: str) -> None:
+    s = get_settings()
+    base = (s.REPORT_TASK_SERVICE_URL or "").strip().rstrip("/")
+    if not base:
+        return
+    url = f"{base}/api/reports/internal/reports/{report_id}/error"
+    body = {"status": "failed", "error": error[:4000]}
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(
+                url,
+                json=body,
+                headers={"X-Report-Internal-Token": s.REPORT_TASK_INTERNAL_TOKEN},
+            )
+            r.raise_for_status()
+    except Exception as e:
+        logger.warning("report run failed callback failed (%s): %s", report_id, e)
+
+
 async def _handle_chat_incoming(
     message: aio_pika.IncomingMessage,
     pub_channel: aio_pika.Channel,
@@ -158,27 +245,54 @@ async def _handle_chat_incoming(
         mid = str(data.get("message_id") or uuid.uuid4())
         content = str(data.get("content") or "").strip()
         scheduled_report = bool(data.get("scheduled_report"))
-        notification_email = (
-            str(data.get("notification_email")).strip()
-            if data.get("notification_email")
-            else None
-        )
         if not conv or not content:
             return
-        await _sync_chat_event("user_message", uid, conv, mid, {"text": content})
+        if conv != "__report_run__":
+            await _sync_chat_event("user_message", uid, conv, mid, {"text": content})
         tables_raw = data.get("schema_tables") or []
         if not tables_raw:
-            await _publish_json(
-                pub_channel,
-                {
-                    "type": "chat_assistant",
-                    "conversation_id": conv,
-                    "message_id": mid,
-                    "text": "Нет схемы БД в запросе. Обновите страницу или откройте чат из раздела аналитики.",
-                    "sql": None,
-                    "status": "error",
-                },
+            raw_source = data.get("analytics_source_key")
+            sk = (
+                str(raw_source).strip()
+                if isinstance(raw_source, str) and str(raw_source).strip()
+                else None
             )
+            tables_raw = await _fetch_schema_tables(sk)
+        if not tables_raw:
+            err_txt = "Нет схемы БД в запросе. Обновите страницу или откройте чат из раздела аналитики."
+            if conv != "__report_run__":
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_assistant",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "text": err_txt,
+                        "sql": None,
+                        "status": "error",
+                    },
+                )
+                await _sync_chat_event(
+                    "assistant_message",
+                    uid,
+                    conv,
+                    mid,
+                    {
+                        "text": err_txt,
+                        "report": "",
+                        "sql": None,
+                        "status": "error",
+                        "error": err_txt,
+                        "row_count": 0,
+                        "chart": {"type": "table"},
+                        "chart_payload": {},
+                        "columns": [],
+                        "rows": [],
+                    },
+                )
+            report_id = str(data.get("report_id") or "").strip()
+            if report_id:
+                await _report_run_failed(report_id, err_txt)
             return
         tables = [TableSchema.model_validate(x) for x in tables_raw]
         hist_raw = data.get("history") or []
@@ -208,7 +322,8 @@ async def _handle_chat_incoming(
                     user_text=content,
                     user_id=uid,
                     scheduled_report=scheduled_report,
-                    notification_email=notification_email,
+                    report_id=(str(data.get("report_id") or "").strip() or None),
+                    task_id=(str(data.get("task_id") or "").strip() or None),
                 )
             hints = (plan.get("sql_hints_ru") or "").strip() or None
             raw_max = data.get("max_rows")
@@ -242,57 +357,59 @@ async def _handle_chat_incoming(
                 ),
                 routing_key=QUEUE_GENERATE_REQUEST,
             )
-            await _publish_json(
-                pub_channel,
-                {
-                    "type": "chat_sql_queued",
-                    "conversation_id": conv,
-                    "message_id": mid,
-                    "job_id": job_id,
-                    "sql_turn_id": turn_id,
-                    "preface": plan.get("reply_ru") or "",
-                },
-            )
-            await _sync_chat_event(
-                "system_message",
-                uid,
-                conv,
-                f"sqlq-{turn_id}",
-                {
-                    "text": plan.get("reply_ru") or "",
-                    "variant": "sql_queued",
-                },
-            )
+            if conv != "__report_run__":
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_sql_queued",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "job_id": job_id,
+                        "sql_turn_id": turn_id,
+                        "preface": plan.get("reply_ru") or "",
+                    },
+                )
+                await _sync_chat_event(
+                    "system_message",
+                    uid,
+                    conv,
+                    f"sqlq-{turn_id}",
+                    {
+                        "text": plan.get("reply_ru") or "",
+                        "variant": "sql_queued",
+                    },
+                )
         else:
-            await _publish_json(
-                pub_channel,
-                {
-                    "type": "chat_assistant",
-                    "conversation_id": conv,
-                    "message_id": mid,
-                    "text": plan.get("reply_ru") or "",
-                    "sql": None,
-                    "status": "done",
-                },
-            )
-            await _sync_chat_event(
-                "assistant_message",
-                uid,
-                conv,
-                mid,
-                {
-                    "text": plan.get("reply_ru") or "",
-                    "report": None,
-                    "sql": None,
-                    "status": "done",
-                    "chart_payload": {},
-                    "chart": {},
-                    "columns": [],
-                    "rows": [],
-                    "row_count": None,
-                    "error": None,
-                },
-            )
+            if conv != "__report_run__":
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_assistant",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "text": plan.get("reply_ru") or "",
+                        "sql": None,
+                        "status": "done",
+                    },
+                )
+                await _sync_chat_event(
+                    "assistant_message",
+                    uid,
+                    conv,
+                    mid,
+                    {
+                        "text": plan.get("reply_ru") or "",
+                        "report": None,
+                        "sql": None,
+                        "status": "done",
+                        "chart_payload": {},
+                        "chart": {},
+                        "columns": [],
+                        "rows": [],
+                        "row_count": None,
+                        "error": None,
+                    },
+                )
 
 
 async def _handle_sql_chat_result(
@@ -408,7 +525,8 @@ async def _handle_sql_chat_result(
             "columns": [str(c) for c in cols],
             "rows": rows_ws,
         }
-        await _publish_json(pub_channel, ws_body)
+        if ctx.conversation_id != "__report_run__":
+            await _publish_json(pub_channel, ws_body)
         sync_pl = {
             "text": final.get("reply_ru") or "",
             "report": final.get("report_ru") or "",
@@ -421,13 +539,30 @@ async def _handle_sql_chat_result(
             "columns": [str(c) for c in cols],
             "rows": rows_ws,
         }
-        await _sync_chat_event(
-            "assistant_message",
-            ctx.user_id,
-            ctx.conversation_id,
-            ctx.message_id_in,
-            sync_pl,
-        )
+        if ctx.conversation_id != "__report_run__":
+            await _sync_chat_event(
+                "assistant_message",
+                ctx.user_id,
+                ctx.conversation_id,
+                ctx.message_id_in,
+                sync_pl,
+            )
+        elif ctx.report_id:
+            if status == "done":
+                await _report_run_done(
+                    ctx.report_id,
+                    (final.get("report_ru") or final.get("reply_ru") or "").strip(),
+                    {
+                        "sql": sql_s,
+                        "row_count": data.get("row_count"),
+                        "chart": chart_out,
+                        "chart_payload": chart_payload_ws,
+                        "columns": [str(c) for c in cols],
+                        "rows": rows_ws,
+                    },
+                )
+            else:
+                await _report_run_failed(ctx.report_id, err or "Report execution failed")
         if status == "done" and ctx.scheduled_report:
             has_table = bool(rows_ws)
             has_chart = (
@@ -445,7 +580,7 @@ async def _handle_sql_chat_result(
                 )
             await _send_report_notification(
                 user_id=ctx.user_id,
-                email=ctx.notification_email,
+                email=await _resolve_user_email(ctx.user_id),
                 title=ctx.user_text[:180] or "Плановый отчет",
                 message=summary,
             )
@@ -475,7 +610,7 @@ async def _amain() -> None:
         await ch_cons.set_qos(prefetch_count=2)
         await ch_pub.declare_queue(QUEUE_CHAT_OUT, durable=True)
         q_in = await ch_cons.declare_queue(QUEUE_CHAT_INCOMING, durable=True)
-        q_report = await ch_cons.declare_queue(QUEUE_REPORT_TASK_INCOMING, durable=True)
+        q_report_v1 = await ch_cons.declare_queue(QUEUE_REPORT_TASK_INCOMING_V1, durable=True)
         q_sql = await ch_cons.declare_queue(QUEUE_GENERATE_RESULT_CHAT, durable=True)
 
         async def on_chat(msg: aio_pika.IncomingMessage) -> None:
@@ -491,12 +626,12 @@ async def _amain() -> None:
                 logger.exception("sql chat result handler failed")
 
         await q_in.consume(on_chat)
-        await q_report.consume(on_chat)
+        await q_report_v1.consume(on_chat)
         await q_sql.consume(on_sql)
         logger.info(
             "nl-orchestrator-worker ready (queues: %s, %s, %s → %s)",
             QUEUE_CHAT_INCOMING,
-            QUEUE_REPORT_TASK_INCOMING,
+            QUEUE_REPORT_TASK_INCOMING_V1,
             QUEUE_GENERATE_RESULT_CHAT,
             QUEUE_GENERATE_REQUEST,
         )

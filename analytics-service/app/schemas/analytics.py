@@ -72,7 +72,7 @@ class AnalyticsHistoryItem(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    entry_kind: Literal["sql_job", "nl_chat", "report_task"]
+    entry_kind: Literal["sql_job", "nl_chat"]
     sort_at: datetime
     job_id: Optional[str] = None
     conversation_id: Optional[str] = None
@@ -89,14 +89,7 @@ class AnalyticsHistoryItem(BaseModel):
     updated_at: Optional[datetime] = None
     chat_title: Optional[str] = None
     message_count: Optional[int] = None
-    chat_type: Optional[Literal["chat", "report"]] = None
-    cron_expr: Optional[str] = None
-    cron_timezone: Optional[str] = None
-    repeat_limit: Optional[int] = None
-    runs_count: Optional[int] = None
-    next_run_at: Optional[datetime] = None
-    last_run_at: Optional[datetime] = None
-    is_active: Optional[bool] = None
+    chat_type: Optional[Literal["chat"]] = None
 
 
 class AnalyticsHistoryResponse(BaseModel):
@@ -114,59 +107,15 @@ class NlChatTitlePatch(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
 
 
-class ReportScheduleBody(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "cron_expr": "0 9 * * 1",
-                "cron_timezone": "UTC",
-                "repeat_limit": 20,
-                "is_active": True,
-            }
-        }
-    )
-    cron_expr: str = Field(..., min_length=1, max_length=255)
-    cron_timezone: str = Field(default="UTC", min_length=1, max_length=64)
-    repeat_limit: Optional[int] = Field(default=None, ge=1, le=1_000_000)
-    is_active: bool = True
-
-
 class CreateNlChatBody(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "chat_type": "report",
-                "schedule": {
-                    "cron_expr": "0 9 * * 1",
-                    "cron_timezone": "UTC",
-                    "repeat_limit": 20,
-                    "is_active": True,
-                },
-                "notification_email": "user@example.com",
+                "chat_type": "chat",
             }
         }
     )
-    chat_type: Literal["chat", "report"] = "chat"
-    schedule: Optional[ReportScheduleBody] = None
-    notification_email: Optional[str] = None
-
-
-class NlReportPatch(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "title": "Еженедельный отчет по заказам",
-                "schedule": {
-                    "cron_expr": "30 8 * * 1",
-                    "cron_timezone": "UTC",
-                    "repeat_limit": 12,
-                    "is_active": True,
-                },
-            }
-        }
-    )
-    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
-    schedule: Optional[ReportScheduleBody] = None
+    chat_type: Literal["chat"] = "chat"
 
 
 class NlChatMessageApi(BaseModel):

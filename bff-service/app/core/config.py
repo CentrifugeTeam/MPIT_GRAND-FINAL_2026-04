@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     AUTH_SERVICE_URL: str = "http://auth-service:8002"
     NOTIFICATION_SERVICE_URL: str = "http://notification-service:8007"
     ANALYTICS_SERVICE_URL: str = "http://analytics-service:8009"
+    REPORT_TASK_SERVICE_URL: str = "http://report-task-service:8010"
     # Если фронт не передал analytics_source_key в WS chat_message — подставить этот ключ (как в analytics-service).
     DEFAULT_ANALYTICS_SOURCE_KEY: str = "main-db"
     # Ключи источников (через запятую), запрещённые для NL chat_message — заменяются на DEFAULT_ANALYTICS_SOURCE_KEY.

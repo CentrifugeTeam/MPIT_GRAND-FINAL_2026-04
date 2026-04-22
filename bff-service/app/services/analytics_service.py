@@ -11,6 +11,7 @@ settings = get_settings()
 class AnalyticsProxy:
     def __init__(self) -> None:
         self.base_url = settings.ANALYTICS_SERVICE_URL.rstrip("/")
+        self.report_base_url = settings.REPORT_TASK_SERVICE_URL.rstrip("/")
         self.timeout = httpx.Timeout(180.0, connect=10.0)
 
     def _detail(self, response: httpx.Response) -> Any:
@@ -279,3 +280,188 @@ class AnalyticsProxy:
                 status_code=r.status_code,
                 detail=self._detail(r),
             )
+
+    async def create_report_task(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.report_base_url}/api/reports/tasks",
+                    json=body,
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def list_report_tasks(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.report_base_url}/api/reports/tasks",
+                    params={"limit": limit, "offset": offset},
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def get_report_task(self, user_id: str, task_id: str) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.report_base_url}/api/reports/tasks/{task_id}",
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def patch_report_task(self, user_id: str, task_id: str, body: dict[str, Any]) -> None:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.patch(
+                    f"{self.report_base_url}/api/reports/tasks/{task_id}",
+                    json=body,
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+
+    async def delete_report_task(self, user_id: str, task_id: str) -> None:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.delete(
+                    f"{self.report_base_url}/api/reports/tasks/{task_id}",
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+
+    async def list_report_runs(
+        self, user_id: str, task_id: str, limit: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.report_base_url}/api/reports/tasks/{task_id}/reports",
+                    params={"limit": limit, "offset": offset},
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def get_report_run(self, user_id: str, report_id: str) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.report_base_url}/api/reports/reports/{report_id}",
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def list_report_runs_for_user(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.report_base_url}/api/reports/reports",
+                    params={"limit": limit, "offset": offset},
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def create_report_run(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.report_base_url}/api/reports/reports",
+                    json=body,
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def patch_report_run(self, user_id: str, report_id: str, body: dict[str, Any]) -> None:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.patch(
+                    f"{self.report_base_url}/api/reports/reports/{report_id}",
+                    json=body,
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+
+    async def delete_report_run(self, user_id: str, report_id: str) -> None:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.delete(
+                    f"{self.report_base_url}/api/reports/reports/{report_id}",
+                    headers={"X-User-Id": user_id},
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Report task service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))

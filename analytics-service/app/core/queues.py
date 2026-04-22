@@ -5,7 +5,6 @@ QUEUE_GENERATE_RESULT = "nl_sql_generate_result"
 
 # Чат с NL-оркестратором (BFF ↔ nl-orchestrator-worker)
 QUEUE_CHAT_INCOMING = "nl_chat_incoming"
-QUEUE_REPORT_TASK_INCOMING = "nl_report_task_incoming"
 QUEUE_CHAT_OUT = "nl_chat_out"
 
 # Результат SQL только для оркестратора (не забирает BFF nl_sql consumer)

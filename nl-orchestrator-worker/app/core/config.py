@@ -15,8 +15,11 @@ class Settings(BaseSettings):
     CHAT_SQL_MAX_ROWS: int = 10000
 
     ANALYTICS_SERVICE_URL: str = ""
+    AUTH_SERVICE_URL: str = "http://auth-service:8002"
     INTERNAL_NL_CHAT_SYNC_TOKEN: str = ""
     NOTIFICATION_SERVICE_URL: str = ""
+    REPORT_TASK_SERVICE_URL: str = "http://report-task-service:8010"
+    REPORT_TASK_INTERNAL_TOKEN: str = "dev-report-internal-token"
 
     class Config:
         env_file = ".env"

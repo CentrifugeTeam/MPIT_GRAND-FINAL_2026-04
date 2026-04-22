@@ -1,5 +1,5 @@
 QUEUE_GENERATE_REQUEST = "nl_sql_generate_request"
 QUEUE_CHAT_INCOMING = "nl_chat_incoming"
-QUEUE_REPORT_TASK_INCOMING = "nl_report_task_incoming"
+QUEUE_REPORT_TASK_INCOMING_V1 = "report_task_incoming_v1"
 QUEUE_CHAT_OUT = "nl_chat_out"
 QUEUE_GENERATE_RESULT_CHAT = "nl_sql_generate_result_chat"
