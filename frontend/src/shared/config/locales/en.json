@@ -199,11 +199,26 @@
       "tabWeekly": "Weekly",
       "tabMonthly": "Monthly",
       "tabYearly": "Yearly",
+      "dbLabel": "Database",
+      "dbPlaceholder": "Select database",
       "timeLabel": "Select time",
       "dateLabel": "Select date",
+      "calendarAriaLabel": "Date",
       "queryLabel": "Query",
       "queryPlaceholder": "Write your query...",
-      "submitButton": "Create report"
+      "submitButton": "Create report",
+      "dayOfMonthLabel": "Day of month",
+      "dayOfMonthTooltip": "Day of month (1–31)",
+      "weekdayLabel": "Day of week",
+      "weekdays": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      }
     },
     "sidebar": {
       "title": "Workspace panel",

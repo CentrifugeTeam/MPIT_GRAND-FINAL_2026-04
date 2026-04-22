@@ -65,7 +65,7 @@ export function ReportsDashboard() {
               <h1 className="text-2xl font-semibold text-foreground">
                 {p.t("reports.title")}
               </h1>
-              <CreateReportModal />
+              <CreateReportModal dataSources={p.dataSources} />
             </div>
             <div className="mt-4 flex flex-col gap-4">
               <ReportTaskItem
