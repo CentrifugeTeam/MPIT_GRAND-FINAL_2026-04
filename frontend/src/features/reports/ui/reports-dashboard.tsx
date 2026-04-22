@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useNavigate } from "react-router";
 
 import { FigmaAnalyticsSidebar, useAnalyticsPanel } from "@/features/analytics";
 
 export function ReportsDashboard() {
   const p = useAnalyticsPanel();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
@@ -27,7 +29,7 @@ export function ReportsDashboard() {
           onCommitRename={p.commitRename}
           onCancelRename={p.cancelRename}
           onSelectEntry={p.selectEntry}
-          onStartNewChat={() => void p.startNewChat()}
+          onStartNewChat={() => void navigate("/home")}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
           onStartEditingRow={p.startEditingRow}
