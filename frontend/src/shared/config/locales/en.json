@@ -190,6 +190,21 @@
   "reports": {
     "title": "Tasks",
     "createTask": "Create task",
+    "addReport": "Add report",
+    "modal": {
+      "titlePlaceholder": "Enter report name...",
+      "tabsAriaLabel": "Schedule type",
+      "tabOnce": "Once",
+      "tabDaily": "Daily",
+      "tabWeekly": "Weekly",
+      "tabMonthly": "Monthly",
+      "tabYearly": "Yearly",
+      "timeLabel": "Select time",
+      "dateLabel": "Select date",
+      "queryLabel": "Query",
+      "queryPlaceholder": "Write your query...",
+      "submitButton": "Create report"
+    },
     "sidebar": {
       "title": "Workspace panel",
       "toggleAria": "Collapse sidebar",
