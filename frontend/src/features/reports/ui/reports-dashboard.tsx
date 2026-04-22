@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router";
+import { ScrollShadow } from "@heroui/react";
 
 import { FigmaAnalyticsSidebar, useAnalyticsPanel } from "@/features/analytics";
 import { CreateReportModal } from "./create-report-modal";
@@ -45,8 +46,8 @@ export function ReportsDashboard() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <section className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl border border-border bg-background p-10">
-          <div className="w-full max-w-[900px] mx-auto">
+        <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-background overflow-hidden">
+          <div className="shrink-0 w-full max-w-[900px] mx-auto px-10 pt-10 pb-4">
             <div className="flex items-center justify-between gap-4">
               {!sidebarOpen && (
                 <button
@@ -67,7 +68,10 @@ export function ReportsDashboard() {
               </h1>
               <CreateReportModal dataSources={p.dataSources} />
             </div>
-            <div className="mt-4 flex flex-col gap-4">
+          </div>
+          <ScrollShadow className="min-h-0 flex-1" hideScrollBar>
+          <div className="w-full max-w-[900px] mx-auto px-10 pb-10">
+            <div className="flex flex-col gap-4">
               <ReportTaskItem
                 title={p.t("reports.tasks.tripCount.title")}
                 schedule={p.t("reports.tasks.tripCount.schedule")}
@@ -92,9 +96,51 @@ export function ReportsDashboard() {
                 title={p.t("reports.suggested.dailyStockTracker.title")}
                 schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
               />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
+              <ReportTaskItem
+                title={p.t("reports.suggested.dailyStockTracker.title")}
+                schedule={p.t("reports.suggested.dailyStockTracker.schedule")}
+              />
             </div>
           </div>
+          </ScrollShadow>
         </section>
+
       </div>
     </div>
   );
