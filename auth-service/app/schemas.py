@@ -5,31 +5,47 @@ from uuid import UUID
 
 
 class UserBase(BaseModel):
-    email: EmailStr
-    role: str = Field(default="USER", max_length=64)
+    email: EmailStr = Field(..., description="Почта пользователя")
+    role: str = Field(
+        default="USER",
+        max_length=64,
+        description="Ключ роли из role_definitions",
+    )
 
 
 class UserCreate(UserBase):
-    password: str
-    confirm_password: str
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "user@example.com",
+                "role": "USER",
+                "password": "StrongPass123!",
+                "confirm_password": "StrongPass123!",
+            }
+        }
+    }
+    password: str = Field(..., min_length=1, description="Пароль")
+    confirm_password: str = Field(..., min_length=1, description="Подтверждение пароля")
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    model_config = {"json_schema_extra": {"example": {"email": "user@example.com", "password": "secret"}}}
+    email: EmailStr = Field(..., description="Почта")
+    password: str = Field(..., min_length=1, description="Пароль")
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    role: Optional[str] = Field(default=None, max_length=64)
+    model_config = {"json_schema_extra": {"example": {"email": "new@example.com", "role": "ANALYST"}}}
+    email: Optional[EmailStr] = Field(default=None, description="Новая почта")
+    role: Optional[str] = Field(default=None, max_length=64, description="Новая роль из справочника")
 
 
 class UserResponse(UserBase):
-    uuid: UUID
-    is_active: bool
-    is_verified: bool
-    created_at: datetime
-    updated_at: Optional[datetime] = None
+    uuid: UUID = Field(..., description="UUID пользователя")
+    is_active: bool = Field(..., description="Активен ли аккаунт")
+    is_verified: bool = Field(..., description="Подтверждён ли email")
+    created_at: datetime = Field(..., description="Создан")
+    updated_at: Optional[datetime] = Field(default=None, description="Последнее обновление")
 
     model_config = {"from_attributes": True}
 
@@ -39,15 +55,20 @@ class UserListResponse(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user_uuid: str
+    access_token: str = Field(..., description="JWT access")
+    refresh_token: str = Field(..., description="JWT refresh")
+    token_type: str = Field(default="bearer", description="Тип токена")
+    expires_in: int = Field(..., description="TTL access в секундах")
+    user_uuid: str = Field(..., description="UUID пользователя")
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    model_config = {"json_schema_extra": {"example": {"refresh_token": "eyJ..."}}}
+    refresh_token: str = Field(..., description="Refresh-токен из ответа login")
+
+
+class MessageResponse(BaseModel):
+    message: str = Field(..., description="Текст результата операции")
 
 
 class PasswordReset(BaseModel):

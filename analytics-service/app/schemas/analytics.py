@@ -38,19 +38,22 @@ class QuestionRequest(BaseModel):
 
 
 class ColumnInfo(BaseModel):
-    name: str
-    data_type: str
-    enum_values: Optional[list[str]] = None
+    name: str = Field(..., description="Имя колонки")
+    data_type: str = Field(..., description="SQL-тип")
+    enum_values: Optional[list[str]] = Field(
+        default=None,
+        description="Допустимые значения для enum-типов",
+    )
 
 
 class TableSchema(BaseModel):
-    name: str
-    columns: list[ColumnInfo]
+    name: str = Field(..., description="Имя таблицы в public")
+    columns: list[ColumnInfo] = Field(default_factory=list, description="Колонки")
 
 
 class SchemaResponse(BaseModel):
-    tables: list[TableSchema]
-    cached: bool = False
+    tables: list[TableSchema] = Field(default_factory=list, description="Таблицы public")
+    cached: bool = Field(False, description="True если ответ из кэша analytics-service")
 
 
 class GlossaryMatchItem(BaseModel):
@@ -61,16 +64,31 @@ class GlossaryMatchItem(BaseModel):
 
 
 class QueryQualityRequest(BaseModel):
-    question: str = Field(..., min_length=1)
-    sql: Optional[str] = None
-    interpretation_warnings: Optional[list[str]] = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "question": "Топ клиентов по выручке",
+                "sql": "SELECT customer_id, SUM(amount) FROM orders GROUP BY 1",
+                "interpretation_warnings": ["не указан период"],
+            },
+        },
+    )
+    question: str = Field(..., min_length=1, description="Формулировка вопроса")
+    sql: Optional[str] = Field(default=None, description="Сгенерированный SQL (опционально)")
+    interpretation_warnings: Optional[list[str]] = Field(
+        default=None,
+        description="Предупреждения из interpret",
+    )
 
 
 class QueryQualityResponse(BaseModel):
-    summary: str = ""
-    risks: list[str] = Field(default_factory=list)
-    suggested_questions: list[str] = Field(default_factory=list)
-    suggested_sql_hints: str = ""
+    summary: str = Field("", description="Краткий вывод LLM")
+    risks: list[str] = Field(default_factory=list, description="Риски или неясности")
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        description="Уточняющие вопросы",
+    )
+    suggested_sql_hints: str = Field("", description="Подсказки по формулировке/SQL")
 
 
 class InterpretQuestionResponse(BaseModel):
@@ -152,6 +170,12 @@ class NlChatMessageApi(BaseModel):
 
 class NlChatTranscriptResponse(BaseModel):
     items: list[NlChatMessageApi]
+
+
+class NlChatSyncAck(BaseModel):
+    """Ответ внутреннего sync-эндпоинта."""
+
+    ok: Literal[True] = Field(True, description="Сообщение принято и записано")
 
 
 class NlInternalChatSyncBody(BaseModel):

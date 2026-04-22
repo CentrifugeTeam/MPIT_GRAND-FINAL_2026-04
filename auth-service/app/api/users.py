@@ -1,9 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
 from app.database import get_db
-from app.schemas import UserCreate, UserResponse, UserUpdate, UserListResponse, RoleUpdate, TokenResponse
+from app.schemas import (
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+    UserListResponse,
+    RoleUpdate,
+    TokenResponse,
+    MessageResponse,
+)
 from app.crud import user_crud
 from app.utils.auth import verify_token, create_access_token, create_refresh_token
 from app.core.config import get_settings
@@ -29,9 +37,8 @@ def require_admin(current_user: dict = Depends(get_current_user)):
         )
     return current_user
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, summary="Создать пользователя", description="Публичная регистрация; email уникален.")
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    """Создать пользователя"""
     existing_user = user_crud.get_user_by_email(db, user.email)
     if existing_user:
         raise HTTPException(
@@ -48,9 +55,8 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
             detail=str(e)
         )
 
-@router.get("/{user_uuid}", response_model=UserResponse)
+@router.get("/{user_uuid}", response_model=UserResponse, summary="Пользователь по UUID")
 async def get_user(user_uuid: str, db: Session = Depends(get_db)):
-    """Получить пользователя по UUID"""
     user = user_crud.get_user_by_uuid(db, user_uuid)
     if not user:
         raise HTTPException(
@@ -59,9 +65,8 @@ async def get_user(user_uuid: str, db: Session = Depends(get_db)):
         )
     return UserResponse.model_validate(user, from_attributes=True)
 
-@router.get("/email/{email}", response_model=UserResponse)
+@router.get("/email/{email}", response_model=UserResponse, summary="Пользователь по email")
 async def get_user_by_email(email: str, db: Session = Depends(get_db)):
-    """Получить пользователя по email"""
     user = user_crud.get_user_by_email(db, email)
     if not user:
         raise HTTPException(
@@ -70,26 +75,29 @@ async def get_user_by_email(email: str, db: Session = Depends(get_db)):
         )
     return UserResponse.model_validate(user, from_attributes=True)
 
-@router.get("/", response_model=UserListResponse)
+@router.get("/", response_model=UserListResponse, summary="Список пользователей", description="Пагинация skip/limit.")
 async def get_all_users(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+    skip: int = Query(0, ge=0, description="Пропустить записей с начала"),
+    limit: int = Query(100, ge=1, le=500, description="Максимум записей"),
+    db: Session = Depends(get_db),
 ):
-    """Получить всех пользователей"""
     users = user_crud.get_all_users(db, skip=skip, limit=limit)
     return UserListResponse(
         users=[UserResponse.model_validate(user, from_attributes=True) for user in users]
     )
 
-@router.put("/{user_uuid}", response_model=UserResponse)
+@router.put(
+    "/{user_uuid}",
+    response_model=UserResponse,
+    summary="Обновить пользователя по UUID",
+    description="Только ADMIN.",
+)
 async def update_user(
     user_uuid: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_admin),
 ):
-    """Обновить пользователя (только для админов)"""
     user = user_crud.update_user(db, user_uuid, user_update)
     if not user:
         raise HTTPException(
@@ -98,14 +106,18 @@ async def update_user(
         )
     return UserResponse.model_validate(user, from_attributes=True)
 
-@router.put("/email/{email}", response_model=UserResponse)
+@router.put(
+    "/email/{email}",
+    response_model=UserResponse,
+    summary="Обновить пользователя по email",
+    description="Свой email или ADMIN.",
+)
 async def update_user_by_email(
     email: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """Обновить пользователя по email (только свои данные)"""
     if current_user.get("email") != email and current_user.get("role") != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -120,24 +132,28 @@ async def update_user_by_email(
         )
     return UserResponse.model_validate(user, from_attributes=True)
 
-@router.post("/{user_uuid}/verify")
+@router.post("/{user_uuid}/verify", response_model=MessageResponse, summary="Подтвердить email пользователя")
 async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
-    """Подтвердить email пользователя"""
     user = user_crud.verify_user(db, user_uuid)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return {"message": "User verified successfully"}
+    return MessageResponse(message="User verified successfully")
 
-@router.put("/{user_uuid}/role", response_model=TokenResponse)
+
+@router.put(
+    "/{user_uuid}/role",
+    response_model=TokenResponse,
+    summary="Сменить роль",
+    description="Новая пара access+refresh.",
+)
 async def update_user_role(
     user_uuid: str,
     role_update: RoleUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """Изменить роль пользователя и вернуть новый JWT токен"""
     try:
         from uuid import UUID
         UUID(user_uuid)

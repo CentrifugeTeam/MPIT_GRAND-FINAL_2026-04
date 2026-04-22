@@ -14,7 +14,12 @@ from app.api.users import require_admin
 router = APIRouter()
 
 
-@router.get("/", response_model=RoleDefinitionListResponse)
+@router.get(
+    "/",
+    response_model=RoleDefinitionListResponse,
+    summary="Список ролей",
+    description="Только ADMIN.",
+)
 async def list_roles(
     db: Session = Depends(get_db),
     _admin: dict = Depends(require_admin),
@@ -25,7 +30,13 @@ async def list_roles(
     )
 
 
-@router.post("/", response_model=RoleDefinitionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=RoleDefinitionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать роль",
+    description="is_system=false; ключ уникален.",
+)
 async def create_role(
     body: RoleDefinitionCreate,
     db: Session = Depends(get_db),
@@ -46,7 +57,12 @@ async def create_role(
     return RoleDefinitionResponse.model_validate(row, from_attributes=True)
 
 
-@router.get("/{role_key}", response_model=RoleDefinitionResponse)
+@router.get(
+    "/{role_key}",
+    response_model=RoleDefinitionResponse,
+    summary="Роль по ключу",
+    description="Только ADMIN.",
+)
 async def get_role(
     role_key: str,
     db: Session = Depends(get_db),
@@ -58,7 +74,12 @@ async def get_role(
     return RoleDefinitionResponse.model_validate(row, from_attributes=True)
 
 
-@router.patch("/{role_key}", response_model=RoleDefinitionResponse)
+@router.patch(
+    "/{role_key}",
+    response_model=RoleDefinitionResponse,
+    summary="Изменить title/description роли",
+    description="Системные роли ограничены в role_crud.",
+)
 async def patch_role(
     role_key: str,
     body: RoleDefinitionUpdate,
@@ -76,7 +97,12 @@ async def patch_role(
     return RoleDefinitionResponse.model_validate(row, from_attributes=True)
 
 
-@router.delete("/{role_key}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{role_key}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить роль",
+    description="Нельзя удалить системную или роль, назначенную пользователям.",
+)
 async def delete_role(
     role_key: str,
     db: Session = Depends(get_db),

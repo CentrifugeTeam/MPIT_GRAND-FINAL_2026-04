@@ -70,7 +70,12 @@ class DefaultSourceBody(BaseModel):
     key: str = Field(..., min_length=1, max_length=64)
 
 
-@router.get("/data-sources", response_model=DataSourcesListResponse)
+@router.get(
+    "/data-sources",
+    response_model=DataSourcesListResponse,
+    summary="Список источников (без DSN)",
+    description="Публичные поля и ключ источника по умолчанию.",
+)
 async def list_data_sources():
     from app.services.data_sources_store import get_default_source_key
 
@@ -78,12 +83,18 @@ async def list_data_sources():
     return DataSourcesListResponse(items=items, default_key=get_default_source_key())
 
 
-@router.post("/data-sources", response_model=DataSourcePublic)
+@router.post(
+    "/data-sources",
+    response_model=DataSourcePublic,
+    summary="Добавить источник",
+    description="Если задан ANALYTICS_SOURCES_WRITE_TOKEN — заголовок обязателен и должен совпадать.",
+)
 async def add_data_source(
     body: DataSourceCreateBody,
     x_analytics_sources_write_token: Optional[str] = Header(
         None,
         alias="X-Analytics-Sources-Write-Token",
+        description="Токен записи источников (если включён в настройках)",
     ),
 ):
     _require_write_token(x_analytics_sources_write_token)
@@ -102,13 +113,18 @@ async def add_data_source(
     return DataSourcePublic(**row)
 
 
-@router.patch("/data-sources/{source_key}", response_model=DataSourcePublic)
+@router.patch(
+    "/data-sources/{source_key}",
+    response_model=DataSourcePublic,
+    summary="Изменить источник",
+)
 async def patch_data_source(
     source_key: str,
     body: DataSourcePatchBody,
     x_analytics_sources_write_token: Optional[str] = Header(
         None,
         alias="X-Analytics-Sources-Write-Token",
+        description="Токен записи источников (если включён)",
     ),
 ):
     _require_write_token(x_analytics_sources_write_token)
@@ -133,12 +149,17 @@ async def patch_data_source(
     return DataSourcePublic(**row)
 
 
-@router.delete("/data-sources/{source_key}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/data-sources/{source_key}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить источник",
+)
 async def remove_data_source(
     source_key: str,
     x_analytics_sources_write_token: Optional[str] = Header(
         None,
         alias="X-Analytics-Sources-Write-Token",
+        description="Токен записи источников (если включён)",
     ),
 ):
     _require_write_token(x_analytics_sources_write_token)
@@ -155,12 +176,17 @@ async def remove_data_source(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.put("/data-sources/default", status_code=status.HTTP_204_NO_CONTENT)
+@router.put(
+    "/data-sources/default",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Назначить источник по умолчанию",
+)
 async def put_default_data_source(
     body: DefaultSourceBody,
     x_analytics_sources_write_token: Optional[str] = Header(
         None,
         alias="X-Analytics-Sources-Write-Token",
+        description="Токен записи источников (если включён)",
     ),
 ):
     _require_write_token(x_analytics_sources_write_token)

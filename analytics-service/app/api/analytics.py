@@ -12,6 +12,7 @@ from app.schemas.analytics import (
     GlossaryMatchItem,
     InterpretQuestionResponse,
     NlChatMessageApi,
+    NlChatSyncAck,
     NlChatTitlePatch,
     NlChatTranscriptResponse,
     NlInternalChatSyncBody,
@@ -67,14 +68,23 @@ def _slim_assistant_payload_for_db(p: dict) -> dict:
     return out
 
 
-@router.get("/schema", response_model=SchemaResponse)
+@router.get(
+    "/schema",
+    response_model=SchemaResponse,
+    summary="Схема public выбранного источника",
+    description="С учётом политики доступа (колонки могут быть отфильтрованы). ADMIN — полная схема.",
+)
 async def get_schema(
     refresh: bool = Query(False, description="Обновить кэш схемы из БД"),
     source_key: str | None = Query(
         None,
         description="Ключ источника из /data-sources; по умолчанию — default в БД",
     ),
-    x_user_role: str | None = Header(None, alias="X-User-Role"),
+    x_user_role: str | None = Header(
+        None,
+        alias="X-User-Role",
+        description="Роль пользователя (обычно проставляет BFF из JWT)",
+    ),
 ):
     from app.services.analytics_db import get_analytics_engine
     from app.db.platform_session import PlatformSessionLocal
@@ -122,15 +132,20 @@ async def get_schema(
     return SchemaResponse(tables=tables_out, cached=False)
 
 
-@router.post("/interpret-question", response_model=InterpretQuestionResponse)
+@router.post(
+    "/interpret-question",
+    response_model=InterpretQuestionResponse,
+    summary="Разбор вопроса и глоссарий (без SQL)",
+    description="Без постановки sql_job. Требуется политика доступа к источнику для роли.",
+)
 async def interpret_question_route(
     body: QuestionRequest,
-    x_user_role: str | None = Header(None, alias="X-User-Role"),
+    x_user_role: str | None = Header(
+        None,
+        alias="X-User-Role",
+        description="Роль для проверки analytics_access_policies",
+    ),
 ):
-    """
-    Разбор вопроса и глоссарий для NL-чата (без sql_job).
-    Используется фронтом перед отправкой chat_message.
-    """
     from app.db.platform_session import PlatformSessionLocal
 
     settings = get_settings()
@@ -168,10 +183,19 @@ async def interpret_question_route(
     )
 
 
-@router.post("/query-quality", response_model=QueryQualityResponse)
+@router.post(
+    "/query-quality",
+    response_model=QueryQualityResponse,
+    summary="LLM-оценка качества вопроса/SQL",
+    description="Без выполнения SQL; текст маскируется от секретов.",
+)
 async def query_quality_route(
     body: QueryQualityRequest,
-    x_user_role: str | None = Header(None, alias="X-User-Role"),
+    x_user_role: str | None = Header(
+        None,
+        alias="X-User-Role",
+        description="Роль (зарезервировано для будущих лимитов)",
+    ),
 ):
     from app.services.query_quality_llm import analyze_query_quality
 
@@ -185,20 +209,30 @@ async def query_quality_route(
     return QueryQualityResponse(**out)
 
 
-@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/history",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить историю и чаты пользователя",
+    description="Очищает nl_sql_jobs и nl_chat для X-User-Id.",
+)
 async def delete_all_history_route(
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID пользователя"),
 ):
     delete_all_jobs_for_user(x_user_id)
     delete_all_sessions_for_user(x_user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/history", response_model=AnalyticsHistoryResponse)
+@router.get(
+    "/history",
+    response_model=AnalyticsHistoryResponse,
+    summary="Объединённая история",
+    description="SQL-задачи и NL-чаты одним списком.",
+)
 async def list_unified_history_route(
-    x_user_id: str = Header(..., alias="X-User-Id"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID пользователя"),
+    limit: int = Query(50, ge=1, le=200, description="Размер страницы"),
+    offset: int = Query(0, ge=0, description="Смещение"),
 ):
     rows, total = list_unified_history(x_user_id, limit=limit, offset=offset)
     return AnalyticsHistoryResponse(
@@ -207,10 +241,20 @@ async def list_unified_history_route(
     )
 
 
-@router.post("/internal/nl-chat-sync")
+@router.post(
+    "/internal/nl-chat-sync",
+    response_model=NlChatSyncAck,
+    summary="Внутренняя синхронизация сообщений NL-чата",
+    description="Только nl-orchestrator-worker с корректным X-Chat-Sync-Token.",
+    tags=["internal"],
+)
 async def internal_nl_chat_sync(
     body: NlInternalChatSyncBody,
-    x_chat_sync_token: str = Header("", alias="X-Chat-Sync-Token"),
+    x_chat_sync_token: str = Header(
+        "",
+        alias="X-Chat-Sync-Token",
+        description="Должен совпадать с INTERNAL_NL_CHAT_SYNC_TOKEN",
+    ),
 ):
     token = get_settings().INTERNAL_NL_CHAT_SYNC_TOKEN
     if not token or x_chat_sync_token != token:
@@ -229,13 +273,18 @@ async def internal_nl_chat_sync(
     elif body.action == "assistant_message":
         pl = _slim_assistant_payload_for_db(dict(body.payload))
         append_message(uid, cid, "assistant", pl, body.client_message_id)
-    return {"ok": True}
+    return NlChatSyncAck()
 
 
-@router.post("/chats", response_model=CreateNlChatResponse)
+@router.post(
+    "/chats",
+    response_model=CreateNlChatResponse,
+    summary="Создать пустой NL-чат",
+    description="Сессия для последующих сообщений через sync или прямой API.",
+)
 async def create_nl_chat_route(
     body: CreateNlChatBody | None = None,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     _ = body or CreateNlChatBody()
     cid = create_empty_session(x_user_id, chat_type="chat")
@@ -248,10 +297,15 @@ async def create_nl_chat_route(
     )
 
 
-@router.get("/chats/{conversation_id}/messages", response_model=NlChatTranscriptResponse)
+@router.get(
+    "/chats/{conversation_id}/messages",
+    response_model=NlChatTranscriptResponse,
+    summary="Сообщения чата",
+    description="404 если сессия не принадлежит пользователю.",
+)
 async def get_nl_chat_messages_route(
     conversation_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     cid = str(conversation_id)
     if get_session_for_user(x_user_id, cid) is None:
@@ -262,11 +316,15 @@ async def get_nl_chat_messages_route(
     )
 
 
-@router.patch("/chats/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch(
+    "/chats/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Переименовать чат",
+)
 async def patch_nl_chat_title_route(
     conversation_id: uuid.UUID,
     body: NlChatTitlePatch,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     ok = update_session_title(x_user_id, str(conversation_id), body.title)
     if not ok:
@@ -274,10 +332,14 @@ async def patch_nl_chat_title_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/chats/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/chats/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить чат",
+)
 async def delete_nl_chat_route(
     conversation_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     ok = delete_session(x_user_id, str(conversation_id))
     if not ok:
@@ -285,10 +347,14 @@ async def delete_nl_chat_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить задачу NL→SQL",
+)
 async def delete_job_route(
     job_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     ok = delete_job(job_id, x_user_id)
     if not ok:

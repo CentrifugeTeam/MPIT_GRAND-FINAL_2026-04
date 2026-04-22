@@ -19,11 +19,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Report Task Service",
-    description="Task scheduler + report run history for analytics reports.",
+    description="Планировщик отчётных задач и история прогонов (NL→SQL отчёты).",
     version="1.0.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "report-tasks", "description": "Задачи и прогоны; заголовок X-User-Id обязателен."},
+        {"name": "internal", "description": "Вызовы от nl-orchestrator / воркеров с internal token."},
+    ],
 )
 
 app.add_middleware(

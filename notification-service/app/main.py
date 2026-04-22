@@ -7,10 +7,13 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Notification Service",
-    description="Email Notification Service with RabbitMQ",
+    description="Уведомления и настройки; доставка email через RabbitMQ.",
     version="1.0.0",
     docs_url="/docs",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    openapi_tags=[
+        {"name": "notifications", "description": "CRUD уведомлений, настройки, постановка в очередь."},
+    ],
 )
 
 app.add_middleware(

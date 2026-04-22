@@ -144,12 +144,18 @@ class AnalyticsProxy:
             )
         return r.json()
 
-    async def create_nl_chat(self, user_id: str, user_role: str | None = None) -> dict[str, Any]:
+    async def create_nl_chat(
+        self,
+        user_id: str,
+        user_role: str | None = None,
+        json_body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 r = await client.post(
                     f"{self.base_url}/api/analytics/chats",
                     headers=self._user_headers(user_id, user_role),
+                    json=json_body if json_body is not None else {},
                 )
         except httpx.RequestError as e:
             raise HTTPException(
