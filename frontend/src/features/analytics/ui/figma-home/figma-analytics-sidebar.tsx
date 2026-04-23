@@ -12,6 +12,8 @@ import { FigmaSearchModal } from './figma-search-modal';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 import { FigmaSidebarHistorySection } from './figma-sidebar-history-section';
 import { FigmaSidebarPrimaryNav } from './figma-sidebar-primary-nav';
+import { FigmaSidebarProfileButton } from './figma-sidebar-profile-button';
+import { Logo } from '@/shared/ui/assets/icons';
 
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
@@ -77,13 +79,14 @@ export function FigmaAnalyticsSidebar({
                   paddingLeft: isOpen ? 8 : 0,
                 }}
               >
-                <div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3f3f46] to-[#18181b]'>
+                <Logo className='size-7' />
+                {/* <div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3f3f46] to-[#18181b]'>
                   <Icon
                     icon='mdi:account'
                     className='text-[#fcfcfc]'
                     width={18}
                   />
-                </div>
+                </div> */}
                 {isOpen && (
                   <button
                     type='button'
@@ -135,10 +138,11 @@ export function FigmaAnalyticsSidebar({
             )}
 
             <div
-              className='mt-auto flex w-full shrink-0 items-center pt-2'
+              className='mt-auto flex w-full shrink-0 items-center gap-2 pt-2'
               style={{
-                justifyContent: isOpen ? 'flex-start' : 'center',
+                justifyContent: isOpen ? 'space-between' : 'center',
                 padding: isOpen ? '0 8px' : '0',
+                flexDirection: isOpen ? 'row' : 'column',
               }}
             >
               {!isOpen && (
@@ -159,6 +163,10 @@ export function FigmaAnalyticsSidebar({
                   </button>
                 </FigmaSimpleTooltip>
               )}
+              <FigmaSidebarProfileButton
+                isOpen={isOpen}
+                t={t}
+              />
             </div>
           </div>
         </div>

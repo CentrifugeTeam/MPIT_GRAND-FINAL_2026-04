@@ -141,6 +141,9 @@
       "sourceModalCancel": "Отмена",
       "sourceModalClose": "Закрыть",
       "maxRowsShort": "Лимит строк",
+      "profileAria": "Профиль",
+      "profileSettings": "Настройки",
+      "profileLogout": "Выйти из аккаунта",
       "faq": {
         "users": {
           "label": "Данные о пользователях",

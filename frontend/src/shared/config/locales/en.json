@@ -141,6 +141,9 @@
       "sourceModalCancel": "Cancel",
       "sourceModalClose": "Close",
       "maxRowsShort": "Row limit",
+      "profileAria": "Profile",
+      "profileSettings": "Settings",
+      "profileLogout": "Log out",
       "faq": {
         "users": {
           "label": "User data",
