@@ -12,8 +12,6 @@ import {
   RadialBar,
   PolarRadiusAxis,
   Label,
-  ScatterChart,
-  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -45,7 +43,7 @@ const PALETTE = [
   "#3b82f6",
 ];
 
-const KINDS: VizKind[] = ["auto", "bar", "line", "area", "pie", "scatter"];
+const KINDS: VizKind[] = ["auto", "bar", "line", "area", "pie"];
 
 export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
   const { t } = useTranslation();
@@ -58,7 +56,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
   const chartData = useMemo(() => {
     if (!hasSeries) return null;
     try {
-      return buildChartData(mode === "area" ? "area" : mode === "pie" ? "pie" : mode === "scatter" ? "scatter" : kind, payload);
+      return buildChartData(mode === "area" ? "area" : mode === "pie" ? "pie" : kind, payload);
     } catch {
       return null;
     }
@@ -66,7 +64,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
 
   if (!hasSeries || !chartData) return null;
 
-  const { data, config, keys, total, scatterX, scatterY } = chartData;
+  const { data, config, keys, total } = chartData;
 
   const rotateLabels = data.some(
     (r) => typeof r.label === "string" && r.label.length > 12,
@@ -217,28 +215,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
           </RadialBarChart>
         )}
 
-        {mode === "scatter" && scatterX && scatterY && (
-          <ScatterChart margin={{ top: 8, right: 24, bottom: 24, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-            <XAxis
-              dataKey={scatterX}
-              name={scatterX}
-              type="number"
-              tick={{ fontSize: 11 }}
-              label={{ value: scatterX, position: "insideBottom", offset: -4, fontSize: 11 }}
-            />
-            <YAxis
-              dataKey={scatterY}
-              name={scatterY}
-              type="number"
-              tick={{ fontSize: 11 }}
-              width={44}
-              label={{ value: scatterY, angle: -90, position: "insideLeft", fontSize: 11 }}
-            />
-            <ChartTooltip cursor={{ strokeDasharray: "3 3" }} content={<ChartTooltipContent />} />
-            <Scatter data={data} fill={PALETTE[0]} />
-          </ScatterChart>
-        )}
+
       </ChartContainer>
 
       <p className="text-muted text-xs">{t("home.analytics.chartHint")}</p>

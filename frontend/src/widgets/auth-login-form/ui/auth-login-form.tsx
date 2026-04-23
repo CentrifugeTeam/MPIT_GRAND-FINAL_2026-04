@@ -176,7 +176,9 @@ export function AuthLoginForm() {
 
             <Button
               onPress={() => formMethod.handleSubmit(handleClick)()}
-              isDisabled={isPending}
+              isDisabled={
+                isPending || !rememberMe || !formMethod.formState.isValid
+              }
               className='bg-white text-black w-full h-[52px] rounded-2xl text-base font-medium'
               size='lg'
             >

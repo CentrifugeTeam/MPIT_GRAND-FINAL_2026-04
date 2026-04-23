@@ -217,7 +217,9 @@ export function AuthRegisterForm() {
 
             <Button
               onPress={() => void formMethod.handleSubmit(handleClick)()}
-              isDisabled={isPending}
+              isDisabled={
+                isPending || !confTerms || !formMethod.formState.isValid
+              }
               className='bg-white text-black w-full h-[52px] rounded-2xl text-base font-medium'
               size='lg'
             >

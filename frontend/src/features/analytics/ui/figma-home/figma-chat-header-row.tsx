@@ -114,26 +114,6 @@ export function FigmaChatHeaderRow({
           </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown.Root>
-      <FigmaSimpleTooltip
-        label={t('home.figma.newChatTooltip')}
-        side='bottom'
-      >
-        <button
-          type='button'
-          onClick={() => void onStartNewChat()}
-          className='relative flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/40 active:scale-[0.97]'
-        >
-          <Icon
-            icon='mdi:message-plus-outline'
-            className='text-[#fcfcfc]'
-            width={20}
-          />
-          <span
-            aria-hidden='true'
-            className='pointer-events-none absolute inset-0 rounded-[24px] border border-solid border-[#28282c]'
-          />
-        </button>
-      </FigmaSimpleTooltip>
     </div>
   );
 }
