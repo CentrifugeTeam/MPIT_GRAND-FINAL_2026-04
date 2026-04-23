@@ -66,7 +66,7 @@ export function ReportsDashboard() {
     useDataSources();
 
   return (
-    <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background py-4 pl-0 pr-4'>
+    <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0'>
       <div className='flex min-h-0 shrink-0 self-stretch'>
         <FigmaAnalyticsSidebar
           isOpen={sidebarOpen}
@@ -99,19 +99,19 @@ export function ReportsDashboard() {
       </div>
 
       <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
-        <section className='flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-background overflow-hidden'>
+        <section className='relative flex min-h-0 flex-1 flex-col rounded-2xl bg-background overflow-hidden py-4'>
           <div className='shrink-0 w-full max-w-[900px] mx-auto px-10 pt-10 pb-4'>
             <div className='flex items-center justify-between gap-4'>
               {!sidebarOpen && (
                 <button
                   type='button'
                   onClick={() => setSidebarOpen(true)}
-                  className='flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[12px] transition-all hover:bg-content2 active:scale-[0.97]'
+                  className='absolute top-5 left-5 flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/60 active:scale-[0.97]'
                   aria-label={p.t('home.figma.openSidebar')}
                 >
                   <Icon
                     icon='mdi:menu'
-                    width={18}
+                    width={22}
                     className='text-foreground'
                   />
                 </button>
@@ -178,7 +178,7 @@ export function ReportsDashboard() {
           selectedTaskId ? 'w-[512px]' : 'w-0'
         }`}
       >
-        <div className='flex h-full w-[512px] flex-col rounded-2xl border border-border bg-background'>
+        <div className='flex h-full w-[512px] flex-col border-l border-border bg-background'>
           <div className='flex shrink-0 items-center justify-end p-4'>
             <button
               type='button'
@@ -186,7 +186,11 @@ export function ReportsDashboard() {
               className='flex size-8 items-center justify-center rounded-xl transition-all hover:bg-content2 active:scale-[0.97]'
               aria-label='Закрыть'
             >
-              <Icon icon='mdi:close' width={18} className='text-foreground' />
+              <Icon
+                icon='mdi:close'
+                width={18}
+                className='text-foreground'
+              />
             </button>
           </div>
         </div>

@@ -27,7 +27,7 @@ export function FigmaChatHeaderRow({
   onStartNewChat,
 }: FigmaChatHeaderRowProps) {
   return (
-    <div className='absolute right-5 top-5 flex items-center gap-1.5'>
+    <div className='absolute right-5 top-5 flex items-center gap-1.5 z-50'>
       <FigmaSimpleTooltip
         label={
           nlConversationId

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 
 import {
   AnalyticsResults,
   FigmaAnalyticsMain,
   FigmaAnalyticsSidebar,
   useAnalyticsPanel,
-} from "@/features/analytics";
+} from '@/features/analytics';
 
 export function AnalyticsWorkspace() {
   const { id: routeChatId } = useParams<{ id?: string }>();
@@ -36,7 +36,7 @@ export function AnalyticsWorkspace() {
     if (historyBusy) return;
     const cid = routeChatId?.trim();
     if (!cid) return;
-    const matched = entries.find((e) => (e.conversationId ?? e.id) === cid);
+    const matched = entries.find(e => (e.conversationId ?? e.id) === cid);
     if (matched) selectEntry(matched.id);
   }, [entries, historyBusy, routeChatId, selectEntry]);
 
@@ -44,7 +44,7 @@ export function AnalyticsWorkspace() {
     if (!p.nlConversationId) return;
     const u = new URL(window.location.href);
     u.pathname = `/home/${p.nlConversationId}`;
-    u.search = "";
+    u.search = '';
     try {
       await navigator.clipboard.writeText(u.toString());
     } catch {
@@ -53,11 +53,11 @@ export function AnalyticsWorkspace() {
   }, [p.nlConversationId]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background py-4 pl-0 pr-4">
-      <div className="flex min-h-0 shrink-0 self-stretch">
+    <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0'>
+      <div className='flex min-h-0 shrink-0 self-stretch'>
         <FigmaAnalyticsSidebar
           isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen((v) => !v)}
+          onToggle={() => setSidebarOpen(v => !v)}
           entries={p.entries}
           titles={p.titles}
           activeId={p.activeId}
@@ -70,8 +70,8 @@ export function AnalyticsWorkspace() {
           onRenameFocus={p.setRenameFieldFocused}
           onCommitRename={p.commitRename}
           onCancelRename={p.cancelRename}
-          onSelectEntry={(entryId) => {
-            const entry = p.entries.find((e) => e.id === entryId);
+          onSelectEntry={entryId => {
+            const entry = p.entries.find(e => e.id === entryId);
             const chatId = entry?.conversationId;
             if (chatId) {
               void navigate(`/home/${chatId}`);
@@ -81,17 +81,17 @@ export function AnalyticsWorkspace() {
           }}
           onStartNewChat={() => {
             p.startNewChat();
-            void navigate("/home");
+            void navigate('/home');
           }}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
           onStartEditingRow={p.startEditingRow}
-          onDeleteHistoryEntry={(id) => void p.deleteHistoryEntry(id)}
+          onDeleteHistoryEntry={id => void p.deleteHistoryEntry(id)}
           t={p.t}
         />
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
         <FigmaAnalyticsMain
           t={p.t}
           sidebarOpen={sidebarOpen}
@@ -115,13 +115,13 @@ export function AnalyticsWorkspace() {
           onSend={() => void p.sendComposerMessage()}
           onStartNewChat={() => {
             p.startNewChat();
-            void navigate("/home");
+            void navigate('/home');
           }}
         />
 
         {p.result && (
-          <div className="shrink-0 border-t border-border">
-            <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
+          <div className='shrink-0 border-t border-border'>
+            <div className='max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4'>
               <AnalyticsResults
                 t={p.t}
                 result={p.result}
@@ -136,4 +136,3 @@ export function AnalyticsWorkspace() {
     </div>
   );
 }
-
