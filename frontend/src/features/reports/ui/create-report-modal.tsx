@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -15,19 +15,43 @@ import {
   TimeField,
 } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { useMutation } from '@tanstack/react-query';
-import type { DateValue, Time } from '@internationalized/date';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { CalendarDate, Time } from '@internationalized/date';
+import type { DateValue } from '@internationalized/date';
 
-import type { AnalyticsDataSourceItem } from '@/features/analytics/api/analytics-api';
+import type {
+  AnalyticsDataSourceItem,
+  ReportTask,
+} from '@/features/analytics/api/analytics-api';
 import {
   createReportTask,
+  patchReportTask,
   type CreateReportTaskBody,
   type ReportTaskScheduleType,
 } from '@/features/analytics/api/analytics-api';
 
+/* ------------------------------------------------------------------ */
+/* Types & helpers                                                      */
+/* ------------------------------------------------------------------ */
+
 type Props = {
   dataSources?: AnalyticsDataSourceItem[];
   refetch: VoidFunction;
+  taskToEdit?: ReportTask | null;
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+};
+
+type FormValues = {
+  reportName: string;
+  query: string;
+  monthDay: number;
+  scheduleTab: ReportTaskScheduleType;
+  sourceKey: string;
+  time: Time | null;
+  dateOnce: DateValue | null;
+  dateYearly: DateValue | null;
+  weekday: string;
 };
 
 const fieldGroupCls =
@@ -43,60 +67,99 @@ const WEEKDAY_ISO: Record<string, number> = {
   sunday: 7,
 };
 
+const ISO_TO_WEEKDAY: Record<number, string> = Object.fromEntries(
+  Object.entries(WEEKDAY_ISO).map(([k, v]) => [v, k]),
+);
+
 function fmtTime(t: Time): string {
   return `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`;
 }
 
-export function CreateReportModal({ dataSources, refetch }: Props) {
-  const { t } = useTranslation();
+function parseTime(str: string | null | undefined): Time | null {
+  if (!str) return null;
+  const [h, m] = str.split(':').map(Number);
+  return new Time(h, m);
+}
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [reportName, setReportName] = useState('');
-  const [query, setQuery] = useState('');
-  const [monthDay, setMonthDay] = useState(1);
-  const [scheduleTab, setScheduleTab] =
-    useState<ReportTaskScheduleType>('once');
-  const [sourceKey, setSourceKey] = useState<string>('');
-  const [time, setTime] = useState<Time | null>(null);
-  const [dateOnce, setDateOnce] = useState<DateValue | null>(null);
-  const [dateYearly, setDateYearly] = useState<DateValue | null>(null);
-  const [weekday, setWeekday] = useState('monday');
+function taskToFormValues(task: ReportTask): Partial<FormValues> {
+  const values: Partial<FormValues> = {
+    reportName: task.title,
+    query: task.instruction,
+    sourceKey: task.analytics_source_key,
+    scheduleTab: task.schedule_type,
+    weekday:
+      task.weekly_day != null
+        ? (ISO_TO_WEEKDAY[task.weekly_day] ?? 'monday')
+        : 'monday',
+    monthDay: task.monthly_day ?? 1,
+  };
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: createReportTask,
-    onSuccess: () => {
-      resetAndClose();
-      refetch();
-    },
-  });
-
-  useEffect(() => {
-    if (!dataSources) {
-      return;
-    }
-    setSourceKey(dataSources[0].key);
-  }, [dataSources]);
-
-  function resetAndClose() {
-    setIsOpen(false);
-    setReportName('');
-    setQuery('');
-    setTime(null);
-    setDateOnce(null);
-    setDateYearly(null);
-    setWeekday('monday');
-    setMonthDay(1);
-    setScheduleTab('once');
+  if (task.schedule_type === 'once' && task.once_at) {
+    const d = new Date(task.once_at);
+    values.dateOnce = new CalendarDate(
+      d.getFullYear(),
+      d.getMonth() + 1,
+      d.getDate(),
+    );
+    values.time = new Time(d.getHours(), d.getMinutes());
+  } else {
+    values.time = parseTime(
+      task.daily_time ??
+        task.weekly_time ??
+        task.monthly_time ??
+        task.yearly_time,
+    );
   }
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') resetAndClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [isOpen]);
+  if (task.yearly_date_ddmm) {
+    const [dd, mm] = task.yearly_date_ddmm.split(':').map(Number);
+    values.dateYearly = new CalendarDate(new Date().getFullYear(), mm, dd);
+  }
+
+  return values;
+}
+
+/* ------------------------------------------------------------------ */
+/* ReportFormBody                                                       */
+/* ------------------------------------------------------------------ */
+
+type FormBodyProps = {
+  initialValues?: Partial<FormValues>;
+  dataSources?: AnalyticsDataSourceItem[];
+  taskToEditId?: string;
+  onSubmit: (body: CreateReportTaskBody) => void;
+  onClose: () => void;
+  isPending: boolean;
+};
+
+function ReportFormBody({
+  initialValues,
+  dataSources,
+  onSubmit,
+  onClose,
+  isPending,
+}: FormBodyProps) {
+  const { t } = useTranslation();
+
+  const [reportName, setReportName] = useState(
+    initialValues?.reportName ?? '',
+  );
+  const [query, setQuery] = useState(initialValues?.query ?? '');
+  const [monthDay, setMonthDay] = useState(initialValues?.monthDay ?? 1);
+  const [scheduleTab, setScheduleTab] = useState<ReportTaskScheduleType>(
+    initialValues?.scheduleTab ?? 'once',
+  );
+  const [sourceKey, setSourceKey] = useState(
+    initialValues?.sourceKey ?? dataSources?.[0]?.key ?? '',
+  );
+  const [time, setTime] = useState<Time | null>(initialValues?.time ?? null);
+  const [dateOnce, setDateOnce] = useState<DateValue | null>(
+    initialValues?.dateOnce ?? null,
+  );
+  const [dateYearly, setDateYearly] = useState<DateValue | null>(
+    initialValues?.dateYearly ?? null,
+  );
+  const [weekday, setWeekday] = useState(initialValues?.weekday ?? 'monday');
 
   function handleSubmit() {
     if (!reportName.trim() || !query.trim() || !sourceKey) return;
@@ -147,7 +210,7 @@ export function CreateReportModal({ dataSources, refetch }: Props) {
       }
     }
 
-    mutate({
+    onSubmit({
       title: reportName.trim(),
       instruction: query.trim(),
       analytics_source_key: sourceKey,
@@ -309,6 +372,344 @@ export function CreateReportModal({ dataSources, refetch }: Props) {
   }
 
   return (
+    <div className='flex flex-col gap-4 px-[17px] pb-[17px] pt-[9px]'>
+      {/* Title row */}
+      <div className='flex items-center gap-2 pl-1'>
+        <Input
+          value={reportName}
+          onChange={e => setReportName(e.target.value)}
+          placeholder={t('reports.modal.titlePlaceholder')}
+          aria-label={t('reports.modal.titlePlaceholder')}
+          className='min-w-0 flex-1 border-none bg-transparent text-lg font-medium text-foreground outline-none ring-0 placeholder:text-muted focus:outline-none focus:ring-0'
+        />
+        <Button
+          variant='ghost'
+          size='sm'
+          isIconOnly
+          aria-label={t('common.close')}
+          className='size-10 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-foreground'
+          onPress={onClose}
+        >
+          <Icon
+            icon='mdi:close'
+            width={16}
+          />
+        </Button>
+      </div>
+
+      {/* Schedule tabs */}
+      <Tabs
+        selectedKey={scheduleTab}
+        onSelectionChange={k => setScheduleTab(k as ReportTaskScheduleType)}
+        className='w-full'
+      >
+        <Tabs.ListContainer>
+          <Tabs.List
+            aria-label={t('reports.modal.tabsAriaLabel')}
+            className='w-full rounded-[28px] bg-zinc-800 py-1 gap-0.5'
+          >
+            {(
+              ['once', 'daily', 'weekly', 'monthly', 'yearly'] as const
+            ).map(key => (
+              <Tabs.Tab
+                key={key}
+                id={key}
+                className='rounded-[20px] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-zinc-400 data-[selected=true]:text-foreground'
+              >
+                {t(
+                  `reports.modal.tab${key.charAt(0).toUpperCase()}${key.slice(1)}`,
+                )}
+                <Tabs.Indicator className='rounded-[20px] bg-zinc-700 shadow-md' />
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs.ListContainer>
+
+        <Tabs.Panel
+          id='once'
+          className='flex flex-col gap-4 pt-4'
+        >
+          {dbSelect}
+          <div className='flex items-end gap-2'>
+            {timeField}
+            {datePicker(dateOnce, setDateOnce, 'report-date-once')}
+          </div>
+          {queryArea('report-query-once')}
+        </Tabs.Panel>
+
+        <Tabs.Panel
+          id='daily'
+          className='flex flex-col gap-4 pt-4'
+        >
+          {dbSelect}
+          <div className='flex items-end gap-2'>{timeField}</div>
+          {queryArea('report-query-daily')}
+        </Tabs.Panel>
+
+        <Tabs.Panel
+          id='weekly'
+          className='flex flex-col gap-4 pt-4'
+        >
+          {dbSelect}
+          <div className='flex items-end gap-2'>
+            {timeField}
+            <Select
+              className='w-44 shrink-0'
+              selectedKey={weekday}
+              onSelectionChange={k => setWeekday(String(k))}
+            >
+              <Label className='mb-1 block text-sm font-medium text-foreground'>
+                {t('reports.modal.weekdayLabel')}
+              </Label>
+              <Select.Trigger className='h-9 w-full rounded-xl border-0 bg-zinc-900 px-3 ring-0 outline-none focus:ring-0 focus:outline-none'>
+                <Select.Value className='text-sm text-foreground' />
+                <Select.Indicator />
+              </Select.Trigger>
+              <Select.Popover>
+                <ListBox>
+                  {(
+                    [
+                      'monday',
+                      'tuesday',
+                      'wednesday',
+                      'thursday',
+                      'friday',
+                      'saturday',
+                      'sunday',
+                    ] as const
+                  ).map(day => (
+                    <ListBox.Item
+                      key={day}
+                      id={day}
+                      textValue={t(`reports.modal.weekdays.${day}`)}
+                    >
+                      {t(`reports.modal.weekdays.${day}`)}
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  ))}
+                </ListBox>
+              </Select.Popover>
+            </Select>
+          </div>
+          {queryArea('report-query-weekly')}
+        </Tabs.Panel>
+
+        <Tabs.Panel
+          id='monthly'
+          className='flex flex-col gap-4 pt-4'
+        >
+          {dbSelect}
+          <div className='flex items-end gap-2'>
+            {timeField}
+            <div className='flex w-44 shrink-0 flex-col gap-1'>
+              <div className='mb-1 flex items-center gap-1'>
+                <Label className='text-sm font-medium text-foreground'>
+                  {t('reports.modal.dayOfMonthLabel')}
+                </Label>
+                <span title={t('reports.modal.dayOfMonthTooltip')}>
+                  <Icon
+                    icon='mdi:information-outline'
+                    width={12}
+                    className='text-zinc-400'
+                  />
+                </span>
+              </div>
+              <div className={fieldGroupCls}>
+                <input
+                  type='number'
+                  min={1}
+                  max={31}
+                  value={monthDay}
+                  onChange={e =>
+                    setMonthDay(
+                      Math.max(1, Math.min(31, Number(e.target.value))),
+                    )
+                  }
+                  className='flex-1 bg-transparent px-3 text-sm text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+                />
+                <div className='flex h-9 w-8 shrink-0 flex-col items-center justify-center text-zinc-400'>
+                  <button
+                    type='button'
+                    tabIndex={-1}
+                    onClick={() => setMonthDay(d => Math.min(31, d + 1))}
+                    className='flex flex-1 w-full items-center justify-center hover:text-foreground'
+                  >
+                    <Icon
+                      icon='mdi:chevron-up'
+                      width={12}
+                    />
+                  </button>
+                  <button
+                    type='button'
+                    tabIndex={-1}
+                    onClick={() => setMonthDay(d => Math.max(1, d - 1))}
+                    className='flex flex-1 w-full items-center justify-center hover:text-foreground'
+                  >
+                    <Icon
+                      icon='mdi:chevron-down'
+                      width={12}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {queryArea('report-query-monthly')}
+        </Tabs.Panel>
+
+        <Tabs.Panel
+          id='yearly'
+          className='flex flex-col gap-4 pt-4'
+        >
+          {dbSelect}
+          <div className='flex items-end gap-2'>
+            {timeField}
+            {datePicker(dateYearly, setDateYearly, 'report-date-yearly')}
+          </div>
+          {queryArea('report-query-yearly')}
+        </Tabs.Panel>
+      </Tabs>
+
+      {/* Footer */}
+      <div className='flex justify-end'>
+        <Button
+          className='bg-foreground font-medium text-background'
+          isPending={isPending}
+          isDisabled={isPending}
+          onPress={handleSubmit}
+        >
+          {t('reports.modal.submitButton')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* CreateReportModal                                                    */
+/* ------------------------------------------------------------------ */
+
+export function CreateReportModal({
+  dataSources,
+  refetch,
+  taskToEdit,
+  externalOpen,
+  onExternalClose,
+}: Props) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const isControlled = externalOpen !== undefined;
+  const [isOpen, setIsOpen] = useState(false);
+  const open = isControlled ? (externalOpen ?? false) : isOpen;
+
+  const createMutation = useMutation({
+    mutationFn: createReportTask,
+    onSuccess: () => {
+      handleClose();
+      refetch();
+    },
+  });
+
+  const patchMutation = useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: Partial<CreateReportTaskBody>;
+    }) => patchReportTask(id, body),
+    onSuccess: () => {
+      if (taskToEdit) {
+        void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+        void queryClient.invalidateQueries({
+          queryKey: ['report-task', taskToEdit.id],
+        });
+      }
+      handleClose();
+      refetch();
+    },
+  });
+
+  const isPending = createMutation.isPending || patchMutation.isPending;
+
+  const handleClose = useCallback(() => {
+    if (isControlled) {
+      onExternalClose?.();
+    } else {
+      setIsOpen(false);
+    }
+  }, [isControlled, onExternalClose]);
+
+  function handleSubmit(body: CreateReportTaskBody) {
+    if (taskToEdit) {
+      patchMutation.mutate({ id: taskToEdit.id, body });
+    } else {
+      createMutation.mutate(body);
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, handleClose]);
+
+  const initialValues = taskToEdit ? taskToFormValues(taskToEdit) : undefined;
+  const formKey = taskToEdit ? taskToEdit.id : 'create';
+
+  const modalContent = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className='fixed inset-0 z-100 flex items-center justify-center'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div
+            className='absolute inset-0'
+            style={{
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={handleClose}
+          />
+          <motion.div
+            className='relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950'
+            initial={{ opacity: 0, scale: 1.05, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+          >
+            <ReportFormBody
+              key={formKey}
+              initialValues={initialValues}
+              dataSources={dataSources}
+              taskToEditId={taskToEdit?.id}
+              onSubmit={handleSubmit}
+              onClose={handleClose}
+              isPending={isPending}
+            />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  if (isControlled) {
+    return modalContent;
+  }
+
+  return (
     <>
       <Button
         variant='outline'
@@ -321,273 +722,7 @@ export function CreateReportModal({ dataSources, refetch }: Props) {
         />
         {t('reports.addReport')}
       </Button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className='fixed inset-0 z-100 flex items-center justify-center'
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.div
-              className='absolute inset-0'
-              style={{
-                background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(4px)',
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              onClick={resetAndClose}
-            />
-            <motion.div
-              className='relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950'
-              initial={{ opacity: 0, scale: 1.05, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-            >
-              <div className='flex flex-col gap-4 px-[17px] pb-[17px] pt-[9px]'>
-                {/* Title row */}
-                <div className='flex items-center gap-2 pl-1'>
-                  <Input
-                    value={reportName}
-                    onChange={e => setReportName(e.target.value)}
-                    placeholder={t('reports.modal.titlePlaceholder')}
-                    aria-label={t('reports.modal.titlePlaceholder')}
-                    className='min-w-0 flex-1 border-none bg-transparent text-lg font-medium text-foreground outline-none ring-0 placeholder:text-muted focus:outline-none focus:ring-0'
-                  />
-                  <Button
-                    variant='ghost'
-                    size='sm'
-                    isIconOnly
-                    aria-label={t('common.close')}
-                    className='size-10 shrink-0 text-zinc-400 hover:bg-zinc-800 hover:text-foreground'
-                    onPress={resetAndClose}
-                  >
-                    <Icon
-                      icon='mdi:close'
-                      width={16}
-                    />
-                  </Button>
-                </div>
-
-                {/* Schedule tabs */}
-                <Tabs
-                  selectedKey={scheduleTab}
-                  onSelectionChange={k =>
-                    setScheduleTab(k as ReportTaskScheduleType)
-                  }
-                  className='w-full'
-                >
-                  <Tabs.ListContainer>
-                    <Tabs.List
-                      aria-label={t('reports.modal.tabsAriaLabel')}
-                      className='w-full rounded-[28px] bg-zinc-800 py-1 gap-0.5'
-                    >
-                      {(
-                        [
-                          'once',
-                          'daily',
-                          'weekly',
-                          'monthly',
-                          'yearly',
-                        ] as const
-                      ).map(key => (
-                        <Tabs.Tab
-                          key={key}
-                          id={key}
-                          className='rounded-[20px] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-zinc-400 data-[selected=true]:text-foreground'
-                        >
-                          {t(
-                            `reports.modal.tab${key.charAt(0).toUpperCase()}${key.slice(1)}`,
-                          )}
-                          <Tabs.Indicator className='rounded-[20px] bg-zinc-700 shadow-md' />
-                        </Tabs.Tab>
-                      ))}
-                    </Tabs.List>
-                  </Tabs.ListContainer>
-
-                  {/* Once */}
-                  <Tabs.Panel
-                    id='once'
-                    className='flex flex-col gap-4 pt-4'
-                  >
-                    {dbSelect}
-                    <div className='flex items-end gap-2'>
-                      {timeField}
-                      {datePicker(dateOnce, setDateOnce, 'report-date-once')}
-                    </div>
-                    {queryArea('report-query-once')}
-                  </Tabs.Panel>
-
-                  {/* Daily */}
-                  <Tabs.Panel
-                    id='daily'
-                    className='flex flex-col gap-4 pt-4'
-                  >
-                    {dbSelect}
-                    <div className='flex items-end gap-2'>{timeField}</div>
-                    {queryArea('report-query-daily')}
-                  </Tabs.Panel>
-
-                  {/* Weekly */}
-                  <Tabs.Panel
-                    id='weekly'
-                    className='flex flex-col gap-4 pt-4'
-                  >
-                    {dbSelect}
-                    <div className='flex items-end gap-2'>
-                      {timeField}
-                      <Select
-                        className='w-44 shrink-0'
-                        selectedKey={weekday}
-                        onSelectionChange={k => setWeekday(String(k))}
-                      >
-                        <Label className='mb-1 block text-sm font-medium text-foreground'>
-                          {t('reports.modal.weekdayLabel')}
-                        </Label>
-                        <Select.Trigger className='h-9 w-full rounded-xl border-0 bg-zinc-900 px-3 ring-0 outline-none focus:ring-0 focus:outline-none'>
-                          <Select.Value className='text-sm text-foreground' />
-                          <Select.Indicator />
-                        </Select.Trigger>
-                        <Select.Popover>
-                          <ListBox>
-                            {(
-                              [
-                                'monday',
-                                'tuesday',
-                                'wednesday',
-                                'thursday',
-                                'friday',
-                                'saturday',
-                                'sunday',
-                              ] as const
-                            ).map(day => (
-                              <ListBox.Item
-                                key={day}
-                                id={day}
-                                textValue={t(`reports.modal.weekdays.${day}`)}
-                              >
-                                {t(`reports.modal.weekdays.${day}`)}
-                                <ListBox.ItemIndicator />
-                              </ListBox.Item>
-                            ))}
-                          </ListBox>
-                        </Select.Popover>
-                      </Select>
-                    </div>
-                    {queryArea('report-query-weekly')}
-                  </Tabs.Panel>
-
-                  {/* Monthly */}
-                  <Tabs.Panel
-                    id='monthly'
-                    className='flex flex-col gap-4 pt-4'
-                  >
-                    {dbSelect}
-                    <div className='flex items-end gap-2'>
-                      {timeField}
-                      <div className='flex w-44 shrink-0 flex-col gap-1'>
-                        <div className='mb-1 flex items-center gap-1'>
-                          <Label className='text-sm font-medium text-foreground'>
-                            {t('reports.modal.dayOfMonthLabel')}
-                          </Label>
-                          <span title={t('reports.modal.dayOfMonthTooltip')}>
-                            <Icon
-                              icon='mdi:information-outline'
-                              width={12}
-                              className='text-zinc-400'
-                            />
-                          </span>
-                        </div>
-                        <div className={fieldGroupCls}>
-                          <input
-                            type='number'
-                            min={1}
-                            max={31}
-                            value={monthDay}
-                            onChange={e =>
-                              setMonthDay(
-                                Math.max(
-                                  1,
-                                  Math.min(31, Number(e.target.value)),
-                                ),
-                              )
-                            }
-                            className='flex-1 bg-transparent px-3 text-sm text-foreground outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
-                          />
-                          <div className='flex h-9 w-8 shrink-0 flex-col items-center justify-center text-zinc-400'>
-                            <button
-                              type='button'
-                              tabIndex={-1}
-                              onClick={() =>
-                                setMonthDay(d => Math.min(31, d + 1))
-                              }
-                              className='flex flex-1 w-full items-center justify-center hover:text-foreground'
-                            >
-                              <Icon
-                                icon='mdi:chevron-up'
-                                width={12}
-                              />
-                            </button>
-                            <button
-                              type='button'
-                              tabIndex={-1}
-                              onClick={() =>
-                                setMonthDay(d => Math.max(1, d - 1))
-                              }
-                              className='flex flex-1 w-full items-center justify-center hover:text-foreground'
-                            >
-                              <Icon
-                                icon='mdi:chevron-down'
-                                width={12}
-                              />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    {queryArea('report-query-monthly')}
-                  </Tabs.Panel>
-
-                  {/* Yearly */}
-                  <Tabs.Panel
-                    id='yearly'
-                    className='flex flex-col gap-4 pt-4'
-                  >
-                    {dbSelect}
-                    <div className='flex items-end gap-2'>
-                      {timeField}
-                      {datePicker(
-                        dateYearly,
-                        setDateYearly,
-                        'report-date-yearly',
-                      )}
-                    </div>
-                    {queryArea('report-query-yearly')}
-                  </Tabs.Panel>
-                </Tabs>
-
-                {/* Footer */}
-                <div className='flex justify-end'>
-                  <Button
-                    className='bg-foreground font-medium text-background'
-                    isPending={isPending}
-                    isDisabled={isPending}
-                    onPress={handleSubmit}
-                  >
-                    {t('reports.modal.submitButton')}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {modalContent}
     </>
   );
 }
