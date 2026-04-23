@@ -56,7 +56,12 @@ export function ReportsDashboard() {
   const p = useAnalyticsPanel();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const { data, isLoading, isError, refetch } = useReportTasks();
+
+  const handleTaskClick = (id: string) => {
+    setSelectedTaskId(prev => (prev === id ? null : id));
+  };
   const { data: dataSources, isLoading: isLoadingDataSources } =
     useDataSources();
 
@@ -143,6 +148,7 @@ export function ReportsDashboard() {
                   {data.items.map(task => (
                     <ReportTaskItem
                       key={task.id}
+                      id={task.id}
                       title={task.title}
                       schedule={formatSchedule(task)}
                       description={task.instruction || undefined}
@@ -151,6 +157,8 @@ export function ReportsDashboard() {
                           ? new Date(task.last_run_at).toLocaleString()
                           : undefined
                       }
+                      isSelected={selectedTaskId === task.id}
+                      onClick={handleTaskClick}
                     />
                   ))}
                   {data.items.length === 0 && (
@@ -163,6 +171,25 @@ export function ReportsDashboard() {
             </div>
           </ScrollShadow>
         </section>
+      </div>
+
+      <div
+        className={`shrink-0 overflow-hidden transition-all duration-300 ease-in-out ${
+          selectedTaskId ? 'w-[512px]' : 'w-0'
+        }`}
+      >
+        <div className='flex h-full w-[512px] flex-col rounded-2xl border border-border bg-background'>
+          <div className='flex shrink-0 items-center justify-end p-4'>
+            <button
+              type='button'
+              onClick={() => setSelectedTaskId(null)}
+              className='flex size-8 items-center justify-center rounded-xl transition-all hover:bg-content2 active:scale-[0.97]'
+              aria-label='Закрыть'
+            >
+              <Icon icon='mdi:close' width={18} className='text-foreground' />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
