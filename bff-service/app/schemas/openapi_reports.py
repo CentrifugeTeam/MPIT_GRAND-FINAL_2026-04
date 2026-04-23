@@ -1,4 +1,5 @@
 # Синхронизировать с report-task-service/app/schemas/tasks.py (поля ответов API).
+# Шаблоны: report-task-service/app/schemas/templates.py (TaskTemplateApi / TaskTemplateListResponse).
 from __future__ import annotations
 
 from datetime import datetime
@@ -44,6 +45,31 @@ class TaskApi(BaseModel):
 
 class TaskListResponse(BaseModel):
     items: list[TaskApi]
+    total: int
+
+
+class TaskTemplateApi(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    instruction: str
+    analytics_source_key: str
+    schedule_type: ScheduleType
+    timezone: str
+    once_at: Optional[datetime] = None
+    daily_time: Optional[str] = None
+    weekly_day: Optional[int] = None
+    weekly_time: Optional[str] = None
+    monthly_day: Optional[int] = None
+    monthly_time: Optional[str] = None
+    yearly_date_ddmm: Optional[str] = None
+    yearly_time: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TaskTemplateListResponse(BaseModel):
+    items: list[TaskTemplateApi]
     total: int
 
 

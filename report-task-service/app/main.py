@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.tasks import router as tasks_router
+from app.api.templates import router as templates_router
 
 
 @asynccontextmanager
@@ -26,6 +27,10 @@ app = FastAPI(
     lifespan=lifespan,
     openapi_tags=[
         {"name": "report-tasks", "description": "Задачи и прогоны; заголовок X-User-Id обязателен."},
+        {
+            "name": "report-task-templates",
+            "description": "Шаблоны отчётных задач (пресеты расписания и текста); X-User-Id обязателен.",
+        },
         {"name": "internal", "description": "Вызовы от nl-orchestrator / воркеров с internal token."},
     ],
 )
@@ -39,6 +44,7 @@ app.add_middleware(
 )
 
 app.include_router(tasks_router, prefix="/api/reports", tags=["report-tasks"])
+app.include_router(templates_router, prefix="/api/reports", tags=["report-task-templates"])
 
 
 @app.get("/health")

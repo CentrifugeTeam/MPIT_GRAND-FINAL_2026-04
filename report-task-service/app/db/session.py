@@ -14,7 +14,7 @@ def platform_engine():
 
 def init_tables() -> None:
     from app.db.base import PlatformBase
-    from app.db.models import ReportRun, ReportTask  # noqa: F401
+    from app.db.models import ReportRun, ReportTask, ReportTaskTemplate  # noqa: F401
 
     PlatformBase.metadata.create_all(bind=_engine)
     _migrate_report_tasks_weekly_schema()

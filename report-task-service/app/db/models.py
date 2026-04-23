@@ -33,6 +33,28 @@ class ReportTask(PlatformBase):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ReportTaskTemplate(PlatformBase):
+    __tablename__ = "report_task_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    title = Column(String(500), nullable=False)
+    instruction = Column(Text, nullable=False)
+    analytics_source_key = Column(String(64), nullable=False)
+    schedule_type = Column(String(16), nullable=False)
+    once_at = Column(DateTime, nullable=True)
+    daily_time = Column(String(8), nullable=True)
+    weekly_day = Column(Integer, nullable=True)
+    weekly_time = Column(String(8), nullable=True)
+    monthly_day = Column(Integer, nullable=True)
+    monthly_time = Column(String(8), nullable=True)
+    yearly_date_ddmm = Column(String(5), nullable=True)
+    yearly_time = Column(String(8), nullable=True)
+    timezone = Column(String(64), nullable=False, default="UTC")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class ReportRun(PlatformBase):
     __tablename__ = "report_runs"
 

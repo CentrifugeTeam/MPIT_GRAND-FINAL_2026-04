@@ -54,7 +54,7 @@ app = FastAPI(
         },
         {
             "name": "report-tasks",
-            "description": "Расписания и прогоны отчётов (прокси report-task-service).",
+            "description": "Отчётные задачи, шаблоны, прогоны (прокси report-task-service; префикс /api/report-tasks).",
         },
         {
             "name": "notification",
@@ -80,7 +80,7 @@ app.add_middleware(RedisRateLimitMiddleware)
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(notification.router, prefix="/api/notification", tags=["notification"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
-app.include_router(report_tasks.router, prefix="/api/analytics", tags=["report-tasks"])
+app.include_router(report_tasks.router, prefix="/api/report-tasks", tags=["report-tasks"])
 app.include_router(websocket.router, prefix="/api/websocket", tags=["websocket"])
 
 
