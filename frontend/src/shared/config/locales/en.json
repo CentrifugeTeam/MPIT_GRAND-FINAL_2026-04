@@ -195,14 +195,18 @@
     "loadError": "Failed to load tasks",
     "detail": {
       "close": "Close",
+      "archive": "Archive",
       "edit": "Edit",
       "pause": "Pause",
+      "resume": "Resume",
       "generateReport": "Generate report",
       "noRuns": "No runs yet",
       "runFailed": "Failed",
       "runPending": "Pending",
       "runRunning": "Running",
-      "runDone": "Done"
+      "runDone": "Done",
+      "createTask": "Create task",
+      "moreActions": "More actions"
     },
     "modal": {
       "titlePlaceholder": "Enter report name...",

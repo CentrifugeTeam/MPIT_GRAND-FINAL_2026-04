@@ -195,14 +195,18 @@
     "loadError": "Ошибка загрузки задач",
     "detail": {
       "close": "Закрыть",
+      "archive": "Архивировать",
       "edit": "Редактировать",
       "pause": "Приостановить",
+      "resume": "Возобновить",
       "generateReport": "Сгенерировать отчёт",
       "noRuns": "Запуски отсутствуют",
       "runFailed": "Ошибка",
       "runPending": "Ожидает",
       "runRunning": "Выполняется",
-      "runDone": "Готово"
+      "runDone": "Готово",
+      "createTask": "Создать задачу",
+      "moreActions": "Ещё действия"
     },
     "modal": {
       "titlePlaceholder": "Введите название отчёта...",

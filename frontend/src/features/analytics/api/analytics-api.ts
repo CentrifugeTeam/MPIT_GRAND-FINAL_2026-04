@@ -1,4 +1,4 @@
-import { api } from "@/shared/api/axios";
+import { api } from '@/shared/api/axios';
 import {
   analyticsDataSourcesResponseSchema,
   analyticsHistoryResponseSchema,
@@ -6,7 +6,7 @@ import {
   interpretQuestionResponseSchema,
   nlChatMessagesResponseSchema,
   websocketTokenResponseSchema,
-} from "@/entities/analytics";
+} from '@/entities/analytics';
 
 export type GlossaryMatchApi = {
   id: string;
@@ -24,7 +24,7 @@ export type InterpretQuestionResponse = {
 };
 
 export type SqlJobHistoryRow = {
-  entry_kind: "sql_job";
+  entry_kind: 'sql_job';
   sort_at: string;
   job_id: string;
   user_id: string;
@@ -41,7 +41,7 @@ export type SqlJobHistoryRow = {
 };
 
 export type NlChatHistoryRow = {
-  entry_kind: "nl_chat";
+  entry_kind: 'nl_chat';
   sort_at: string;
   conversation_id: string;
   user_id: string;
@@ -82,14 +82,16 @@ export async function fetchInterpretQuestion(
   const sk = analyticsSourceKey?.trim();
   if (sk) body.analytics_source_key = sk;
   const { data } = await api.post<InterpretQuestionResponse>(
-    "/api/analytics/interpret-question",
+    '/api/analytics/interpret-question',
     body,
   );
   return interpretQuestionResponseSchema.parse(data);
 }
 
 export async function fetchWebSocketToken() {
-  const { data } = await api.post<WebSocketTokenResponse>("/api/websocket/token");
+  const { data } = await api.post<WebSocketTokenResponse>(
+    '/api/websocket/token',
+  );
   return websocketTokenResponseSchema.parse(data);
 }
 
@@ -105,14 +107,19 @@ export type AnalyticsDataSourcesResponse = {
 };
 
 export async function fetchAnalyticsDataSources() {
-  const { data } = await api.get<AnalyticsDataSourcesResponse>("/api/analytics/data-sources");
+  const { data } = await api.get<AnalyticsDataSourcesResponse>(
+    '/api/analytics/data-sources',
+  );
   return analyticsDataSourcesResponseSchema.parse(data);
 }
 
 export async function fetchAnalyticsHistory(limit = 50, offset = 0) {
-  const { data } = await api.get<AnalyticsHistoryResponse>("/api/analytics/history", {
-    params: { limit, offset },
-  });
+  const { data } = await api.get<AnalyticsHistoryResponse>(
+    '/api/analytics/history',
+    {
+      params: { limit, offset },
+    },
+  );
   return analyticsHistoryResponseSchema.parse(data);
 }
 
@@ -121,7 +128,7 @@ export async function deleteAnalyticsJob(jobId: string) {
 }
 
 export async function deleteAllAnalyticsHistory() {
-  await api.delete("/api/analytics/history");
+  await api.delete('/api/analytics/history');
 }
 
 export type CreateNlChatResponse = {
@@ -130,7 +137,7 @@ export type CreateNlChatResponse = {
 };
 
 export async function createNlAnalyticsChat() {
-  const { data } = await api.post<CreateNlChatResponse>("/api/analytics/chats");
+  const { data } = await api.post<CreateNlChatResponse>('/api/analytics/chats');
   return createNlChatResponseSchema.parse(data);
 }
 
@@ -159,11 +166,11 @@ export async function patchNlChatTitle(conversationId: string, title: string) {
 }
 
 export type ReportTaskScheduleType =
-  | "once"
-  | "daily"
-  | "weekly"
-  | "monthly"
-  | "yearly";
+  | 'once'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly';
 
 export type ReportTaskSchedule = {
   schedule_type: ReportTaskScheduleType;
@@ -201,6 +208,7 @@ export type ReportTask = {
   created_at: string;
   updated_at: string;
   last_report_sentence?: string | null;
+  reports: ReportRun[];
 };
 
 export type ReportTaskListResponse = {
@@ -212,7 +220,7 @@ export type ReportRun = {
   id: string;
   task_id: string | null;
   user_id: string;
-  status: "pending" | "running" | "done" | "failed";
+  status: 'pending' | 'running' | 'done' | 'failed';
   query_text: string;
   started_at: string | null;
   finished_at: string | null;
@@ -238,7 +246,7 @@ export type CreateReportTaskBody = {
 
 export type CreateReportBody = {
   task_id?: string | null;
-  status?: ReportRun["status"];
+  status?: ReportRun['status'];
   query_text: string;
   result_summary?: string | null;
   result_payload?: Record<string, unknown> | null;
@@ -246,18 +254,36 @@ export type CreateReportBody = {
 };
 
 export async function createReportTask(body: CreateReportTaskBody) {
-  const { data } = await api.post<ReportTask>("/api/analytics/tasks", body);
+  const { data } = await api.post<ReportTask>('/api/analytics/tasks', body);
   return data;
 }
 
 export async function fetchReportTasks(limit = 50, offset = 0) {
-  const { data } = await api.get<ReportTaskListResponse>("/api/analytics/tasks", {
-    params: { limit, offset },
-  });
+  const { data } = await api.get<ReportTaskListResponse>(
+    '/api/analytics/tasks',
+    {
+      params: { limit, offset },
+    },
+  );
   return data;
 }
 
-export async function patchReportTask(taskId: string, body: Partial<CreateReportTaskBody>) {
+export async function fetchReportTaskById(taskId: string) {
+  const { data } = await api.get<ReportTask>(`/api/analytics/tasks/${taskId}`);
+  return data;
+}
+
+export async function dispatchReportTask(taskId: string) {
+  const { data } = await api.post<ReportRun>(
+    `/api/analytics/tasks/${taskId}/dispatch`,
+  );
+  return data;
+}
+
+export async function patchReportTask(
+  taskId: string,
+  body: Partial<CreateReportTaskBody>,
+) {
   await api.post(`/api/analytics/tasks/${taskId}`, body);
 }
 
@@ -265,32 +291,32 @@ export async function deleteReportTask(taskId: string) {
   await api.delete(`/api/analytics/tasks/${taskId}`);
 }
 
-export async function fetchTaskReports(taskId: string, limit = 50, offset = 0) {
+export async function fetchReports(limit = 50, offset = 0) {
   const { data } = await api.get<ReportRunListResponse>(
-    `/api/analytics/tasks/${taskId}/reports`,
-    { params: { limit, offset } },
+    '/api/analytics/reports',
+    {
+      params: { limit, offset },
+    },
   );
   return data;
 }
 
-export async function fetchReports(limit = 50, offset = 0) {
-  const { data } = await api.get<ReportRunListResponse>("/api/analytics/reports", {
-    params: { limit, offset },
-  });
-  return data;
-}
-
 export async function createReport(body: CreateReportBody) {
-  const { data } = await api.post<ReportRun>("/api/analytics/reports", body);
+  const { data } = await api.post<ReportRun>('/api/analytics/reports', body);
   return data;
 }
 
 export async function fetchReportById(reportId: string) {
-  const { data } = await api.get<ReportRun>(`/api/analytics/reports/${reportId}`);
+  const { data } = await api.get<ReportRun>(
+    `/api/analytics/reports/${reportId}`,
+  );
   return data;
 }
 
-export async function patchReport(reportId: string, body: Partial<CreateReportBody>) {
+export async function patchReport(
+  reportId: string,
+  body: Partial<CreateReportBody>,
+) {
   await api.patch(`/api/analytics/reports/${reportId}`, body);
 }
 
