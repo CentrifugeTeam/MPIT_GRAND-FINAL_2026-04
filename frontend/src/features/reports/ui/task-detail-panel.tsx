@@ -49,7 +49,8 @@ function RunItem({ run, defaultExpanded = false }: RunItemProps) {
     !!run.result_summary ||
     !!run.result_payload;
 
-  const chartPayload = fullRun?.result_payload as ChartPayloadShape | null;
+  const resultPayload = fullRun?.result_payload as Record<string, unknown> | null;
+  const chartPayload = (resultPayload?.chart_payload ?? null) as ChartPayloadShape | null;
 
   return (
     <div

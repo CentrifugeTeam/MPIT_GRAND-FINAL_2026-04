@@ -86,7 +86,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         ))}
       </div>
 
-      <ChartContainer config={config} className="h-[360px] w-full min-w-0">
+      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[200px]' : 'h-[360px]'} w-full min-w-0`}>
         {mode === "bar" && (
           <BarChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
@@ -168,8 +168,9 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
           <RadialBarChart
             data={data}
             endAngle={180}
-            innerRadius={80}
-            outerRadius={130}
+            innerRadius={60}
+            outerRadius={100}
+            cy="65%"
           >
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
             <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
@@ -218,7 +219,6 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
 
       </ChartContainer>
 
-      <p className="text-muted text-xs">{t("home.analytics.chartHint")}</p>
     </div>
   );
 }
