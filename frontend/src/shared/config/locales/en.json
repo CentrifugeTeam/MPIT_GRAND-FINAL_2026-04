@@ -326,6 +326,7 @@
     "emailAddress": "Email Address",
     "emailPlaceholder": "name@example.com",
     "forgotPassword": "Forgot password?",
+    "rememberMe": "Remember me",
     "login": {
       "title": "Welcome back",
       "subtitle": "Sign in to access your account.",

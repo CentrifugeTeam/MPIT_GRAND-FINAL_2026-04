@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Icon } from '@iconify/react';
-import { Button, ErrorMessage, Input, Tabs } from '@heroui/react';
+import { Button, Checkbox, ErrorMessage, Input, Tabs } from '@heroui/react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ export function AuthRegisterForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [confTerms, setConfirmTerms] = useState(false);
 
   const formMethod = useForm<RegisterSchemaData>({
     resolver: zodResolver(registerSchema),
@@ -199,6 +200,21 @@ export function AuthRegisterForm() {
               />
             </div>
 
+            <div className='flex items-center justify-between w-full -mt-2'>
+              <Checkbox
+                isSelected={confTerms}
+                onChange={setConfirmTerms}
+                className='gap-3'
+              >
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <Checkbox.Content className='text-sm font-medium text-zinc-50'>
+                  {t('auth.terms')}
+                </Checkbox.Content>
+              </Checkbox>
+            </div>
+
             <Button
               onPress={() => void formMethod.handleSubmit(handleClick)()}
               isDisabled={isPending}
@@ -217,7 +233,7 @@ export function AuthRegisterForm() {
           </div>
         </div>
       </div>
-      <div className='flex-1 m-5 ml-0 bg-zinc-900 rounded-3xl' />
+      <div className="flex-1 mr-5 bg-[url('/auth.png')] bg-cover bg-center  border-l border-border" />
     </div>
   );
 }

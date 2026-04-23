@@ -326,6 +326,8 @@
     "emailAddress": "Email адрес",
     "emailPlaceholder": "name@example.com",
     "forgotPassword": "Забыли пароль?",
+    "rememberMe": "Запомнить меня",
+    "terms": "Я Согласен с условиями конфиденциальности",
     "login": {
       "title": "С возвращением",
       "subtitle": "Войдите в свой аккаунт.",
