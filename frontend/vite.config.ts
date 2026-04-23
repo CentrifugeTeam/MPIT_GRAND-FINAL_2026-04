@@ -21,4 +21,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    allowedHosts: ['.cloudpub.ru', 'localhost', '127.0.0.1'],
+  },
 });

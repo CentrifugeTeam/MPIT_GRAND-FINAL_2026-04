@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import time
 
@@ -41,6 +42,20 @@ def _bucket_key(request: Request) -> str:
     return f"ip:{_client_ip(request)}"
 
 
+def _is_internal_service_request(request: Request) -> bool:
+    # Internal service calls usually come from private docker subnets without end-user auth.
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        return False
+    if request.headers.get("x-forwarded-for"):
+        return False
+    ip = _client_ip(request)
+    try:
+        return ipaddress.ip_address(ip).is_private
+    except ValueError:
+        return False
+
+
 class RedisRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         s = get_settings()
@@ -51,8 +66,13 @@ class RedisRateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if not path.startswith("/api/"):
             return await call_next(request)
+        if _is_internal_service_request(request):
+            return await call_next(request)
 
-        limit = max(1, int(s.RATE_LIMIT_PER_MINUTE or 120))
+        limit_cfg = int(s.RATE_LIMIT_PER_MINUTE or 0)
+        if limit_cfg <= 0:
+            return await call_next(request)
+        limit = limit_cfg
         minute = int(time.time() // 60)
         rk = _bucket_key(request)
         redis_key = f"rl:bff:{rk}:{minute}"
