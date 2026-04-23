@@ -30,20 +30,29 @@ from app.services.task_store import create_task, delete_task, get_task, list_tas
 router = APIRouter()
 
 
-@router.post("/tasks", response_model=TaskApi)
+@router.post(
+    "/tasks",
+    response_model=TaskApi,
+    summary="Создать отчётную задачу",
+    description="Расписание и инструкция для LLM; user из заголовка.",
+)
 async def create_task_route(
     body: TaskCreateBody,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца (BFF)"),
 ):
     row = create_task(x_user_id, body.model_dump(exclude_none=True))
     return TaskApi.model_validate(row)
 
 
-@router.get("/tasks", response_model=TaskListResponse)
+@router.get(
+    "/tasks",
+    response_model=TaskListResponse,
+    summary="Список задач пользователя",
+)
 async def list_tasks_route(
-    x_user_id: str = Header(..., alias="X-User-Id"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
+    limit: int = Query(50, ge=1, le=200, description="Размер страницы"),
+    offset: int = Query(0, ge=0, description="Смещение"),
 ):
     items, total = list_tasks(x_user_id, limit=limit, offset=offset)
     return TaskListResponse(
@@ -52,10 +61,10 @@ async def list_tasks_route(
     )
 
 
-@router.get("/tasks/{task_id}", response_model=TaskApi)
+@router.get("/tasks/{task_id}", response_model=TaskApi, summary="Задача по id")
 async def get_task_route(
     task_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     row = get_task(x_user_id, str(task_id))
     if not row:
@@ -63,11 +72,15 @@ async def get_task_route(
     return TaskApi.model_validate(row)
 
 
-@router.patch("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch(
+    "/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Частично обновить задачу",
+)
 async def patch_task_route(
     task_id: uuid.UUID,
     body: TaskPatchBody,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     payload = body.model_dump(exclude_none=True)
     if not payload:
@@ -78,10 +91,14 @@ async def patch_task_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить задачу",
+)
 async def delete_task_route(
     task_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     ok = delete_task(x_user_id, str(task_id))
     if not ok:
@@ -89,12 +106,16 @@ async def delete_task_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/tasks/{task_id}/reports", response_model=ReportRunListResponse)
+@router.get(
+    "/tasks/{task_id}/reports",
+    response_model=ReportRunListResponse,
+    summary="Прогоны по задаче",
+)
 async def list_task_reports_route(
     task_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
+    limit: int = Query(50, ge=1, le=200, description="Размер страницы"),
+    offset: int = Query(0, ge=0, description="Смещение"),
 ):
     if not get_task(x_user_id, str(task_id)):
         raise HTTPException(status_code=404, detail="Task not found")
@@ -105,10 +126,10 @@ async def list_task_reports_route(
     )
 
 
-@router.get("/reports/{report_id}", response_model=ReportRunApi)
+@router.get("/reports/{report_id}", response_model=ReportRunApi, summary="Прогон отчёта по id")
 async def get_report_route(
     report_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     row = get_run(str(report_id))
     if not row:
@@ -118,11 +139,11 @@ async def get_report_route(
     return ReportRunApi.model_validate(row)
 
 
-@router.get("/reports", response_model=ReportRunListResponse)
+@router.get("/reports", response_model=ReportRunListResponse, summary="Все прогоны пользователя")
 async def list_reports_route(
-    x_user_id: str = Header(..., alias="X-User-Id"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
+    limit: int = Query(50, ge=1, le=200, description="Размер страницы"),
+    offset: int = Query(0, ge=0, description="Смещение"),
 ):
     items, total = list_runs_for_user(x_user_id, limit=limit, offset=offset)
     return ReportRunListResponse(
@@ -131,10 +152,10 @@ async def list_reports_route(
     )
 
 
-@router.post("/reports", response_model=ReportRunApi)
+@router.post("/reports", response_model=ReportRunApi, summary="Создать прогон отчёта")
 async def create_report_route(
     body: ReportCreateBody,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     payload = body.model_dump(exclude_none=True)
     task_id = payload.get("task_id")
@@ -144,11 +165,15 @@ async def create_report_route(
     return ReportRunApi.model_validate(row)
 
 
-@router.patch("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch(
+    "/reports/{report_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Обновить прогон",
+)
 async def patch_report_route(
     report_id: uuid.UUID,
     body: ReportPatchBody,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     payload = body.model_dump(exclude_none=True)
     if not payload:
@@ -162,10 +187,14 @@ async def patch_report_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/reports/{report_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить прогон",
+)
 async def delete_report_route(
     report_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
 ):
     ok = delete_run(x_user_id, str(report_id))
     if not ok:
@@ -173,11 +202,21 @@ async def delete_report_route(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/internal/reports/{report_id}/result", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/internal/reports/{report_id}/result",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Внутренний: отметить прогон успешным",
+    description="Только с корректным X-Report-Internal-Token.",
+    tags=["internal"],
+)
 async def report_result_internal(
     report_id: uuid.UUID,
     body: ReportResultBody,
-    x_report_internal_token: str = Header("", alias="X-Report-Internal-Token"),
+    x_report_internal_token: str = Header(
+        "",
+        alias="X-Report-Internal-Token",
+        description="Должен совпадать с REPORT_TASK_INTERNAL_TOKEN",
+    ),
 ):
     if x_report_internal_token != get_settings().REPORT_TASK_INTERNAL_TOKEN:
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -187,11 +226,20 @@ async def report_result_internal(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/internal/reports/{report_id}/error", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/internal/reports/{report_id}/error",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Внутренний: отметить прогон ошибкой",
+    tags=["internal"],
+)
 async def report_error_internal(
     report_id: uuid.UUID,
     body: ReportErrorBody,
-    x_report_internal_token: str = Header("", alias="X-Report-Internal-Token"),
+    x_report_internal_token: str = Header(
+        "",
+        alias="X-Report-Internal-Token",
+        description="Должен совпадать с REPORT_TASK_INTERNAL_TOKEN",
+    ),
 ):
     if x_report_internal_token != get_settings().REPORT_TASK_INTERNAL_TOKEN:
         raise HTTPException(status_code=403, detail="Forbidden")

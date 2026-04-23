@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.database import get_db
-from app.schemas import UserLogin, TokenResponse, RefreshTokenRequest
+from app.schemas import UserLogin, TokenResponse, RefreshTokenRequest, MessageResponse
 from app.crud import user_crud, refresh_token_crud
 from app.utils.auth import create_access_token, create_refresh_token, verify_token
 from app.core.config import get_settings
@@ -10,9 +10,13 @@ from app.core.config import get_settings
 router = APIRouter()
 settings = get_settings()
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Вход",
+    description="Выдача access и refresh токенов.",
+)
 async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    """Войти в систему"""
     user = user_crud.authenticate_user(db, user_credentials.email, user_credentials.password)
     if not user:
         raise HTTPException(
@@ -48,9 +52,13 @@ async def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         user_uuid=str(user.uuid)
     )
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    summary="Обновить access-токен",
+    description="По refresh из тела; refresh в ответе тот же.",
+)
 async def refresh_token(token_request: RefreshTokenRequest, db: Session = Depends(get_db)):
-    """Обновить access токен"""
     db_token = refresh_token_crud.get_refresh_token(db, token_request.refresh_token)
     if not db_token:
         raise HTTPException(
@@ -78,9 +86,13 @@ async def refresh_token(token_request: RefreshTokenRequest, db: Session = Depend
         user_uuid=str(user.uuid)
     )
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="Выход",
+    description="Отзыв refresh-токена в БД.",
+)
 async def logout(token_request: RefreshTokenRequest, db: Session = Depends(get_db)):
-    """Выйти из системы"""
     success = refresh_token_crud.revoke_token(db, token_request.refresh_token)
     if not success:
         raise HTTPException(
@@ -88,4 +100,4 @@ async def logout(token_request: RefreshTokenRequest, db: Session = Depends(get_d
             detail="Invalid refresh token"
         )
 
-    return {"message": "Successfully logged out"}
+    return MessageResponse(message="Successfully logged out")

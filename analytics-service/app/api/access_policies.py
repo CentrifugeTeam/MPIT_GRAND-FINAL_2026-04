@@ -13,7 +13,13 @@ from app.db.platform_session import PlatformSessionLocal
 from app.services import access_policy_store as aps
 
 
-def _require_admin(x_user_role: str | None = Header(None, alias="X-User-Role")) -> None:
+def _require_admin(
+    x_user_role: str | None = Header(
+        None,
+        alias="X-User-Role",
+        description="Роль вызывающего; для этих маршрутов должна быть ADMIN",
+    ),
+) -> None:
     if (x_user_role or "").strip().upper() != "ADMIN":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="ADMIN only")
 
@@ -30,12 +36,33 @@ router = APIRouter()
 
 
 class AccessPolicyCreate(BaseModel):
-    role_key: str = Field(..., max_length=64)
-    source_key: str = Field(..., max_length=64)
-    allowed_tables: list[str] = Field(..., description="Table names or ['*'] for all")
-    denied_columns: dict[str, list[str]] = Field(default_factory=dict)
-    max_rows_override: int | None = None
-    max_query_timeout_ms_override: int | None = None
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "role_key": "USER",
+                "source_key": "main-db",
+                "allowed_tables": ["*"],
+                "denied_columns": {"users": ["password_hash"]},
+                "max_rows_override": None,
+                "max_query_timeout_ms_override": None,
+            }
+        }
+    }
+    role_key: str = Field(..., max_length=64, description="Ключ роли из auth")
+    source_key: str = Field(..., max_length=64, description="Ключ источника данных")
+    allowed_tables: list[str] = Field(
+        ...,
+        description="Имена таблиц или ['*'] для всех разрешённых в источнике",
+    )
+    denied_columns: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Запрещённые колонки: {"table": ["col", ...]}',
+    )
+    max_rows_override: int | None = Field(default=None, description="Переопределение лимита строк")
+    max_query_timeout_ms_override: int | None = Field(
+        default=None,
+        description="Переопределение таймаута запроса (мс)",
+    )
 
 
 class AccessPolicyPatch(BaseModel):
@@ -69,7 +96,12 @@ def _to_api(row: Any) -> AccessPolicyApi:
     )
 
 
-@router.get("/access-policies", response_model=list[AccessPolicyApi])
+@router.get(
+    "/access-policies",
+    response_model=list[AccessPolicyApi],
+    summary="Список политик доступа",
+    description="Только ADMIN (заголовок X-User-Role).",
+)
 def list_access_policies(
     db: Session = Depends(get_db),
     _: None = Depends(_require_admin),
@@ -77,7 +109,13 @@ def list_access_policies(
     return [_to_api(r) for r in aps.list_policies(db)]
 
 
-@router.post("/access-policies", response_model=AccessPolicyApi, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/access-policies",
+    response_model=AccessPolicyApi,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать политику",
+    description="Пара (role_key, source_key) уникальна.",
+)
 def create_access_policy(
     body: AccessPolicyCreate,
     db: Session = Depends(get_db),
@@ -98,7 +136,11 @@ def create_access_policy(
     return _to_api(row)
 
 
-@router.patch("/access-policies/{policy_id}", response_model=AccessPolicyApi)
+@router.patch(
+    "/access-policies/{policy_id}",
+    response_model=AccessPolicyApi,
+    summary="Изменить политику",
+)
 def patch_access_policy(
     policy_id: str,
     body: AccessPolicyPatch,
@@ -122,7 +164,11 @@ def patch_access_policy(
     return _to_api(row)
 
 
-@router.delete("/access-policies/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/access-policies/{policy_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить политику",
+)
 def delete_access_policy(
     policy_id: str,
     db: Session = Depends(get_db),

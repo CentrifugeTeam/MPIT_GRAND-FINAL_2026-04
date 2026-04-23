@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -14,6 +14,18 @@ class NotificationStatus(str, Enum):
     SENT = "sent"
     FAILED = "failed"
 
+class NotifyEnqueueResponse(BaseModel):
+    """Ответ после постановки уведомления в очередь RabbitMQ."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"message": "Notification sent to queue", "notification_id": "uuid-or-id"},
+        },
+    )
+    message: str = Field(..., description="Статус операции")
+    notification_id: str = Field(..., description="Идентификатор, возвращённый notification-service")
+
+
 class NotificationCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -24,9 +36,9 @@ class NotificationCreate(BaseModel):
             }
         }
     )
-    type: NotificationType
-    title: str
-    message: str
+    type: NotificationType = Field(..., description="Тип уведомления")
+    title: str = Field(..., min_length=1, description="Заголовок")
+    message: str = Field(..., min_length=1, description="Текст уведомления")
 
 class NotificationResponse(BaseModel):
     id: str

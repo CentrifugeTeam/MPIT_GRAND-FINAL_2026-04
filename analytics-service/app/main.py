@@ -34,6 +34,12 @@ app = FastAPI(
     docs_url="/docs",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "analytics", "description": "Схема, interpret, query-quality, история, чаты, задачи."},
+        {"name": "analytics-data-sources", "description": "CRUD источников данных (DSN хранится на платформе)."},
+        {"name": "analytics-access-policies", "description": "Политики доступа по роли и источнику (только ADMIN)."},
+        {"name": "internal", "description": "Служебные вызовы между сервисами."},
+    ],
 )
 
 app.add_middleware(

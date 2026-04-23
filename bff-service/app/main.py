@@ -35,11 +35,36 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BFF Service",
-    description="Backend for Frontend Service",
+    description=(
+        "Единая точка входа для фронтенда: аутентификация, аналитика NL→SQL, "
+        "уведомления, отчётные задачи. Схемы ответов дублируют upstream для Swagger."
+    ),
     version="1.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "auth",
+            "description": "Регистрация, вход, refresh, профиль и роли (прокси auth-service).",
+        },
+        {
+            "name": "analytics",
+            "description": "Схема БД, interpret, чаты, история, источники данных (прокси analytics-service).",
+        },
+        {
+            "name": "report-tasks",
+            "description": "Расписания и прогоны отчётов (прокси report-task-service).",
+        },
+        {
+            "name": "notification",
+            "description": "Уведомления и настройки (прокси notification-service).",
+        },
+        {
+            "name": "websocket",
+            "description": "Токен и служебные HTTP для WebSocket (детальная OpenAPI для WS не дорабатывалась).",
+        },
+    ],
 )
 
 app.add_middleware(

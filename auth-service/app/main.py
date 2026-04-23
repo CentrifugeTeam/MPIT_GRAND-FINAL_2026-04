@@ -11,10 +11,15 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Auth Service",
-    description="Authentication and User Management Service",
+    description="Аутентификация, пользователи и справочник ролей (JWT, refresh).",
     version="1.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
+    openapi_tags=[
+        {"name": "auth", "description": "Вход, refresh, выход."},
+        {"name": "users", "description": "CRUD пользователей и смена роли."},
+        {"name": "roles", "description": "Справочник ролей (ADMIN)."},
+    ],
 )
 
 app.add_middleware(
