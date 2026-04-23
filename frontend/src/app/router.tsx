@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { RootLayout } from '@/app/layout';
 import { ProtectedRoute } from '@/app/protected-route';
 import { GuestRoute } from '@/app/guest-route';
-import { PublicPage } from '@/pages/public';
 import { HomePage } from '@/pages/home';
 import { SettingsPage } from '@/pages/settings';
 import { NotFoundPage } from '@/pages/not-found';
@@ -19,7 +18,12 @@ export function AppRouter() {
         {/* Public — accessible to everyone */}
         <Route
           path='/'
-          element={<PublicPage />}
+          element={
+            <Navigate
+              to='/auth/login'
+              replace
+            />
+          }
         />
         <Route
           path='/dev/charts'

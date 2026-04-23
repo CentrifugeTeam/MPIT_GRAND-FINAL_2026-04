@@ -1,15 +1,12 @@
+import { Logo } from '@/shared/ui/atoms/logo';
 import type { FigmaTranslateFn } from '../../config/figma-analytics-faq';
 import { FIGMA_HERO_COPY_MAX_PX } from './figma-tokens';
-import { Logo } from '@/shared/ui/assets/icons';
 
 export function FigmaAnalyticsHero({ t }: { t: FigmaTranslateFn }) {
   return (
     <div className='flex w-full flex-col items-center gap-10'>
       <div className='flex flex-col items-center gap-6 text-center'>
-        <Logo
-          width={64}
-          height={64}
-        />
+        <Logo />
         <div
           className='flex flex-col gap-2'
           style={{ maxWidth: FIGMA_HERO_COPY_MAX_PX }}
