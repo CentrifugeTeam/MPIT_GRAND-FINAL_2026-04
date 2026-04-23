@@ -1,257 +1,39 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, ScrollShadow } from '@heroui/react';
+import { Button, ScrollShadow, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
-import { AreaChart, Area, XAxis, ResponsiveContainer } from 'recharts';
 
 import {
   dispatchReportTask,
+  fetchReportById,
   fetchReportTaskById,
-  type ReportTask,
   type ReportRun,
+  type ReportTask,
 } from '@/features/analytics/api/analytics-api';
+import type { ChartPayloadShape } from '@/entities/analytics';
+import { AnalyticsCharts } from '@/features/analytics';
 import { Archive, ArrowsRotateLeft } from '@/shared/ui/assets/icons';
-
-/* ------------------------------------------------------------------ */
-/* Mock data                                                           */
-/* ------------------------------------------------------------------ */
-
-type MockChartRow = { label: string; primary: number; secondary: number };
-type MockMetric = { text: string; period: string };
-
-type MockRun = ReportRun & {
-  chartData?: MockChartRow[];
-  chartTitle?: string;
-  chartSubtitle?: string;
-  metric?: MockMetric;
-};
-
-const MOCK_CHART_DATA: MockChartRow[] = [
-  { label: 'Jan', primary: 4200, secondary: 2800 },
-  { label: 'Feb', primary: 5100, secondary: 3400 },
-  { label: 'Mar', primary: 7300, secondary: 5200 },
-  { label: 'Apr', primary: 4800, secondary: 3100 },
-  { label: 'May', primary: 5600, secondary: 3800 },
-  { label: 'Jun', primary: 6800, secondary: 4500 },
-];
-
-const MOCK_RUNS: MockRun[] = [
-  {
-    id: 'm1',
-    task_id: null,
-    user_id: 'mock',
-    status: 'done',
-    query_text: 'Количество совершенных поездок',
-    result_summary:
-      'Вот данные по отменам поездок за февраль 2026. Наибольшее количество отмен зафиксировано в Москве (342), далее идут Санкт-Петербург (218) и Екатеринбург (156).',
-    started_at: '2026-04-22T07:50:00Z',
-    finished_at: '2026-04-22T07:50:00Z',
-    created_at: '2026-04-22T07:50:00Z',
-    updated_at: '2026-04-22T07:50:00Z',
-    error: null,
-    result_payload: null,
-    chartData: MOCK_CHART_DATA,
-    chartTitle: 'Количество совершенных поездок',
-    chartSubtitle: 'За январь месяц 2026 год',
-    metric: { text: 'Рост поездок на 5.6%', period: 'За январь месяц 2026 год' },
-  },
-  {
-    id: 'm2',
-    task_id: null,
-    user_id: 'mock',
-    status: 'done',
-    query_text: 'Количество совершенных поездок',
-    result_summary: null,
-    started_at: '2026-04-22T07:50:00Z',
-    finished_at: '2026-04-22T07:50:00Z',
-    created_at: '2026-04-22T07:50:00Z',
-    updated_at: '2026-04-22T07:50:00Z',
-    error: null,
-    result_payload: null,
-  },
-  {
-    id: 'm3',
-    task_id: null,
-    user_id: 'mock',
-    status: 'done',
-    query_text: 'Количество совершенных поездок',
-    result_summary: null,
-    started_at: '2026-04-22T07:50:00Z',
-    finished_at: '2026-04-22T07:50:00Z',
-    created_at: '2026-04-22T07:50:00Z',
-    updated_at: '2026-04-22T07:50:00Z',
-    error: null,
-    result_payload: null,
-  },
-  {
-    id: 'm4',
-    task_id: null,
-    user_id: 'mock',
-    status: 'done',
-    query_text: 'Количество совершенных поездок',
-    result_summary: null,
-    started_at: '2026-04-22T07:50:00Z',
-    finished_at: '2026-04-22T07:50:00Z',
-    created_at: '2026-04-22T07:50:00Z',
-    updated_at: '2026-04-22T07:50:00Z',
-    error: null,
-    result_payload: null,
-  },
-];
-
-/* ------------------------------------------------------------------ */
-/* ResultCard                                                          */
-/* ------------------------------------------------------------------ */
-
-interface ResultCardProps {
-  run: MockRun;
-}
-
-function ResultCard({ run }: ResultCardProps) {
-  const date = run.finished_at ?? run.started_at ?? run.created_at;
-  const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-
-  const title = run.chartTitle ?? (run.query_text.length > 60
-    ? `${run.query_text.slice(0, 60)}…`
-    : run.query_text);
-
-  return (
-    <div className='relative overflow-hidden rounded-2xl border border-border bg-white/3 shadow-[inset_0px_0px_22px_0px_rgba(255,255,255,0.04)] backdrop-blur-md'>
-      <div className='flex flex-col gap-3 p-5 pb-4'>
-        {/* card header */}
-        <div className='flex items-start justify-between gap-2'>
-          <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
-            <p className='truncate text-base font-semibold text-foreground'>
-              {title}
-            </p>
-            <p className='text-sm text-muted'>
-              {run.chartSubtitle ?? formattedDate}
-            </p>
-          </div>
-          <Button
-            isIconOnly
-            variant='ghost'
-            size='sm'
-            aria-label='Дополнительно'
-            className='h-8 w-8 min-w-8 shrink-0 text-muted'
-          >
-            <Icon
-              icon='mdi:dots-vertical'
-              width={16}
-            />
-          </Button>
-        </div>
-
-        {/* area chart */}
-        {run.chartData && run.chartData.length > 0 && (
-          <div className='h-[140px] w-full'>
-            <ResponsiveContainer
-              width='100%'
-              height='100%'
-            >
-              <AreaChart
-                data={run.chartData}
-                margin={{ top: 4, right: 0, bottom: 0, left: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id='gradPrimary'
-                    x1='0'
-                    y1='0'
-                    x2='0'
-                    y2='1'
-                  >
-                    <stop
-                      offset='0%'
-                      stopColor='#4ade80'
-                      stopOpacity={0.35}
-                    />
-                    <stop
-                      offset='100%'
-                      stopColor='#4ade80'
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                  <linearGradient
-                    id='gradSecondary'
-                    x1='0'
-                    y1='0'
-                    x2='0'
-                    y2='1'
-                  >
-                    <stop
-                      offset='0%'
-                      stopColor='#22c55e'
-                      stopOpacity={0.2}
-                    />
-                    <stop
-                      offset='100%'
-                      stopColor='#22c55e'
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey='label'
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: 'var(--color-muted, #888)' }}
-                  interval='preserveStartEnd'
-                />
-                <Area
-                  type='monotone'
-                  dataKey='primary'
-                  stroke='#4ade80'
-                  strokeWidth={2}
-                  fill='url(#gradPrimary)'
-                  dot={false}
-                  activeDot={false}
-                />
-                <Area
-                  type='monotone'
-                  dataKey='secondary'
-                  stroke='#22c55e'
-                  strokeWidth={1.5}
-                  fill='url(#gradSecondary)'
-                  dot={false}
-                  activeDot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* metric footer */}
-        {run.metric && (
-          <div className='flex flex-col gap-0.5 pt-1'>
-            <p className='text-sm font-semibold text-foreground'>
-              {run.metric.text}
-            </p>
-            <p className='text-xs text-muted'>{run.metric.period}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* RunItem                                                             */
 /* ------------------------------------------------------------------ */
 
 interface RunItemProps {
-  run: MockRun;
+  run: ReportRun;
   defaultExpanded?: boolean;
 }
 
 function RunItem({ run, defaultExpanded = false }: RunItemProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  const { data: fullRun, isLoading } = useQuery({
+    queryKey: ['report-run', run.id],
+    queryFn: () => fetchReportById(run.id),
+    enabled: expanded,
+    placeholderData: run,
+  });
 
   const date = run.started_at ?? run.created_at;
   const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
@@ -262,7 +44,13 @@ function RunItem({ run, defaultExpanded = false }: RunItemProps) {
   });
 
   const hasContent =
-    !!run.result_summary || (run.status === 'failed' && !!run.error) || !!run.chartData;
+    run.status === 'done' ||
+    run.status === 'failed' ||
+    !!run.result_summary ||
+    !!run.result_payload;
+
+  const resultPayload = fullRun?.result_payload as Record<string, unknown> | null;
+  const chartPayload = (resultPayload?.chart_payload ?? null) as ChartPayloadShape | null;
 
   return (
     <div
@@ -298,16 +86,52 @@ function RunItem({ run, defaultExpanded = false }: RunItemProps) {
 
       {expanded && hasContent && (
         <div className='border-t border-white/8 px-3 py-4 flex flex-col gap-4'>
-          {run.result_summary && (
+          {isLoading && !fullRun && (
+            <div className='flex items-center justify-center py-6'>
+              <Spinner size='sm' />
+            </div>
+          )}
+
+          {fullRun?.result_summary && (
             <p className='text-base leading-relaxed text-foreground'>
-              {run.result_summary}
+              {fullRun.result_summary}
             </p>
           )}
-          {run.status === 'failed' && run.error && (
-            <p className='text-sm text-danger'>{run.error}</p>
+
+          {fullRun?.status === 'failed' && fullRun.error && (
+            <p className='text-sm text-danger'>{fullRun.error}</p>
           )}
-          {(run.chartData || run.result_summary) && (
-            <ResultCard run={run} />
+
+          {chartPayload && (
+            <div className='rounded-2xl border border-border bg-white/3 shadow-[inset_0px_0px_22px_0px_rgba(255,255,255,0.04)] backdrop-blur-md p-5'>
+              <div className='flex flex-col gap-1 mb-4'>
+                <p className='text-base font-semibold text-foreground'>
+                  {(fullRun ?? run).query_text.length > 60
+                    ? `${(fullRun ?? run).query_text.slice(0, 60)}…`
+                    : (fullRun ?? run).query_text}
+                </p>
+                {(fullRun ?? run).finished_at && (
+                  <p className='text-sm text-muted'>
+                    {new Date((fullRun ?? run).finished_at!).toLocaleDateString(
+                      'ru-RU',
+                      {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      },
+                    )}
+                  </p>
+                )}
+              </div>
+              <AnalyticsCharts payload={chartPayload} />
+            </div>
+          )}
+
+          {!isLoading && !fullRun?.result_summary && !chartPayload && fullRun?.status !== 'failed' && (
+            <p className='text-sm text-muted text-center py-4'>
+              {t('reports.detail.noContent')}
+            </p>
           )}
         </div>
       )}
@@ -352,8 +176,7 @@ export function TaskDetailPanel({
     },
   });
 
-  // TODO: replace with currentTask.reports when API is ready
-  const runs = MOCK_RUNS;
+  const runs = currentTask.reports ?? [];
 
   return (
     <div className='flex h-full w-full flex-col overflow-hidden bg-background'>

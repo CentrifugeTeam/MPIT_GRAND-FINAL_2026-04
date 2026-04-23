@@ -61,21 +61,24 @@ export function ReportsDashboard() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<ReportTask | null>(null);
   const { data, isLoading, isError, refetch } = useReportTasks();
 
   const selectedTask = data?.items.find(t => t.id === selectedTaskId) ?? null;
 
   const pauseMutation = useMutation({
     mutationFn: (taskId: string) => patchReportTask(taskId, { is_active: false }),
-    onSuccess: () => {
+    onSuccess: (_data, taskId) => {
       void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['report-task', taskId] });
     },
   });
 
   const resumeMutation = useMutation({
     mutationFn: (taskId: string) => patchReportTask(taskId, { is_active: true }),
-    onSuccess: () => {
+    onSuccess: (_data, taskId) => {
       void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['report-task', taskId] });
     },
   });
 
@@ -143,6 +146,15 @@ export function ReportsDashboard() {
                 dataSources={dataSources?.items}
                 refetch={refetch}
               />
+              {editingTask && (
+                <CreateReportModal
+                  dataSources={dataSources?.items}
+                  refetch={refetch}
+                  taskToEdit={editingTask}
+                  externalOpen={true}
+                  onExternalClose={() => setEditingTask(null)}
+                />
+              )}
             </div>
           </div>
           <ScrollShadow
@@ -207,6 +219,14 @@ export function ReportsDashboard() {
               task={selectedTask}
               schedule={formatSchedule(selectedTask)}
               onClose={() => setSelectedTaskId(null)}
+              onEdit={() => setEditingTask(selectedTask)}
+              onTogglePause={() => {
+                if (selectedTask.is_active) {
+                  pauseMutation.mutate(selectedTask.id);
+                } else {
+                  resumeMutation.mutate(selectedTask.id);
+                }
+              }}
             />
           )}
         </div>
