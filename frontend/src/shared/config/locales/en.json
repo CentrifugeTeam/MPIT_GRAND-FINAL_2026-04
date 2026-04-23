@@ -327,6 +327,7 @@
     "emailPlaceholder": "name@example.com",
     "forgotPassword": "Forgot password?",
     "rememberMe": "Remember me",
+    "terms": "By signing up, you agree to our terms and conditions.",
     "login": {
       "title": "Welcome back",
       "subtitle": "Sign in to access your account.",
