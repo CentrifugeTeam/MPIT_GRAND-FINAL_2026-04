@@ -145,6 +145,10 @@ class TaskApi(BaseModel):
         default=None,
         description="Первое предложение из последнего завершённого отчёта (status=done) по задаче; null, если таких отчётов нет.",
     )
+    reports: list["ReportRunApi"] = Field(
+        default_factory=list,
+        description="Массив прогонов отчёта для этой задачи (используется в детальном ответе задачи).",
+    )
 
 
 class TaskListResponse(BaseModel):
@@ -170,6 +174,9 @@ class ReportRunApi(BaseModel):
 class ReportRunListResponse(BaseModel):
     items: list[ReportRunApi]
     total: int
+
+
+TaskApi.model_rebuild()
 
 
 class ReportCreateBody(BaseModel):

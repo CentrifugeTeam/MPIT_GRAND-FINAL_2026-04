@@ -377,6 +377,21 @@ services:
     networks:
       - app-network
 
+  # CloudPub (запускается после nginx)
+  cloudpub:
+    image: cloudpub/cloudpub:latest
+    platform: linux/amd64
+    network_mode: "bridge"
+    environment:
+      - TOKEN=${CLOUDPUB_TOKEN}
+    command: publish http host.docker.internal:80
+    volumes:
+      - cloudpub-config:/home/cloudpub/.cloudpub
+    depends_on:
+      nginx:
+        condition: service_started
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
@@ -388,6 +403,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  cloudpub-config:
   rabbitmq_data:
   postgres_db_data:
   postgres_main_db_data:

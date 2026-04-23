@@ -70,6 +70,8 @@ async def get_task_route(
     row = get_task(x_user_id, str(task_id))
     if not row:
         raise HTTPException(status_code=404, detail="Task not found")
+    reports, _ = list_runs(str(task_id), limit=200, offset=0)
+    row["reports"] = reports
     return TaskApi.model_validate(row)
 
 
