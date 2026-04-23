@@ -71,6 +71,19 @@ export function NlChatTranscriptBlock({
 
   const showRoleLabels = variant !== "grok";
 
+  const reasoningBox =
+    variant === "grok" || variant === "figma"
+      ? "mb-2 rounded-lg border border-[#3f3f46]/60 bg-[#18181b]/80 px-2.5 py-2"
+      : "bg-muted/30 border-border/60 mb-2 rounded-lg border px-2.5 py-2";
+  const reasoningPre =
+    variant === "grok" || variant === "figma"
+      ? "whitespace-pre-wrap font-sans text-[12px] leading-snug text-[#a1a1aa]"
+      : "text-muted whitespace-pre-wrap font-sans text-xs leading-snug";
+  const reasoningLabel =
+    variant === "grok" || variant === "figma"
+      ? "mb-1 block text-[10px] font-medium uppercase tracking-wide text-[#71717a]"
+      : "text-muted mb-1 block text-[10px] font-medium uppercase tracking-wide";
+
   return (
     <div className={wrapClass}>
       {nlChatLines.length === 0 && (
@@ -98,7 +111,25 @@ export function NlChatTranscriptBlock({
                 : t("home.analytics.chatRoleAssistant")}
             </span>
           )}
-          <pre className={preClass}>{l.text}</pre>
+          {((l.role === "assistant" || l.role === "system") &&
+            (l.reasoning || l.answerPending)) && (
+            <div className={reasoningBox}>
+              <span className={reasoningLabel}>
+                {t("home.analytics.chatReasoningLabel")}
+              </span>
+              <pre className={reasoningPre}>
+                {l.reasoning ||
+                  (l.answerPending
+                    ? t("home.analytics.chatReasoningLoading")
+                    : "")}
+              </pre>
+            </div>
+          )}
+          <pre className={preClass}>
+            {l.answerPending && !l.text.trim()
+              ? t("home.analytics.chatAnswerComposing")
+              : l.text}
+          </pre>
           {l.sql && <pre className={sqlBox}>{l.sql}</pre>}
           {l.role === "assistant" &&
             l.chartPayload &&

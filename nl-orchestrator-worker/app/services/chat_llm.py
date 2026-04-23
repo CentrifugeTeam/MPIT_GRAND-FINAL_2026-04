@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
+from collections.abc import Awaitable, Callable
 from typing import Any, Dict, List, Optional
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.schemas.analytics import ColumnInfo, TableSchema
 
 logger = logging.getLogger(__name__)
@@ -98,7 +100,6 @@ def _is_obviously_conversational(user_text: str) -> bool:
         return True
     if _CONV_RE.match(t.strip()):
         return True
-    # «пока» с лишними пробелами/знаками
     if re.fullmatch(r"пока[\s!.]*", t, flags=re.IGNORECASE):
         return True
     return False
@@ -149,7 +150,101 @@ def _parse_json_obj(text: str) -> dict[str, Any]:
     return json.loads(text)
 
 
-async def _chat(messages: list[dict[str, str]], temperature: float = 0.2) -> str:
+def _merge_stream_segment(prev: str, segment: str) -> str:
+    if not segment:
+        return prev
+    if not prev:
+        return segment
+    if len(segment) >= len(prev) and segment.startswith(prev):
+        return segment
+    if prev in segment and len(segment) > len(prev):
+        return segment
+    return prev + segment
+
+
+def _stream_delta_parts(delta: dict[str, Any]) -> tuple[str, str]:
+    """Фрагменты (reasoning_add, text_add) из choices[0].delta."""
+    r_parts: list[str] = []
+    t_parts: list[str] = []
+    for key in ("reasoning", "reasoning_content", "thoughts"):
+        v = delta.get(key)
+        if isinstance(v, str) and v:
+            r_parts.append(v)
+    c = delta.get("content")
+    if isinstance(c, str) and c:
+        t_parts.append(c)
+    elif isinstance(c, list):
+        for p in c:
+            if not isinstance(p, dict):
+                continue
+            t = str(p.get("type") or "").lower()
+            if t in ("reasoning", "thinking", "thought"):
+                b = p.get("text") or p.get("content")
+                if b:
+                    r_parts.append(str(b))
+            else:
+                tx = p.get("text") or p.get("content")
+                if tx:
+                    t_parts.append(str(tx))
+    return ("".join(r_parts), "".join(t_parts))
+
+
+def _extract_reasoning(data: dict[str, Any]) -> str:
+    """Нативный reasoning/think из тела ответа провайдера (после include_reasoning / reasoning: enabled)."""
+    try:
+        choice = (data.get("choices") or [])[0] or {}
+        message = choice.get("message") or {}
+        candidates: list[Any] = [
+            message.get("reasoning"),
+            message.get("reasoning_content"),
+            message.get("thoughts"),
+            choice.get("reasoning"),
+            data.get("reasoning"),
+        ]
+        details = data.get("reasoning_details")
+        if isinstance(details, list):
+            for item in details:
+                if isinstance(item, dict):
+                    candidates.append(item.get("text") or item.get("content") or item.get("reasoning"))
+        content = message.get("content")
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    ptype = str(part.get("type") or "").lower()
+                    if ptype in {"reasoning", "thinking", "thought"}:
+                        candidates.append(part.get("text") or part.get("content"))
+        texts = [str(x).strip() for x in candidates if isinstance(x, (str, int, float)) and str(x).strip()]
+        if texts:
+            joined = "\n\n".join(texts)
+            return joined[:4000]
+    except Exception:
+        pass
+    return ""
+
+
+def _request_native_reasoning_payload(
+    s: Settings, base_url_l: str, model_l: str
+) -> dict[str, Any]:
+    if not s.LLM_NATIVE_REASONING:
+        return {}
+    extra: dict[str, Any] = {}
+    if "openrouter.ai" in base_url_l:
+        extra["reasoning"] = {"enabled": True}
+    if "openrouter.ai" in base_url_l and (
+        "gemini" in model_l or "google/" in model_l or "gemma" in model_l
+    ):
+        extra["extra_body"] = {
+            "google": {
+                "thinking_config": {
+                    "thinking_level": "low",
+                    "include_thoughts": True,
+                }
+            }
+        }
+    return extra
+
+
+async def _chat(messages: list[dict[str, str]], temperature: float = 0.2) -> tuple[str, str]:
     s = get_settings()
     if not s.LLM_API_KEY:
         raise ValueError("LLM_API_KEY не задан для nl-orchestrator-worker")
@@ -158,19 +253,140 @@ async def _chat(messages: list[dict[str, str]], temperature: float = 0.2) -> str
         "Authorization": f"Bearer {s.LLM_API_KEY}",
         "Content-Type": "application/json",
     }
-    payload = {
+    base_url_l = s.LLM_BASE_URL.lower()
+    model_l = s.LLM_MODEL.lower()
+    payload: dict[str, Any] = {
         "model": s.LLM_MODEL,
         "messages": messages,
         "temperature": temperature,
     }
+    payload.update(_request_native_reasoning_payload(s, base_url_l, model_l))
     async with httpx.AsyncClient(timeout=120.0) as client:
         r = await client.post(url, headers=headers, json=payload)
         r.raise_for_status()
         data = r.json()
     try:
-        return str(data["choices"][0]["message"]["content"])
+        content = str(data["choices"][0]["message"]["content"])
+        return content, _extract_reasoning(data)
     except (KeyError, IndexError) as e:
         raise ValueError(f"Unexpected LLM: {json.dumps(data)[:600]}") from e
+
+
+async def _stream_chat(
+    messages: list[dict[str, str]],
+    temperature: float,
+    on_reasoning: Callable[[str], Awaitable[None]],
+    *,
+    throttle_ms: float = 75.0,
+    min_grow: int = 64,
+) -> tuple[str, str]:
+    """Стрим /chat/completions; по мере накопления вызывает on_reasoning(полный текст)."""
+    s = get_settings()
+    if not s.LLM_API_KEY:
+        raise ValueError("LLM_API_KEY не задан для nl-orchestrator-worker")
+    url = s.LLM_BASE_URL.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {s.LLM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    base_url_l = s.LLM_BASE_URL.lower()
+    model_l = s.LLM_MODEL.lower()
+    payload: dict[str, Any] = {
+        "model": s.LLM_MODEL,
+        "messages": messages,
+        "temperature": temperature,
+        "stream": True,
+    }
+    payload.update(_request_native_reasoning_payload(s, base_url_l, model_l))
+    last_emit = 0.0
+    last_len_emitted = 0
+    reasoning_acc = ""
+    text_acc = ""
+    last_chunk: dict[str, Any] = {}
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", url, headers=headers, json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    if not line.startswith("data: "):
+                        continue
+                    data_s = line[6:].strip()
+                    if data_s == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_s)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(chunk, dict):
+                        continue
+                    last_chunk = chunk
+                    choices = chunk.get("choices") or []
+                    if not choices or not isinstance(choices[0], dict):
+                        continue
+                    ch0 = choices[0]
+                    fin = ch0.get("finish_reason")
+                    delta = ch0.get("delta")
+                    if not isinstance(delta, dict):
+                        delta = {}
+                    r_add, t_add = _stream_delta_parts(delta)
+                    if r_add:
+                        reasoning_acc = _merge_stream_segment(reasoning_acc, r_add)
+                    if t_add:
+                        text_acc += t_add
+                    msg = ch0.get("message")
+                    if isinstance(msg, dict):
+                        mc = msg.get("content")
+                        if isinstance(mc, str) and mc.strip() and not t_add:
+                            text_acc = mc
+                        r_msg = _extract_reasoning({"choices": [{"message": msg}]})
+                        if r_msg and len(r_msg) > len(reasoning_acc):
+                            reasoning_acc = r_msg
+                    if reasoning_acc:
+                        now = time.monotonic() * 1000.0
+                        grow = len(reasoning_acc) - last_len_emitted
+                        if now - last_emit >= throttle_ms or grow >= min_grow or fin is not None:
+                            last_emit = now
+                            last_len_emitted = len(reasoning_acc)
+                            await on_reasoning(reasoning_acc[:4000])
+    except (httpx.HTTPError, OSError) as e:
+        logger.warning("LLM stream failed, one-shot: %s", e)
+        raw, reas = await _chat(messages, temperature)
+        if reas and on_reasoning:
+            await on_reasoning(reas[:4000])
+        return raw, reas
+    if not text_acc.strip() and last_chunk:
+        r2 = _extract_reasoning_from_stream_tail(last_chunk)
+        if r2[0]:
+            text_acc = r2[0]
+        if r2[1] and len(r2[1]) > len(reasoning_acc):
+            reasoning_acc = r2[1]
+    if not text_acc.strip():
+        raw, reas = await _chat(messages, temperature)
+        if reas and on_reasoning and not reasoning_acc:
+            await on_reasoning(reas[:4000])
+        return raw, reas
+    if not reasoning_acc.strip() and last_chunk:
+        reasoning_acc = _extract_reasoning(last_chunk) or ""
+    if on_reasoning and len(reasoning_acc) > last_len_emitted:
+        await on_reasoning(reasoning_acc[:4000])
+    return text_acc, (reasoning_acc or "")[:4000]
+
+
+def _extract_reasoning_from_stream_tail(data: dict[str, Any]) -> tuple[str, str]:
+    """Пытаемся достать content/reasoning из «хвостового» куска стрима."""
+    try:
+        ch = (data.get("choices") or [None])[0] or {}
+        msg = ch.get("message")
+        if isinstance(msg, dict):
+            c = msg.get("content")
+            t = str(c) if isinstance(c, str) else ""
+            r = _extract_reasoning({"choices": [{"message": msg}]})
+            return t, r
+    except Exception:
+        pass
+    return "", ""
 
 
 async def clarify_ambiguous_question(
@@ -186,7 +402,7 @@ async def clarify_ambiguous_question(
         "Сформулируй ОДИН короткий уточняющий вопрос по-русски (1–2 предложения), без SQL и без данных."
     )
     user = f"Вопрос:\n{user_text}\n\nЗамечания:\n{hints or '(нет)'}\n\nПодсказки:\n{sug or '(нет)'}"
-    raw = await _chat(
+    raw, _ = await _chat(
         [{"role": "system", "content": sys}, {"role": "user", "content": user}],
         temperature=0.3,
     )
@@ -199,12 +415,14 @@ async def plan_turn(
     history: list[dict[str, str]],
     *,
     active_source_label: Optional[str] = None,
+    on_reasoning: Optional[Callable[[str], Awaitable[None]]] = None,
 ) -> dict[str, Any]:
     if _is_obviously_conversational(user_text):
         return {
             "reply_ru": _conversational_reply_ru(user_text),
             "sql_question": None,
             "sql_hints_ru": "",
+            "reasoning": "",
         }
     src_note = ""
     if active_source_label and active_source_label.strip():
@@ -221,12 +439,23 @@ async def plan_turn(
             continue
         messages.append({"role": role, "content": str(h.get("content", ""))})
     messages.append({"role": "user", "content": user_text})
-    raw = await _chat(messages, temperature=0.2)
+    s = get_settings()
+    if on_reasoning is not None and s.LLM_STREAM_REASONING:
+        raw, reasoning = await _stream_chat(
+            messages, 0.2, on_reasoning, throttle_ms=70.0, min_grow=48
+        )
+    else:
+        raw, reasoning = await _chat(messages, temperature=0.2)
     try:
         out = _parse_json_obj(raw)
     except Exception as e:
         logger.warning("plan_turn JSON parse failed: %s", e)
-        return {"reply_ru": raw[:2000], "sql_question": None, "sql_hints_ru": ""}
+        return {
+            "reply_ru": raw[:2000],
+            "sql_question": None,
+            "sql_hints_ru": "",
+            "reasoning": reasoning,
+        }
     sq = out.get("sql_question")
     sql_q = None
     if isinstance(sq, str) and sq.strip():
@@ -235,6 +464,7 @@ async def plan_turn(
         "reply_ru": str(out.get("reply_ru") or "").strip(),
         "sql_question": sql_q,
         "sql_hints_ru": str(out.get("sql_hints_ru") or "").strip(),
+        "reasoning": reasoning,
     }
 
 
@@ -252,6 +482,8 @@ async def finalize_after_sql(
     error: Optional[str],
     columns: list[str],
     rows: List[Dict[str, Any]],
+    *,
+    on_reasoning: Optional[Callable[[str], Awaitable[None]]] = None,
 ) -> dict[str, str]:
     payload = {
         "user_question": user_text,
@@ -265,20 +497,27 @@ async def finalize_after_sql(
         {"role": "system", "content": FINAL_SYSTEM},
         {"role": "user", "content": user_content},
     ]
-    raw = await _chat(messages, temperature=0.3)
+    s = get_settings()
+    if on_reasoning is not None and s.LLM_STREAM_REASONING:
+        raw, reasoning = await _stream_chat(
+            messages, 0.3, on_reasoning, throttle_ms=70.0, min_grow=48
+        )
+    else:
+        raw, reasoning = await _chat(messages, temperature=0.3)
     try:
         out = _parse_json_obj(raw)
     except Exception as e:
         logger.warning("finalize JSON parse failed: %s", e)
-        return {"reply_ru": raw[:4000], "report_ru": ""}
+        return {"reply_ru": raw[:4000], "report_ru": "", "reasoning": reasoning}
     reply = str(out.get("reply_ru") or "").strip()
     report = str(out.get("report_ru") or "").strip()
     if reply or report:
-        return {"reply_ru": reply, "report_ru": report}
+        return {"reply_ru": reply, "report_ru": report, "reasoning": reasoning}
     if error:
         return {
             "reply_ru": f"Ошибка выполнения SQL: {error}",
             "report_ru": "",
+            "reasoning": reasoning,
         }
     if rows:
         n = len(rows)
@@ -288,13 +527,16 @@ async def finalize_after_sql(
                 "Краткое резюме модели пустое — смотрите таблицу результата ниже в чате."
             ),
             "report_ru": "",
+            "reasoning": reasoning,
         }
     if sql:
         return {
             "reply_ru": "Запрос выполнен; подходящих строк в выборке не найдено.",
             "report_ru": "",
+            "reasoning": reasoning,
         }
     return {
         "reply_ru": "Не удалось сформулировать ответ по данным (пустой результат модели).",
         "report_ru": "",
+        "reasoning": reasoning,
     }

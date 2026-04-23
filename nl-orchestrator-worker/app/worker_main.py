@@ -39,12 +39,21 @@ class PendingCtx:
     scheduled_report: bool = False
     report_id: str | None = None
     task_id: str | None = None
+    plan_reasoning: str = ""
 
 
 pending: Dict[str, PendingCtx] = {}
 _pending_lock = asyncio.Lock()
 
 _WS_CHAT_TABLE_ROWS_CAP = 200
+_LLM_BUSY_FALLBACK_TEXT = "Прости, я сейчас сильно занят. Спроси у меня попозже о данных."
+
+
+def _merge_plan_and_final_reasoning(plan_r: str, final_r: str) -> str:
+    p, f = (plan_r or "").strip(), (final_r or "").strip()
+    if p and f and f not in p and p not in f:
+        return f"{p}\n\n───\n\n{f}"[:4000]
+    return f or p
 
 
 def _rows_as_dicts(columns: List[Any], rows: List[Any]) -> List[Dict[str, Any]]:
@@ -473,10 +482,77 @@ async def _handle_chat_incoming(
             if isinstance(raw_lbl, str) and str(raw_lbl).strip()
             else None
         )
-        plan = await plan_turn(
-            content, tables, history_norm, active_source_label=active_lbl
+        use_reasoning_stream = (
+            conv != "__report_run__" and bool(getattr(s_cfg, "LLM_STREAM_REASONING", True))
         )
+
+        async def on_plan_thinking(r: str) -> None:
+            if conv == "__report_run__":
+                return
+            await _publish_json(
+                pub_channel,
+                {
+                    "type": "chat_thinking",
+                    "conversation_id": conv,
+                    "message_id": mid,
+                    "reasoning": r,
+                    "status": "thinking",
+                },
+            )
+
+        try:
+            plan = await plan_turn(
+                content,
+                tables,
+                history_norm,
+                active_source_label=active_lbl,
+                on_reasoning=on_plan_thinking if use_reasoning_stream else None,
+            )
+        except Exception:
+            logger.exception("plan_turn failed")
+            busy_text = _LLM_BUSY_FALLBACK_TEXT
+            if conv != "__report_run__":
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_assistant",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "text": busy_text,
+                        "sql": None,
+                        "status": "error",
+                    },
+                )
+                await _sync_chat_event(
+                    "assistant_message",
+                    uid,
+                    conv,
+                    mid,
+                    {
+                        "text": busy_text,
+                        "report": "",
+                        "reasoning": "",
+                        "sql": None,
+                        "status": "error",
+                        "error": busy_text,
+                        "row_count": 0,
+                        "chart": {"type": "table"},
+                        "chart_payload": {},
+                        "columns": [],
+                        "rows": [],
+                    },
+                )
+            report_id = str(data.get("report_id") or "").strip()
+            if report_id:
+                await _report_run_failed(
+                    report_id,
+                    busy_text,
+                    result_summary=busy_text,
+                    result_payload=_failed_report_payload("orchestrator_busy"),
+                )
+            return
         sql_q = plan.get("sql_question")
+        plan_r = str(plan.get("reasoning") or "").strip()
         if sql_q:
             job_id = str(uuid.uuid4())
             turn_id = str(uuid.uuid4())
@@ -489,6 +565,18 @@ async def _handle_chat_incoming(
                     scheduled_report=scheduled_report,
                     report_id=(str(data.get("report_id") or "").strip() or None),
                     task_id=(str(data.get("task_id") or "").strip() or None),
+                    plan_reasoning=plan_r,
+                )
+            if conv != "__report_run__" and (not use_reasoning_stream):
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_thinking",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "reasoning": plan_r,
+                        "status": "thinking",
+                    },
                 )
             hints = (plan.get("sql_hints_ru") or "").strip() or None
             raw_max = data.get("max_rows")
@@ -543,6 +631,7 @@ async def _handle_chat_incoming(
                         "job_id": job_id,
                         "sql_turn_id": turn_id,
                         "preface": plan.get("reply_ru") or "",
+                        "reasoning": "",
                     },
                 )
                 await _sync_chat_event(
@@ -553,6 +642,7 @@ async def _handle_chat_incoming(
                     {
                         "text": plan.get("reply_ru") or "",
                         "variant": "sql_queued",
+                        "reasoning": "",
                     },
                 )
         else:
@@ -564,6 +654,7 @@ async def _handle_chat_incoming(
                         "conversation_id": conv,
                         "message_id": mid,
                         "text": plan.get("reply_ru") or "",
+                        "reasoning": plan.get("reasoning") or "",
                         "sql": None,
                         "status": "done",
                     },
@@ -575,6 +666,7 @@ async def _handle_chat_incoming(
                     mid,
                     {
                         "text": plan.get("reply_ru") or "",
+                        "reasoning": plan.get("reasoning") or "",
                         "report": None,
                         "sql": None,
                         "status": "done",
@@ -664,6 +756,28 @@ async def _handle_sql_chat_result(
         if not isinstance(rows, list):
             rows = []
         rows_dicts = _rows_as_dicts(cols, rows)
+        s_cfg2 = get_settings()
+        use_final_stream = (
+            ctx.conversation_id != "__report_run__"
+            and bool(getattr(s_cfg2, "LLM_STREAM_REASONING", True))
+        )
+        pr = (getattr(ctx, "plan_reasoning", None) or "").strip()
+
+        async def on_final_thinking(partial: str) -> None:
+            if ctx.conversation_id == "__report_run__":
+                return
+            merged = _merge_plan_and_final_reasoning(pr, partial)
+            await _publish_json(
+                pub_channel,
+                {
+                    "type": "chat_thinking",
+                    "conversation_id": ctx.conversation_id,
+                    "message_id": ctx.message_id_in,
+                    "reasoning": merged,
+                    "status": "thinking",
+                },
+            )
+
         try:
             final = await finalize_after_sql(
                 ctx.user_text,
@@ -671,13 +785,19 @@ async def _handle_sql_chat_result(
                 err,
                 [str(c) for c in cols],
                 rows_dicts,
+                on_reasoning=on_final_thinking if use_final_stream else None,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("finalize_after_sql failed")
             final = {
-                "reply_ru": f"Не удалось сформулировать ответ: {e}",
+                "reply_ru": _LLM_BUSY_FALLBACK_TEXT,
                 "report_ru": "",
+                "reasoning": "",
             }
+        final_reasoning = str(final.get("reasoning") or "")
+        full_reasoning = _merge_plan_and_final_reasoning(
+            getattr(ctx, "plan_reasoning", ""), final_reasoning
+        )
         chart_raw = data.get("chart")
         chart_out: dict[str, Any] = (
             dict(chart_raw) if isinstance(chart_raw, dict) else {"type": "table"}
@@ -692,6 +812,7 @@ async def _handle_sql_chat_result(
             "message_id": ctx.message_id_in,
             "text": final.get("reply_ru") or "",
             "report": final.get("report_ru") or "",
+            "reasoning": full_reasoning,
             "sql": sql_s,
             "status": status,
             "error": err,
@@ -706,6 +827,7 @@ async def _handle_sql_chat_result(
         sync_pl = {
             "text": final.get("reply_ru") or "",
             "report": final.get("report_ru") or "",
+            "reasoning": full_reasoning,
             "sql": sql_s,
             "status": status,
             "error": err,

@@ -23,6 +23,8 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
   const rowObjs = pickRows(pl.rows);
   const status = String(pl.status ?? "");
   const err = pl.error != null ? String(pl.error).trim() : "";
+  const reasoning =
+    pl.reasoning != null ? String(pl.reasoning).trim() : "";
   const role = row.role as NlChatLine["role"];
 
   const body =
@@ -43,6 +45,7 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
     id: row.id,
     role,
     text: body.trim() || text,
+    reasoning: reasoning || undefined,
     sql,
     chartPayload: pickChartPayload(pl.chart_payload),
     columns: cols,

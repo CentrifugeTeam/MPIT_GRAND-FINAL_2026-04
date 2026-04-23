@@ -5,6 +5,10 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = "https://api.openai.com/v1"
     LLM_MODEL: str = "gpt-4o-mini"
+    # Запрашивать нативный reasoning у провайдера (OpenRouter и т.д.), не из JSON в промпте
+    LLM_NATIVE_REASONING: bool = True
+    # Стрим /chat/completions (stream) и пуш в WS по мере прихода reasoning-чанков
+    LLM_STREAM_REASONING: bool = True
 
     RABBITMQ_HOST: str = "rabbitmq"
     RABBITMQ_USER: str = "admin"

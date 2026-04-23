@@ -65,7 +65,19 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
 
   const appendLine = useCallback((line: NlChatLine) => {
     setLines((prev) => {
-      if (prev.some((p) => p.id === line.id)) return prev;
+      const idx = prev.findIndex((p) => p.id === line.id);
+      if (line.role === "assistant" && idx >= 0) {
+        const prevLine = prev[idx]!;
+        const merged: NlChatLine = {
+          ...prevLine,
+          ...line,
+          chartPayload: line.chartPayload ?? prevLine.chartPayload,
+          columns: line.columns ?? prevLine.columns,
+          rows: line.rows ?? prevLine.rows,
+        };
+        return [...prev.slice(0, idx), merged, ...prev.slice(idx + 1)];
+      }
+      if (idx >= 0) return prev;
       return [...prev, line];
     });
   }, []);

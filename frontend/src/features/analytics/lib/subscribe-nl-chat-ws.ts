@@ -20,11 +20,25 @@ export function subscribeNlChatWs(
 ): () => void {
   const unsubs: Array<() => void> = [];
   unsubs.push(
+    wsClient.on("chat_thinking", (payload: Record<string, unknown>) => {
+      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? "")) return;
+      const rs = String(payload.reasoning ?? "").trim();
+      appendLine({
+        id: String(payload.message_id ?? crypto.randomUUID()),
+        role: "assistant",
+        text: "",
+        reasoning: rs,
+        answerPending: true,
+      });
+    }),
+  );
+  unsubs.push(
     wsClient.on("chat_assistant", (payload: Record<string, unknown>) => {
       if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
         return;
       const text = String(payload.text ?? "");
       const rep = payload.report ? String(payload.report) : "";
+      const reasoningRaw = String(payload.reasoning ?? "").trim();
       const sql = payload.sql != null ? String(payload.sql) : null;
       const status = String(payload.status ?? "");
       const err = payload.error != null ? String(payload.error).trim() : "";
@@ -47,6 +61,8 @@ export function subscribeNlChatWs(
         id: String(payload.message_id ?? crypto.randomUUID()),
         role: "assistant",
         text: body,
+        reasoning: reasoningRaw || undefined,
+        answerPending: false,
         sql,
         chartPayload: pickChartPayload(payload.chart_payload),
         columns: cols,
@@ -61,10 +77,12 @@ export function subscribeNlChatWs(
       if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
         return;
       const pre = String(payload.preface ?? "").trim();
+      const qReasoning = String(payload.reasoning ?? "").trim();
       appendLine({
         id: `q-${String(payload.sql_turn_id ?? "")}`,
         role: "system",
         text: pre || tRef.current("home.analytics.chatSqlQueued"),
+        reasoning: qReasoning || undefined,
       });
     }),
   );

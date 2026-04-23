@@ -87,7 +87,7 @@ def list_tasks(user_id: str, limit: int = 50, offset: int = 0) -> tuple[list[dic
             db.execute(
                 select(ReportTask)
                 .where(ReportTask.user_id == user_id)
-                .order_by(ReportTask.updated_at.desc())
+                .order_by(ReportTask.created_at.desc(), ReportTask.id.desc())
                 .offset(offset)
                 .limit(limit)
             )
