@@ -191,6 +191,19 @@
     "title": "Задачи",
     "createTask": "Создать задачу",
     "addReport": "Добавить отчёт",
+    "empty": "Нет задач",
+    "loadError": "Ошибка загрузки задач",
+    "detail": {
+      "close": "Закрыть",
+      "edit": "Редактировать",
+      "pause": "Приостановить",
+      "generateReport": "Сгенерировать отчёт",
+      "noRuns": "Запуски отсутствуют",
+      "runFailed": "Ошибка",
+      "runPending": "Ожидает",
+      "runRunning": "Выполняется",
+      "runDone": "Готово"
+    },
     "modal": {
       "titlePlaceholder": "Введите название отчёта...",
       "tabsAriaLabel": "Тип расписания",

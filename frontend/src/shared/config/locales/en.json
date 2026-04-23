@@ -191,6 +191,19 @@
     "title": "Tasks",
     "createTask": "Create task",
     "addReport": "Add report",
+    "empty": "No tasks",
+    "loadError": "Failed to load tasks",
+    "detail": {
+      "close": "Close",
+      "edit": "Edit",
+      "pause": "Pause",
+      "generateReport": "Generate report",
+      "noRuns": "No runs yet",
+      "runFailed": "Failed",
+      "runPending": "Pending",
+      "runRunning": "Running",
+      "runDone": "Done"
+    },
     "modal": {
       "titlePlaceholder": "Enter report name...",
       "tabsAriaLabel": "Schedule type",

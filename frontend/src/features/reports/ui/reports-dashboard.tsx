@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { useNavigate } from 'react-router';
 import { ScrollShadow, Spinner } from '@heroui/react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { FigmaAnalyticsSidebar, useAnalyticsPanel } from '@/features/analytics';
 import type { ReportTask } from '@/features/analytics/api/analytics-api';
+import { patchReportTask } from '@/features/analytics/api/analytics-api';
 import { useReportTasks } from '../model/use-report-tasks';
 import { CreateReportModal } from './create-report-modal';
 import { ReportTaskItem } from './report-task-item';
+import { TaskDetailPanel } from './task-detail-panel';
 import { useDataSources } from '../model/use-data-sources';
 
 const WEEK_DAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
@@ -55,9 +58,26 @@ function formatSchedule(task: ReportTask): string {
 export function ReportsDashboard() {
   const p = useAnalyticsPanel();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const { data, isLoading, isError, refetch } = useReportTasks();
+
+  const selectedTask = data?.items.find(t => t.id === selectedTaskId) ?? null;
+
+  const pauseMutation = useMutation({
+    mutationFn: (taskId: string) => patchReportTask(taskId, { is_active: false }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (taskId: string) => patchReportTask(taskId, { is_active: true }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+    },
+  });
 
   const handleTaskClick = (id: string) => {
     setSelectedTaskId(prev => (prev === id ? null : id));
@@ -151,6 +171,7 @@ export function ReportsDashboard() {
                       id={task.id}
                       title={task.title}
                       schedule={formatSchedule(task)}
+                      isActive={task.is_active}
                       description={task.last_report_sentence?.trim() || undefined}
                       lastRunTime={
                         task.last_run_at
@@ -159,6 +180,8 @@ export function ReportsDashboard() {
                       }
                       isSelected={selectedTaskId === task.id}
                       onClick={handleTaskClick}
+                      onPause={id => pauseMutation.mutate(id)}
+                      onResume={id => resumeMutation.mutate(id)}
                     />
                   ))}
                   {data.items.length === 0 && (
@@ -179,20 +202,13 @@ export function ReportsDashboard() {
         }`}
       >
         <div className='flex h-full w-[512px] flex-col border-l border-border bg-background'>
-          <div className='flex shrink-0 items-center justify-end p-4'>
-            <button
-              type='button'
-              onClick={() => setSelectedTaskId(null)}
-              className='flex size-8 items-center justify-center rounded-xl transition-all hover:bg-content2 active:scale-[0.97]'
-              aria-label='Закрыть'
-            >
-              <Icon
-                icon='mdi:close'
-                width={18}
-                className='text-foreground'
-              />
-            </button>
-          </div>
+          {selectedTask && (
+            <TaskDetailPanel
+              task={selectedTask}
+              schedule={formatSchedule(selectedTask)}
+              onClose={() => setSelectedTaskId(null)}
+            />
+          )}
         </div>
       </div>
     </div>
