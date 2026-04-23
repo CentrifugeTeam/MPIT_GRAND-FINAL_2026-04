@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Icon } from '@iconify/react';
-import { Button, ErrorMessage, Input, Tabs } from '@heroui/react';
+import { Button, Checkbox, ErrorMessage, Input, Tabs } from '@heroui/react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +30,7 @@ export function AuthLoginForm() {
   const navigate = useNavigate();
   const { mutateAsync, isPending, isError } = useLogin();
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const formMethod = useForm<LoginSchemaData>({
     resolver: zodResolver(loginSchema),
@@ -155,13 +156,22 @@ export function AuthLoginForm() {
               />
             </div>
 
-            <div className='flex justify-end -mt-4'>
-              <Button
-                variant='ghost'
-                className='text-zinc-400 text-sm p-0 h-auto min-w-0 hover:text-zinc-200'
+            <div className='flex items-center justify-between w-full -mt-2'>
+              <Checkbox
+                isSelected={rememberMe}
+                onChange={setRememberMe}
+                className='gap-3'
               >
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <Checkbox.Content className='text-sm font-medium text-zinc-50'>
+                  {t('auth.rememberMe')}
+                </Checkbox.Content>
+              </Checkbox>
+              <span className='text-zinc-400 text-sm p-0 h-auto min-w-0 hover:text-zinc-200 cursor-pointer'>
                 {t('auth.forgotPassword')}
-              </Button>
+              </span>
             </div>
 
             <Button
@@ -180,7 +190,7 @@ export function AuthLoginForm() {
           </div>
         </div>
       </div>
-      <div className='flex-1 m-5 ml-0 bg-zinc-900 rounded-3xl' />
+      <div className="flex-1 mr-5 bg-[url('/auth.png')] bg-cover bg-center  border-l border-border" />
     </div>
   );
 }
