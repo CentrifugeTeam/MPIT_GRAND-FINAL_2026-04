@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 import { Card } from "@heroui/react";
 
 import { ANALYTICS_TABLE_PREVIEW_MAX } from "../../config/constants";
@@ -69,6 +71,31 @@ export function NlChatTranscriptBlock({
         ? "max-h-[min(420px,45vh)] space-y-3 overflow-y-auto rounded-xl border border-[#28282c] bg-[#060607]/40 p-3"
         : "max-h-72 space-y-3 overflow-y-auto rounded-xl border border-border bg-default/25 p-3";
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+
+  useEffect(() => {
+    const sentinel = bottomRef.current;
+    if (!sentinel) return;
+
+    const root = variant !== "grok" ? containerRef.current : null;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isAtBottomRef.current = entry.isIntersecting;
+      },
+      { root, threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [variant]);
+
+  useEffect(() => {
+    if (isAtBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [nlChatLines]);
+
   const showRoleLabels = variant !== "grok";
 
   const reasoningBox =
@@ -85,7 +112,7 @@ export function NlChatTranscriptBlock({
       : "text-muted mb-1 block text-[10px] font-medium uppercase tracking-wide";
 
   return (
-    <div className={wrapClass}>
+    <div className={wrapClass} ref={containerRef}>
       {nlChatLines.length === 0 && (
         <p
           className={
@@ -168,6 +195,7 @@ export function NlChatTranscriptBlock({
             )}
         </div>
       ))}
+      <div ref={bottomRef} />
     </div>
   );
 }
