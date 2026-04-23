@@ -260,13 +260,53 @@ async def _report_run_done(
         logger.warning("report run done callback failed (%s): %s", report_id, e)
 
 
-async def _report_run_failed(report_id: str, error: str) -> None:
+def _normalize_report_error(error: str) -> str:
+    raw = (error or "").strip()
+    lower = raw.lower()
+    if "колонка" in lower and "не найдена" in lower:
+        return (
+            "Не удалось сформировать корректный SQL по запросу: в контексте обнаружены поля, "
+            "которых нет в доступной схеме данных. Уточните названия полей и период."
+        )
+    if "таблиц" in lower and "схем" in lower and "не найдена" in lower:
+        return (
+            "Не удалось сформировать отчёт: используются таблицы/поля вне доступной схемы. "
+            "Уточните структуру запроса."
+        )
+    return raw or "Не удалось сформировать отчёт из-за ошибки запроса."
+
+
+def _failed_report_payload(reason: str, sql: str | None = None) -> dict[str, Any]:
+    return {
+        "status": "failed",
+        "reason": reason,
+        "sql": sql,
+        "row_count": 0,
+        "columns": [],
+        "rows": [],
+        "chart": {"type": "table"},
+        "chart_payload": {},
+    }
+
+
+async def _report_run_failed(
+    report_id: str,
+    error: str,
+    *,
+    result_summary: str | None = None,
+    result_payload: dict[str, Any] | None = None,
+) -> None:
     s = get_settings()
     base = (s.REPORT_TASK_SERVICE_URL or "").strip().rstrip("/")
     if not base:
         return
     url = f"{base}/api/reports/internal/reports/{report_id}/error"
-    body = {"status": "failed", "error": error[:4000]}
+    body = {
+        "status": "failed",
+        "error": error[:4000],
+        "result_summary": (result_summary or "")[:2000] if result_summary else None,
+        "result_payload": result_payload,
+    }
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
             r = await client.post(
@@ -277,6 +317,24 @@ async def _report_run_failed(report_id: str, error: str) -> None:
             r.raise_for_status()
     except Exception as e:
         logger.warning("report run failed callback failed (%s): %s", report_id, e)
+
+
+def _extract_report_ctx(msg: aio_pika.IncomingMessage) -> tuple[str | None, str | None]:
+    try:
+        data = json.loads(msg.body.decode("utf-8"))
+        rid = str(data.get("report_id") or "").strip() or None
+        content = str(data.get("content") or "").strip() or None
+        return rid, content
+    except Exception:
+        return None, None
+
+
+def _extract_job_id(msg: aio_pika.IncomingMessage) -> str | None:
+    try:
+        data = json.loads(msg.body.decode("utf-8"))
+        return str(data.get("job_id") or "").strip() or None
+    except Exception:
+        return None
 
 
 async def _handle_chat_incoming(
@@ -338,7 +396,12 @@ async def _handle_chat_incoming(
                 )
             report_id = str(data.get("report_id") or "").strip()
             if report_id:
-                await _report_run_failed(report_id, err_txt)
+                await _report_run_failed(
+                    report_id,
+                    err_txt,
+                    result_summary=_normalize_report_error(err_txt),
+                    result_payload=_failed_report_payload("schema_unavailable"),
+                )
             return
         tables = [TableSchema.model_validate(x) for x in tables_raw]
         s_cfg = get_settings()
@@ -675,7 +738,13 @@ async def _handle_sql_chat_result(
                     },
                 )
             else:
-                await _report_run_failed(ctx.report_id, err or "Report execution failed")
+                raw_err = err or "Report execution failed"
+                await _report_run_failed(
+                    ctx.report_id,
+                    raw_err,
+                    result_summary=_normalize_report_error(raw_err),
+                    result_payload=_failed_report_payload("sql_generation_failed", sql_s),
+                )
         if status == "done" and ctx.scheduled_report:
             has_table = bool(rows_ws)
             has_chart = (
@@ -729,14 +798,42 @@ async def _amain() -> None:
         async def on_chat(msg: aio_pika.IncomingMessage) -> None:
             try:
                 await _handle_chat_incoming(msg, ch_pub)
-            except Exception:
+            except Exception as e:
                 logger.exception("chat incoming handler failed")
+                report_id, content = _extract_report_ctx(msg)
+                if report_id:
+                    err_text = (
+                        "Ошибка в nl-orchestrator при обработке отчёта: "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    await _report_run_failed(
+                        report_id,
+                        err_text,
+                        result_summary=_normalize_report_error(err_text),
+                        result_payload=_failed_report_payload("orchestrator_exception"),
+                    )
 
         async def on_sql(msg: aio_pika.IncomingMessage) -> None:
             try:
                 await _handle_sql_chat_result(msg, ch_pub)
-            except Exception:
+            except Exception as e:
                 logger.exception("sql chat result handler failed")
+                job_id = _extract_job_id(msg)
+                if not job_id:
+                    return
+                async with _pending_lock:
+                    ctx = pending.pop(job_id, None)
+                if ctx and ctx.report_id:
+                    err_text = (
+                        "Ошибка в nl-orchestrator при обработке SQL-результата: "
+                        f"{type(e).__name__}: {e}"
+                    )
+                    await _report_run_failed(
+                        ctx.report_id,
+                        err_text,
+                        result_summary=_normalize_report_error(err_text),
+                        result_payload=_failed_report_payload("orchestrator_sql_result_exception"),
+                    )
 
         await q_in.consume(on_chat)
         await q_report_v1.consume(on_chat)

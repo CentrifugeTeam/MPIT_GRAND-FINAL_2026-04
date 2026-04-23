@@ -151,7 +151,7 @@ export function ReportsDashboard() {
                       id={task.id}
                       title={task.title}
                       schedule={formatSchedule(task)}
-                      description={task.instruction || undefined}
+                      description={task.last_report_sentence?.trim() || undefined}
                       lastRunTime={
                         task.last_run_at
                           ? new Date(task.last_run_at).toLocaleString()

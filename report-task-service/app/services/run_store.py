@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -7,6 +8,64 @@ from sqlalchemy import func, select, update, delete
 
 from app.db.models import ReportRun
 from app.db.session import SessionLocal
+
+
+def _first_sentence_from_text(
+    result_summary: str | None, query_text: str | None, max_len: int = 240
+) -> str | None:
+    raw = (result_summary or "").strip()
+    if not raw:
+        raw = (query_text or "").strip()
+    if not raw:
+        return None
+    t = " ".join(raw.split())
+    cut: int | None = None
+    for i, ch in enumerate(t):
+        if ch in ".!?…":
+            if i == len(t) - 1 or t[i + 1] in " \n\t":
+                cut = i + 1
+                break
+    if cut is not None:
+        t = t[:cut].strip()
+    elif "\n" in t:
+        t = t.split("\n", 1)[0].strip()
+    if len(t) > max_len:
+        t = t[: max_len - 1].rstrip()
+        if not t.endswith("…"):
+            t += "…"
+    return t if t else None
+
+
+def latest_done_report_sentence_by_task_ids(user_id: str, task_ids: list[str]) -> dict[str, str]:
+    """Latest status=done run per task_id (by created_at desc); one short preview sentence."""
+    if not task_ids:
+        return {}
+    uid = uuid.UUID(str(user_id))
+    tid_uuids = [uuid.UUID(t) for t in task_ids]
+    rn = (
+        func.row_number()
+        .over(partition_by=ReportRun.task_id, order_by=ReportRun.created_at.desc())
+        .label("rn")
+    )
+    subq = (
+        select(ReportRun.task_id, ReportRun.result_summary, ReportRun.query_text, rn)
+        .where(
+            ReportRun.user_id == uid,
+            ReportRun.task_id.in_(tid_uuids),
+            ReportRun.status == "done",
+        )
+    ).subquery()
+    stmt = select(subq.c.task_id, subq.c.result_summary, subq.c.query_text).where(subq.c.rn == 1)
+    out: dict[str, str] = {}
+    with SessionLocal() as db:
+        for row in db.execute(stmt).all():
+            tid = str(row.task_id) if row.task_id else None
+            if not tid:
+                continue
+            preview = _first_sentence_from_text(row.result_summary, row.query_text)
+            if preview:
+                out[tid] = preview
+    return out
 
 
 def _run_to_dict(row: ReportRun) -> dict[str, Any]:
@@ -146,7 +205,15 @@ def mark_run_done(report_id: str, result_summary: str | None, result_payload: di
         return bool(res.rowcount)
 
 
-def mark_run_failed(report_id: str, error: str) -> bool:
+def mark_run_failed(
+    report_id: str,
+    error: str,
+    result_summary: str | None = None,
+    result_payload: dict[str, Any] | None = None,
+) -> bool:
+    summary = (result_summary or error or "").strip()
+    if len(summary) > 2000:
+        summary = summary[:1997].rstrip() + "..."
     with SessionLocal.begin() as db:
         res = db.execute(
             update(ReportRun)
@@ -154,6 +221,8 @@ def mark_run_failed(report_id: str, error: str) -> bool:
             .values(
                 status="failed",
                 error=error,
+                result_summary=summary or "Не удалось сформировать отчёт из-за ошибки запроса.",
+                result_payload=result_payload,
                 finished_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             )

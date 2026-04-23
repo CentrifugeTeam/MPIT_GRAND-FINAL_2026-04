@@ -1,14 +1,38 @@
 import asyncio
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from fastapi import HTTPException, status
 
 from app.core.config import get_settings
 from app.core.queues import QUEUE_REPORT_TASK_INCOMING
 from app.services.rabbitmq_publish import rabbit_publish
-from app.services.run_store import create_run
+from app.services.run_store import create_run, mark_run_failed
 from app.services.task_store import reserve_due_tasks
 
 _scheduler: BackgroundScheduler | None = None
+
+
+async def enqueue_task_run(row: dict, *, scheduled_report: bool = True) -> dict:
+    run = create_run(row["task_id"], row["user_id"], row["instruction"])
+    payload = {
+        "report_id": run["id"],
+        "task_id": row["task_id"],
+        "user_id": row["user_id"],
+        "conversation_id": "__report_run__",
+        "message_id": f"report-run-{run['id']}",
+        "content": row["instruction"],
+        "analytics_source_key": row["analytics_source_key"],
+        "scheduled_report": scheduled_report,
+    }
+    try:
+        await rabbit_publish.publish_json(QUEUE_REPORT_TASK_INCOMING, payload)
+    except Exception as exc:
+        mark_run_failed(run["id"], f"Queue publish failed: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to enqueue report run",
+        ) from exc
+    return run
 
 
 def dispatch_due_report_runs() -> None:
@@ -18,19 +42,8 @@ def dispatch_due_report_runs() -> None:
 
     async def _publish_all() -> None:
         for row in rows:
-            run = create_run(row["task_id"], row["user_id"], row["instruction"])
-            payload = {
-                "report_id": run["id"],
-                "task_id": row["task_id"],
-                "user_id": row["user_id"],
-                "conversation_id": "__report_run__",
-                "message_id": f"report-run-{run['id']}",
-                "content": row["instruction"],
-                "analytics_source_key": row["analytics_source_key"],
-                "scheduled_report": True,
-            }
             try:
-                await rabbit_publish.publish_json(QUEUE_REPORT_TASK_INCOMING, payload)
+                await enqueue_task_run(row, scheduled_report=True)
             except Exception:
                 continue
 

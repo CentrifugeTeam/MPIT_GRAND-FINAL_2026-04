@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text, update, delete
 
 from app.db.models import ReportTask
 from app.db.session import SessionLocal
+from app.services import run_store
 from app.services.schedule import calculate_next_run
 
 
@@ -33,6 +34,7 @@ def _task_to_dict(row: ReportTask) -> dict[str, Any]:
         "runs_count": row.runs_count,
         "created_at": row.created_at,
         "updated_at": row.updated_at,
+        "last_report_sentence": None,
     }
 
 
@@ -92,7 +94,12 @@ def list_tasks(user_id: str, limit: int = 50, offset: int = 0) -> tuple[list[dic
             .scalars()
             .all()
         )
-        return [_task_to_dict(r) for r in rows], int(total)
+        items = [_task_to_dict(r) for r in rows]
+        ids = [d["id"] for d in items]
+        previews = run_store.latest_done_report_sentence_by_task_ids(user_id, ids)
+        for d in items:
+            d["last_report_sentence"] = previews.get(d["id"])
+        return items, int(total)
 
 
 def get_task(user_id: str, task_id: str) -> dict[str, Any] | None:
@@ -107,7 +114,12 @@ def get_task(user_id: str, task_id: str) -> dict[str, Any] | None:
             .scalars()
             .first()
         )
-        return _task_to_dict(row) if row else None
+        if not row:
+            return None
+        d = _task_to_dict(row)
+        previews = run_store.latest_done_report_sentence_by_task_ids(user_id, [str(row.id)])
+        d["last_report_sentence"] = previews.get(str(row.id))
+        return d
 
 
 def patch_task(user_id: str, task_id: str, patch: dict[str, Any]) -> bool:

@@ -32,6 +32,10 @@ class TaskApi(BaseModel):
     runs_count: int
     created_at: datetime
     updated_at: datetime
+    last_report_sentence: Optional[str] = Field(
+        default=None,
+        description="Первое предложение из последнего завершённого отчёта (status=done) по задаче; null, если таких отчётов нет.",
+    )
 
 
 class TaskListResponse(BaseModel):

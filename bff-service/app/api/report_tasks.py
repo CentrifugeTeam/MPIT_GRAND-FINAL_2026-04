@@ -209,13 +209,13 @@ async def get_report_task(
     return TaskApi.model_validate(raw)
 
 
-@router.patch(
+@router.post(
     "/tasks/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Частично обновить задачу",
-    description=_AUTH,
+    summary="Обновить задачу",
+    description="Прокси в report-task-service. Обновляет любые переданные поля задачи (тип/время расписания, инструкция, источник данных и т.д.). " + _AUTH,
 )
-async def patch_report_task(
+async def replace_report_task(
     task_id: str,
     body: PatchReportTaskBody,
     current_user: dict = Depends(get_current_user),
@@ -225,7 +225,7 @@ async def patch_report_task(
         raise HTTPException(status_code=400, detail="Nothing to update")
     uid = current_user.get("uuid")
     role = str(current_user.get("role") or "USER")
-    await _proxy.patch_report_task(uid, task_id, payload, user_role=role)
+    await _proxy.replace_report_task(uid, task_id, payload, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -243,6 +243,22 @@ async def delete_report_task(
     role = str(current_user.get("role") or "USER")
     await _proxy.delete_report_task(uid, task_id, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/tasks/{task_id}/dispatch",
+    response_model=ReportRunApi,
+    summary="Запустить задачу вручную через очередь",
+    description="Прокси в report-task-service. Создаёт прогон и отправляет его в очередь выполнения. " + _AUTH,
+)
+async def dispatch_report_task(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> ReportRunApi:
+    uid = current_user.get("uuid")
+    role = str(current_user.get("role") or "USER")
+    raw = await _proxy.dispatch_report_task(uid, task_id, user_role=role)
+    return ReportRunApi.model_validate(raw)
 
 
 @router.get(

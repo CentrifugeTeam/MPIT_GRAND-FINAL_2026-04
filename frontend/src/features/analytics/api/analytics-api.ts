@@ -200,6 +200,7 @@ export type ReportTask = {
   runs_count: number;
   created_at: string;
   updated_at: string;
+  last_report_sentence?: string | null;
 };
 
 export type ReportTaskListResponse = {
@@ -257,7 +258,7 @@ export async function fetchReportTasks(limit = 50, offset = 0) {
 }
 
 export async function patchReportTask(taskId: string, body: Partial<CreateReportTaskBody>) {
-  await api.patch(`/api/analytics/tasks/${taskId}`, body);
+  await api.post(`/api/analytics/tasks/${taskId}`, body);
 }
 
 export async function deleteReportTask(taskId: string) {

@@ -141,6 +141,10 @@ class TaskApi(BaseModel):
     runs_count: int
     created_at: datetime
     updated_at: datetime
+    last_report_sentence: Optional[str] = Field(
+        default=None,
+        description="Первое предложение из последнего завершённого отчёта (status=done) по задаче; null, если таких отчётов нет.",
+    )
 
 
 class TaskListResponse(BaseModel):
@@ -210,3 +214,11 @@ class ReportResultBody(BaseModel):
 class ReportErrorBody(BaseModel):
     status: Literal["failed"]
     error: str
+    result_summary: Optional[str] = Field(
+        default=None,
+        description="Краткое человекочитаемое объяснение причины неуспешного прогона.",
+    )
+    result_payload: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Структурированный диагностический/пустой payload для failed-прогона.",
+    )
