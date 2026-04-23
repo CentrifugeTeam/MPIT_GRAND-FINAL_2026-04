@@ -646,7 +646,27 @@ async def _handle_chat_incoming(
                     },
                 )
         else:
-            if conv != "__report_run__":
+            if conv == "__report_run__":
+                rid_done = str(data.get("report_id") or "").strip()
+                if rid_done:
+                    summary = (plan.get("reply_ru") or "").strip() or (
+                        "Модель не сформировала запрос к данным (sql_question=null). "
+                        "Сформулируйте инструкцию отчёта как явный аналитический запрос к таблицам БД."
+                    )
+                    await _report_run_done(
+                        rid_done,
+                        summary,
+                        {
+                            "sql": None,
+                            "row_count": 0,
+                            "chart": {"type": "table"},
+                            "chart_payload": {},
+                            "columns": [],
+                            "rows": [],
+                            "reason": "plan_no_sql",
+                        },
+                    )
+            else:
                 await _publish_json(
                     pub_channel,
                     {
