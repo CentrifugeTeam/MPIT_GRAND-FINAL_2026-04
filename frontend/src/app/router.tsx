@@ -9,7 +9,6 @@ import { NotFoundPage } from '@/pages/not-found';
 import { LoginPage } from '@/pages/auth/login';
 import { RegisterPage } from '@/pages/auth/register';
 import { ReportsPage } from '@/pages/reports';
-import { DevChartsPage } from '@/pages/dev-charts';
 
 export function AppRouter() {
   return (
@@ -25,11 +24,6 @@ export function AppRouter() {
             />
           }
         />
-        <Route
-          path='/dev/charts'
-          element={<DevChartsPage />}
-        />
-
         {/* Guest-only routes */}
         <Route element={<GuestRoute />}>
           <Route
