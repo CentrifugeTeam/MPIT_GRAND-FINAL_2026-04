@@ -221,7 +221,11 @@
       "runRunning": "Running",
       "runDone": "Done",
       "createTask": "Create task",
-      "moreActions": "More actions"
+      "moreActions": "More actions",
+      "deleteConfirmTitle": "Delete task?",
+      "deleteConfirmBody": "The task and all its runs will be permanently deleted.",
+      "deleteConfirmOk": "Delete",
+      "deleteConfirmCancel": "Cancel"
     },
     "modal": {
       "titlePlaceholder": "Enter report name...",

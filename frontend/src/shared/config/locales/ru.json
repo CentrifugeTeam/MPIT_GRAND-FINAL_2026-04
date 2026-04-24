@@ -221,7 +221,11 @@
       "runRunning": "Выполняется",
       "runDone": "Готово",
       "createTask": "Создать задачу",
-      "moreActions": "Ещё действия"
+      "moreActions": "Ещё действия",
+      "deleteConfirmTitle": "Удалить задачу?",
+      "deleteConfirmBody": "Задача и все её запуски будут удалены без возможности восстановления.",
+      "deleteConfirmOk": "Удалить",
+      "deleteConfirmCancel": "Отмена"
     },
     "modal": {
       "titlePlaceholder": "Введите название отчёта...",

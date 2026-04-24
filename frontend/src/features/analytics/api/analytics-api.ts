@@ -130,6 +130,10 @@ export async function deleteAnalyticsJob(jobId: string) {
   await api.delete(`/api/analytics/jobs/${jobId}`);
 }
 
+export async function deleteAnalyticsTask(taskId: string) {
+  await api.delete(`/api/analytics/tasks/${taskId}`);
+}
+
 export async function deleteAllAnalyticsHistory() {
   await api.delete('/api/analytics/history');
 }
