@@ -1,15 +1,9 @@
-import { Icon } from '@iconify/react';
 import { useNavigate } from 'react-router';
 
 import { useAnalyticsChatStore } from '../../model/analytics-chat-store';
 import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from '../../config/figma-sidebar-styles';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
-import {
-  GearIcon,
-  NewChatIcon,
-  ReportsIcon,
-  SearchIcon,
-} from '@/shared/ui/assets/icons';
+import { NewChatIcon, RocketIcon, SearchIcon } from '@/shared/ui/assets/icons';
 
 export type FigmaSidebarPrimaryNavProps = {
   isOpen: boolean;
@@ -115,7 +109,7 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
-            <GearIcon
+            <RocketIcon
               className='shrink-0 text-[#a1a1aa]'
               width={16}
               height={16}
@@ -136,7 +130,7 @@ export function FigmaSidebarPrimaryNav({
               onClick={handleNavigateToReports}
               className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
             >
-              <GearIcon
+              <RocketIcon
                 className='text-[#a1a1aa]'
                 width={18}
               />
