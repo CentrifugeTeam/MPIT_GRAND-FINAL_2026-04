@@ -8,7 +8,6 @@ export { CHAT_INVITES_QUERY_KEY } from "./model/use-accepted-chat-invites";
 export { AnalyticsResults } from "./ui/analytics-panel/analytics-results";
 export { FigmaAnalyticsMain } from "./ui/figma-home/figma-analytics-main";
 export { FigmaAnalyticsSidebar } from "./ui/figma-home/figma-analytics-sidebar";
-export { FigmaNotificationsPanelTooltip } from "./ui/figma-home/figma-notifications-panel-tooltip";
 export { FigmaShareAccessModal } from "./ui/figma-home/figma-share-access-modal";
 export { FigmaShareChatEmailsModal } from "./ui/figma-home/figma-share-chat-emails-modal";
 export { AnalyticsCharts } from "./ui/analytics-charts/analytics-charts";

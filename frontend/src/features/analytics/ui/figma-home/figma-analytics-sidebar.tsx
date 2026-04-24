@@ -1,9 +1,9 @@
-import type { RefObject } from "react";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 
 import { useAcceptedChatInvites } from "../../model/use-accepted-chat-invites";
 import type { AnalyticsSidebarProps } from "../analytics-panel/analytics-sidebar";
+import type { AppNotification } from "@/shared/api/notifications-api";
 import {
   FIGMA_SIDEBAR_COLLAPSED_PX,
   FIGMA_SIDEBAR_EXPANDED_PX,
@@ -15,20 +15,21 @@ import { FigmaSimpleTooltip } from "./figma-simple-tooltip";
 import { FigmaSidebarHistorySection } from "./figma-sidebar-history-section";
 import { FigmaSidebarPrimaryNav } from "./figma-sidebar-primary-nav";
 import { FigmaSidebarProfileButton } from "./figma-sidebar-profile-button";
-import {
-  ArrowChevronLeft,
-  ArrowChevronRight,
-  BellDotIcon,
-  Logo,
-} from "@/shared/ui/assets/icons";
+import { FigmaSidebarNotificationsButton } from "./figma-sidebar-notifications-button";
+import { ArrowChevronLeft, ArrowChevronRight, Logo } from "@/shared/ui/assets/icons";
 
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
   onToggle: () => void;
-  onOpenNotifications: () => void;
-  hasNotificationBadge?: boolean;
-  /** Ref на обёртку кнопки уведомлений — для позиции панели-тултипа. */
-  notificationsAnchorRef?: RefObject<HTMLElement | null>;
+  notifications: AppNotification[];
+  onNotificationAccept: (
+    inviteId: string,
+    notificationId: string,
+  ) => Promise<void>;
+  onNotificationReject: (
+    inviteId: string,
+    notificationId: string,
+  ) => Promise<void>;
 };
 
 export function FigmaAnalyticsSidebar({
@@ -53,9 +54,9 @@ export function FigmaAnalyticsSidebar({
   onStartEditingRow,
   onDeleteHistoryEntry,
   t,
-  onOpenNotifications,
-  hasNotificationBadge,
-  notificationsAnchorRef,
+  notifications,
+  onNotificationAccept,
+  onNotificationReject,
 }: FigmaAnalyticsSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -168,55 +169,13 @@ export function FigmaAnalyticsSidebar({
                 </FigmaSimpleTooltip>
               )}
               <div className="flex flex-col gap-3">
-                <span
-                  ref={notificationsAnchorRef}
-                  className="inline-flex shrink-0"
-                >
-                  {isOpen ? (
-                    <button
-                      type="button"
-                      onClick={onOpenNotifications}
-                      className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all duration-200 hover:bg-[#27272a]/60 active:scale-[0.97]"
-                      aria-label={t("home.figma.notifications")}
-                    >
-                      {hasNotificationBadge ? (
-                        <span
-                          className="absolute -right-0.5 -top-0.5 z-[1] inline-flex h-2.5 w-2.5 rounded-full bg-danger"
-                          aria-hidden
-                        />
-                      ) : null}
-                      <BellDotIcon
-                        className="shrink-0"
-                        width={16}
-                        height={16}
-                      />
-                    </button>
-                  ) : (
-                    <FigmaSimpleTooltip
-                      label={t("home.figma.notifications")}
-                      side="right"
-                    >
-                      <button
-                        type="button"
-                        onClick={onOpenNotifications}
-                        className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all duration-200 hover:bg-[#27272a]/60 active:scale-[0.97]"
-                        aria-label={t("home.figma.notifications")}
-                      >
-                        {hasNotificationBadge ? (
-                          <span
-                            className="absolute -right-0.5 -top-0.5 z-[1] inline-flex h-2.5 w-2.5 rounded-full bg-danger"
-                            aria-hidden
-                          />
-                        ) : null}
-                        <BellDotIcon
-                          className="shrink-0"
-                          width={16}
-                          height={16}
-                        />
-                      </button>
-                    </FigmaSimpleTooltip>
-                  )}
-                </span>
+                <FigmaSidebarNotificationsButton
+                  isSidebarOpen={isOpen}
+                  t={t}
+                  notifications={notifications}
+                  onAccept={onNotificationAccept}
+                  onReject={onNotificationReject}
+                />
                 <FigmaSidebarProfileButton
                   isOpen={isOpen}
                   t={t}
