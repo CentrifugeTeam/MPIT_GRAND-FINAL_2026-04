@@ -89,3 +89,20 @@ class NlChatMessage(PlatformBase):
     client_message_id = Column(String(128), nullable=True)
     payload = Column(JSONB, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AnalyticsChatSuggestion(PlatformBase):
+    __tablename__ = "analytics_chat_suggestions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_key = Column(String(64), nullable=True, index=True)
+    locale = Column(String(8), nullable=False, default="ru", index=True)
+    topic_key = Column(String(64), nullable=False)
+    topic_label = Column(String(255), nullable=False)
+    question_text = Column(Text, nullable=False)
+    topic_sort = Column(Integer, nullable=False, default=0)
+    question_sort = Column(Integer, nullable=False, default=0)
+    is_system = Column(Boolean, nullable=False, default=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

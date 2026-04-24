@@ -5,7 +5,7 @@ import { ScrollShadow } from '@heroui/react';
 
 import type { AnalyticsDataSourceItem } from '../../api/analytics-api';
 import type {
-  FigmaFaqId,
+  ChatSuggestionTopic,
   FigmaTranslateFn,
 } from '../../config/figma-analytics-faq';
 import type { InterpretationHint } from '../../lib/interpretation-hint';
@@ -39,6 +39,8 @@ export type FigmaAnalyticsMainProps = {
   selectedSourceLabel: string;
   onSourceKeyChange: (key: string) => void;
   dataSourcesLoaded: boolean;
+  chatSuggestions: ChatSuggestionTopic[];
+  chatSuggestionsLoaded: boolean;
   nlConversationId: string | null;
   onShareChat: () => void;
   historyBusy: boolean;
@@ -67,6 +69,8 @@ export function FigmaAnalyticsMain({
   selectedSourceLabel,
   onSourceKeyChange,
   dataSourcesLoaded,
+  chatSuggestions,
+  chatSuggestionsLoaded,
   nlConversationId,
   onShareChat,
   historyBusy,
@@ -78,7 +82,7 @@ export function FigmaAnalyticsMain({
 }: FigmaAnalyticsMainProps) {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
-  const [activeFaq, setActiveFaq] = useState<FigmaFaqId | null>(null);
+  const [activeFaq, setActiveFaq] = useState<string | null>(null);
   const hasChat = nlChatLines.length > 0;
   const showHero = !hasChat;
   const sourceButtonLabel =
@@ -201,6 +205,8 @@ export function FigmaAnalyticsMain({
                       t={t}
                       activeFaq={activeFaq}
                       setActiveFaq={setActiveFaq}
+                      apiTopics={chatSuggestions}
+                      apiLoaded={chatSuggestionsLoaded}
                       onPick={handleFaqPick}
                     />
                   )}

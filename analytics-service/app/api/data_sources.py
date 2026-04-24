@@ -17,6 +17,7 @@ from app.services.data_sources_store import (
     update_source,
 )
 from app.services.report_template_queue_consumer import publish_template_plan_request
+from app.services.chat_suggestion_queue_consumer import publish_chat_suggestion_plan_request
 from app.services.schema_scheduler import refresh_schema_cache
 
 router = APIRouter()
@@ -151,7 +152,16 @@ async def add_data_source(
                 "enqueue report template plan failed for source_key=%s", row["key"]
             )
 
+    async def _enqueue_chat_faq() -> None:
+        try:
+            await publish_chat_suggestion_plan_request(row["key"])
+        except Exception:
+            logger.exception(
+                "enqueue chat suggestions plan failed for source_key=%s", row["key"]
+            )
+
     background_tasks.add_task(_enqueue_templates)
+    background_tasks.add_task(_enqueue_chat_faq)
     return DataSourcePublic(**row)
 
 

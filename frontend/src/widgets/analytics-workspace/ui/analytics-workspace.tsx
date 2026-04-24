@@ -133,6 +133,8 @@ export function AnalyticsWorkspace() {
           selectedSourceLabel={p.selectedSourceLabel}
           onSourceKeyChange={p.setSelectedSourceKey}
           dataSourcesLoaded={p.dataSourcesLoaded}
+          chatSuggestions={p.chatSuggestions}
+          chatSuggestionsLoaded={p.chatSuggestionsLoaded}
           nlConversationId={p.nlConversationId}
           onShareChat={handleShareChat}
           historyBusy={p.historyBusy}

@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +10,8 @@ from app.api.access_policies import router as access_policies_router
 from app.api.analytics import router as analytics_router
 from app.api.data_sources import router as data_sources_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,6 +19,11 @@ async def lifespan(app: FastAPI):
     from app.services.report_template_queue_consumer import (
         start_report_template_consumer,
         stop_report_template_consumer,
+    )
+    from app.services.chat_suggestion_queue_consumer import (
+        enqueue_missing_chat_suggestion_sources,
+        start_chat_suggestion_consumer,
+        stop_chat_suggestion_consumer,
     )
     from app.services.schema_scheduler import (
         refresh_schema_cache,
@@ -28,7 +37,16 @@ async def lifespan(app: FastAPI):
     s = get_settings()
     start_schema_scheduler(s.SCHEMA_CRON_HOUR)
     start_report_template_consumer()
+    start_chat_suggestion_consumer()
+    async def _enqueue_missing_faq() -> None:
+        try:
+            await enqueue_missing_chat_suggestion_sources()
+        except Exception:
+            logger.exception("chat suggestions bootstrap enqueue failed")
+
+    asyncio.create_task(_enqueue_missing_faq())
     yield
+    await stop_chat_suggestion_consumer()
     await stop_report_template_consumer()
     stop_schema_scheduler()
 

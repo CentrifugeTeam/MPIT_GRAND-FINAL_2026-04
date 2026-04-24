@@ -4,11 +4,13 @@
 
 - `GET /api/analytics/schema` — схема `public` для BFF (подстановка в `chat_message`) и кэш; cron `SCHEMA_CRON_HOUR` UTC.
 - `POST /api/analytics/interpret-question` — эвристика вопроса + глоссарий для NL-чата (без задачи в очереди).
+- `GET /api/analytics/chat-suggestions` — FAQ-подсказки для аналитического чата (до 5 тем, по 4 вопроса).
 - История и чаты: `GET/DELETE /api/analytics/history`, `POST /api/analytics/chats`, `GET/PATCH/DELETE /api/analytics/chats/{id}[/messages]`.
 - `DELETE /api/analytics/jobs/{job_id}` — удалить старую запись `sql_job` из истории.
 - `POST /api/analytics/internal/nl-chat-sync` — только для **nl-orchestrator-worker** (токен `X-Chat-Sync-Token`).
 
 Постановка SQL в очередь **не** через этот сервис: сообщение в **`nl_sql_generate_request`** публикует **nl-orchestrator-worker** после `chat_message`.
+FAQ-подсказки генерируются через очередь **`chat_suggestion_plan_request_v1`** при старте сервиса и при создании нового источника данных.
 
 ## Переменные окружения
 

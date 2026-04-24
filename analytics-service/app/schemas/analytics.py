@@ -219,3 +219,13 @@ class NlInternalChatSyncBody(BaseModel):
     conversation_id: str
     client_message_id: Optional[str] = None
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatSuggestionTopic(BaseModel):
+    topic_key: str
+    topic_label: str
+    questions: list[str] = Field(default_factory=list, min_length=4, max_length=4)
+
+
+class ChatSuggestionsResponse(BaseModel):
+    items: list[ChatSuggestionTopic] = Field(default_factory=list, max_length=5)

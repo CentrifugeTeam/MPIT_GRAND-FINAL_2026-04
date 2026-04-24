@@ -2,16 +2,17 @@ import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
 
 import {
-  FIGMA_FAQ_IDS,
-  readFaqItems,
-  type FigmaFaqId,
+  readFaqFallbackTopics,
+  type ChatSuggestionTopic,
   type FigmaTranslateFn,
 } from "../../config/figma-analytics-faq";
 
 export type FigmaSuggestionBlockProps = {
   t: FigmaTranslateFn;
-  activeFaq: FigmaFaqId | null;
-  setActiveFaq: (v: FigmaFaqId | null) => void;
+  activeFaq: string | null;
+  setActiveFaq: (v: string | null) => void;
+  apiTopics: ChatSuggestionTopic[];
+  apiLoaded: boolean;
   onPick: (text: string) => void;
 };
 
@@ -19,9 +20,16 @@ export function FigmaSuggestionBlock({
   t,
   activeFaq,
   setActiveFaq,
+  apiTopics,
+  apiLoaded,
   onPick,
 }: FigmaSuggestionBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const fallbackTopics = readFaqFallbackTopics(t);
+  const topics = (apiLoaded && apiTopics.length > 0 ? apiTopics : fallbackTopics).slice(0, 5);
+  const activeTopic = activeFaq
+    ? topics.find((x) => x.topic_key === activeFaq) ?? null
+    : null;
 
   useEffect(() => {
     if (!activeFaq) return;
@@ -34,8 +42,8 @@ export function FigmaSuggestionBlock({
     return () => document.removeEventListener("mousedown", handler);
   }, [activeFaq, setActiveFaq]);
 
-  if (activeFaq) {
-    const items = readFaqItems(t, activeFaq);
+  if (activeFaq && activeTopic) {
+    const items = activeTopic.questions;
     return (
       <div ref={containerRef} className="flex w-full flex-col items-start gap-1">
         {items.map((item, i) => (
@@ -64,18 +72,18 @@ export function FigmaSuggestionBlock({
       ref={containerRef}
       className="flex w-full flex-wrap items-center justify-center gap-2"
     >
-      {FIGMA_FAQ_IDS.map((id) => (
+      {topics.map((topic) => (
         <motion.button
-          key={id}
+          key={topic.topic_key}
           type="button"
           whileTap={{ scale: 0.97 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          onClick={() => setActiveFaq(id)}
+          onClick={() => setActiveFaq(topic.topic_key)}
           className="relative h-10 shrink-0 cursor-pointer rounded-3xl transition-colors duration-200 hover:bg-surface/40"
         >
           <div className="flex h-full items-center justify-center gap-2 rounded-3xl px-4 py-2">
             <span className="whitespace-nowrap text-sm font-medium text-foreground">
-              {t(`home.figma.faq.${id}.label`)}
+              {topic.topic_label}
             </span>
           </div>
           <div

@@ -1,1 +1,2 @@
 QUEUE_REPORT_TEMPLATE_PLAN_REQUEST = "report_template_plan_request_v1"
+QUEUE_CHAT_SUGGESTION_PLAN_REQUEST = "chat_suggestion_plan_request_v1"

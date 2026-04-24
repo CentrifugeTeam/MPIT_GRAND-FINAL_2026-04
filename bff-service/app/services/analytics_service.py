@@ -100,6 +100,37 @@ class AnalyticsProxy:
                 detail=self._detail(r),
             )
 
+    async def list_chat_suggestions(
+        self,
+        user_id: str,
+        *,
+        source_key: str | None = None,
+        locale: str = "ru",
+        user_role: str | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"locale": locale}
+        sk = (source_key or "").strip()
+        if sk:
+            params["source_key"] = sk
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.base_url}/api/analytics/chat-suggestions",
+                    params=params,
+                    headers=self._user_headers(user_id, user_role),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(
+                status_code=r.status_code,
+                detail=self._detail(r),
+            )
+        return r.json()
+
     async def delete_all_history(self, user_id: str, user_role: str | None = None) -> None:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

@@ -135,3 +135,22 @@ class AllowedDataSourceKeysResponse(BaseModel):
         default_factory=list,
         description="Источники, разрешённые политикой для X-User-Role",
     )
+
+
+class ChatSuggestionTopic(BaseModel):
+    topic_key: str = Field(..., description="Стабильный ключ темы")
+    topic_label: str = Field(..., description="Подпись темы для UI")
+    questions: list[str] = Field(
+        default_factory=list,
+        min_length=4,
+        max_length=4,
+        description="Ровно 4 вопроса на тему",
+    )
+
+
+class ChatSuggestionsResponse(BaseModel):
+    items: list[ChatSuggestionTopic] = Field(
+        default_factory=list,
+        max_length=5,
+        description="До 5 тем FAQ",
+    )

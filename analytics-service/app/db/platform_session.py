@@ -65,6 +65,7 @@ def _migrate_nl_sql_jobs_max_rows() -> None:
 def init_platform_tables():
     from app.db.platform_base import PlatformBase
     from app.db.platform_models import (  # noqa: F401
+        AnalyticsChatSuggestion,
         AnalyticsAccessPolicy,
         AnalyticsDataSource,
         NlChatMessage,

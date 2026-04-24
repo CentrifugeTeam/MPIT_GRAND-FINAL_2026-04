@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.schemas.analytics import (
     AnalyticsHistoryItem,
     AnalyticsHistoryResponse,
+    ChatSuggestionsResponse,
     CreateNlChatBody,
     CreateNlChatResponse,
     GlossaryMatchItem,
@@ -50,6 +51,7 @@ from app.services.chat_store import (
 )
 from app.services.history_unified import list_unified_history
 from app.services.job_store import delete_all_jobs_for_user, delete_job
+from app.services.chat_suggestions_store import list_chat_suggestions
 
 router = APIRouter()
 logger = logging.getLogger("analytics.api")
@@ -71,6 +73,28 @@ def _slim_assistant_payload_for_db(p: dict) -> dict:
             cp2["rows"] = trows[:200]
         out["chart_payload"] = cp2
     return out
+
+
+@router.get(
+    "/chat-suggestions",
+    response_model=ChatSuggestionsResponse,
+    summary="FAQ-подсказки для аналитического чата",
+    description="Серверные темы и вопросы (до 5 тем, по 4 вопроса), источник учитывает source_key и fallback на default.",
+)
+async def get_chat_suggestions_route(
+    source_key: str | None = Query(
+        None,
+        description="Ключ источника данных; если нет данных, используется fallback на default source.",
+    ),
+    locale: str = Query(
+        "ru",
+        min_length=2,
+        max_length=8,
+        description="Локаль подборки подсказок.",
+    ),
+):
+    items = list_chat_suggestions(source_key=source_key, locale=locale)
+    return ChatSuggestionsResponse(items=items)
 
 
 @router.get(

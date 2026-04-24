@@ -16,6 +16,7 @@ import {
 import { useWsStore } from '@/shared/lib/ws-store';
 
 import type { InterpretationHint } from '../lib/interpretation-hint';
+import { useChatSuggestions } from './use-chat-suggestions';
 
 type UseAnalyticsPanelOptions = {
   initialConversationId?: string | null;
@@ -145,6 +146,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
   }, [chartPayload]);
 
   const composerBusy = nlChatBusy || interpretBusy;
+  const chatSuggestionsQuery = useChatSuggestions(selectedSourceKey);
 
   return {
     t,
@@ -189,5 +191,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     selectedSourceLabel,
     setSelectedSourceKey,
     dataSourcesLoaded,
+    chatSuggestions: chatSuggestionsQuery.data?.items ?? [],
+    chatSuggestionsLoaded: chatSuggestionsQuery.isFetched,
   };
 }

@@ -109,11 +109,35 @@ export type AnalyticsDataSourcesResponse = {
   default_key: string | null;
 };
 
+export type ChatSuggestionTopic = {
+  topic_key: string;
+  topic_label: string;
+  questions: string[];
+};
+
+export type ChatSuggestionsResponse = {
+  items: ChatSuggestionTopic[];
+};
+
 export async function fetchAnalyticsDataSources() {
   const { data } = await api.get<AnalyticsDataSourcesResponse>(
     '/api/analytics/data-sources',
   );
   return analyticsDataSourcesResponseSchema.parse(data);
+}
+
+export async function fetchChatSuggestions(
+  sourceKey?: string | null,
+  locale = 'ru',
+) {
+  const params: Record<string, string> = { locale };
+  const sk = sourceKey?.trim();
+  if (sk) params.source_key = sk;
+  const { data } = await api.get<ChatSuggestionsResponse>(
+    '/api/analytics/chat-suggestions',
+    { params },
+  );
+  return data;
 }
 
 export async function fetchAnalyticsHistory(limit = 50, offset = 0) {

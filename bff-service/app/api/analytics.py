@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.auth import get_current_user
 from app.schemas.openapi_analytics import (
+    ChatSuggestionsResponse,
     AllowedDataSourceKeysResponse,
     AnalyticsHistoryResponse,
     CreateNlChatBody,
@@ -166,6 +167,36 @@ async def query_quality(
         user_role=role,
     )
     return QueryQualityResponse.model_validate(raw)
+
+
+@router.get(
+    "/chat-suggestions",
+    response_model=ChatSuggestionsResponse,
+    summary="FAQ-подсказки аналитического чата",
+    description="Серверные темы и вопросы для suggestion-блока. " + _AUTH_DESC,
+)
+async def list_chat_suggestions(
+    source_key: str | None = Query(
+        None,
+        description="Ключ активного источника данных",
+    ),
+    locale: str = Query(
+        "ru",
+        min_length=2,
+        max_length=8,
+        description="Локаль набора подсказок",
+    ),
+    current_user: dict = Depends(get_current_user),
+) -> ChatSuggestionsResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    raw = await _proxy.list_chat_suggestions(
+        uid,
+        source_key=source_key,
+        locale=locale,
+        user_role=role,
+    )
+    return ChatSuggestionsResponse.model_validate(raw)
 
 
 @router.delete(

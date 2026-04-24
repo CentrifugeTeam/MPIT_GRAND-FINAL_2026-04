@@ -15,6 +15,7 @@
 | `src/features/reports/ui/create-report-modal.tsx` | Создание/редактирование отчёта, фокус в модалку при открытии. |
 | Сквозной разбор | [nl-chat-and-reports.md](nl-chat-and-reports.md) (WS, REST, воркер, UX). |
 | `src/features/analytics/api/analytics-api.ts` | Вызовы REST аналитики через BFF. |
+| `src/features/analytics/model/use-chat-suggestions.ts` | Загрузка серверных FAQ-подсказок (chat suggestions) для чата. |
 | `src/shared/api/axios.ts` | Базовый URL и интерцепторы. |
 | `src/shared/config/env.ts` | Env для клиента. |
 | `src/widgets/analytics-workspace/ui/analytics-workspace.tsx` | Сборка экрана аналитики. |
