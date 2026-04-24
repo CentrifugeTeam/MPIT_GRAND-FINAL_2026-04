@@ -365,7 +365,8 @@ async def clone_shared_chat_route(
 @router.get(
     "/chat-invites",
     response_model=ChatInvitesListResponse,
-    summary="Входящие инвайты в чат",
+    summary="Инвайты в чат: ожидающие и принятые",
+    description="pending — по email приглашённого; accepted — где пользователь уже принял (invitee_user_id).",
 )
 async def list_chat_invites_route(
     x_user_id: str = Header(..., alias="X-User-Id"),

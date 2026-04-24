@@ -94,7 +94,7 @@ async def get_all_users(
     "/search",
     response_model=UserListResponse,
     summary="Поиск пользователей по email",
-    description="Доступно для любого залогиненного пользователя.",
+    description="Доступно для любого залогиненного пользователя. Собственный email в выдаче не возвращается.",
 )
 async def search_users_by_email(
     query: str = Query(..., min_length=1, max_length=255, description="Часть email для поиска"),
@@ -102,8 +102,10 @@ async def search_users_by_email(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    _ = current_user
-    users = user_crud.search_users_by_email(db, query=query, limit=limit)
+    requester_email = str(current_user.get("email") or "").strip() or None
+    users = user_crud.search_users_by_email(
+        db, query=query, limit=limit, exclude_email=requester_email
+    )
     return UserListResponse(
         users=[UserResponse.model_validate(user, from_attributes=True) for user in users]
     )

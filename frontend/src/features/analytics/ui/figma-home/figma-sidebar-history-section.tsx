@@ -2,10 +2,7 @@ import { useCallback, useState, type RefObject } from "react";
 import { Dropdown, ScrollShadow } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import {
-  useAnalyticsChatStore,
-  type AnalyticsChatEntry,
-} from "../../model/analytics-chat-store";
+import type { AnalyticsChatEntry } from "../../model/analytics-chat-store";
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_ITEM_DANGER,
@@ -68,15 +65,12 @@ export function FigmaSidebarHistorySection({
   t,
 }: FigmaSidebarHistorySectionProps) {
   const [sharedChatsOpen, setSharedChatsOpen] = useState(true);
-  const mergeEntry = useAnalyticsChatStore((s) => s.mergeEntry);
 
   const onSharedSelectEntry = useCallback(
     (id: string) => {
-      const e = sharedEntries.find((x) => x.id === id);
-      if (e) mergeEntry(e);
       onSelectEntry(id);
     },
-    [sharedEntries, onSelectEntry, mergeEntry],
+    [onSelectEntry],
   );
   const onSharedStartEditingRow = useCallback(
     (e: AnalyticsChatEntry) => onStartEditingRow(e),

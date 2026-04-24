@@ -492,15 +492,32 @@ def create_chat_invites(
 
 
 def list_incoming_invites(user_email: str, user_id: str | None = None) -> list[dict[str, Any]]:
+    """Входящие pending по email + принятые по invitee_user_id (для блока «совместные чаты»)."""
     email = (user_email or "").strip().lower()
     uid = _uid(user_id) if user_id else None
     db = PlatformSessionLocal()
     try:
-        q = db.query(NlChatInvite).filter(
-            NlChatInvite.status == "pending",
-            NlChatInvite.invitee_email == email,
-        )
-        rows = q.order_by(NlChatInvite.created_at.desc()).all()
+        if uid is not None:
+            q = db.query(NlChatInvite).filter(
+                or_(
+                    and_(
+                        NlChatInvite.status == "pending",
+                        NlChatInvite.invitee_email == email,
+                    ),
+                    and_(
+                        NlChatInvite.status == "accepted",
+                        NlChatInvite.invitee_user_id == uid,
+                    ),
+                )
+            )
+        else:
+            q = db.query(NlChatInvite).filter(
+                NlChatInvite.status == "pending",
+                NlChatInvite.invitee_email == email,
+            )
+        rows = q.order_by(
+            func.coalesce(NlChatInvite.accepted_at, NlChatInvite.created_at).desc()
+        ).all()
         out: list[dict[str, Any]] = []
         for row in rows:
             sess = (

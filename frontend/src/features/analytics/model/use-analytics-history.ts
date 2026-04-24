@@ -5,6 +5,7 @@ import {
   deleteAnalyticsJob,
   deleteNlChat,
   fetchAnalyticsHistory,
+  type AnalyticsHistoryItem,
 } from "../api/analytics-api";
 import type { NlSqlWsPayload } from "@/entities/analytics";
 import { historyItemToChatEntry } from "../lib/history-mapper";
@@ -52,7 +53,12 @@ export function useAnalyticsHistory({
     setHistoryBusy(true);
     try {
       const data = await fetchAnalyticsHistory();
-      setEntriesFromServer(data.items.map(historyItemToChatEntry));
+      // Совместные чаты (viewer) показываются только в блоке «Приглашённые/совместные» из fetchChatInvites.
+      const mainOnly = data.items.filter((item: AnalyticsHistoryItem) => {
+        if (item.entry_kind !== "nl_chat") return true;
+        return item.access_role !== "viewer";
+      });
+      setEntriesFromServer(mainOnly.map(historyItemToChatEntry));
     } catch (err) {
       console.error("[analytics] Failed to load history:", err);
     } finally {
@@ -79,7 +85,15 @@ export function useAnalyticsHistory({
       setPreferDraftNl(false);
       setActive(id);
       const e = useAnalyticsChatStore.getState().entries.find((x) => x.id === id);
-      if (!e) return;
+      if (!e) {
+        // Совместный чат: id = conversation_id, в store нет (viewer не в общей истории).
+        setNlConversationId(id);
+        setQuestion("");
+        setMaxRowsStr("");
+        setResult(null);
+        setInterpretationHint(null);
+        return;
+      }
       if (e.kind === "nl_chat") {
         setNlConversationId(e.conversationId ?? e.id);
         setQuestion("");
@@ -121,8 +135,11 @@ export function useAnalyticsHistory({
         const e = useAnalyticsChatStore.getState().entries.find((x) => x.id === rowId);
         if (e?.kind === "nl_chat") {
           await deleteNlChat(e.conversationId ?? rowId);
-        } else {
+        } else if (e?.kind === "sql_job") {
           await deleteAnalyticsJob(rowId);
+        } else {
+          // Строка только в «совместных» (viewer): conversation_id = rowId
+          await deleteNlChat(rowId);
         }
         removeChatTitle(rowId);
         removeEntry(rowId);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useNavigate, useParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
 import {
   AnalyticsResults,
@@ -19,7 +20,7 @@ import {
   deleteNotification,
   type AppNotification,
 } from '@/shared/api/notifications-api';
-import { useAuthStore } from '@/shared/lib/auth-store';
+import { readUuidFromAccessToken, useAuthStore } from '@/shared/lib/auth-store';
 import { forceReconnectNotificationSse } from '@/shared/lib/notification-sse-broadcast';
 
 export function AnalyticsWorkspace() {
@@ -29,6 +30,7 @@ export function AnalyticsWorkspace() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userUuid = useAuthStore(s => s.userUuid);
+  const accessToken = useAuthStore(s => s.accessToken);
 
   const {
     entries,
@@ -49,12 +51,19 @@ export function AnalyticsWorkspace() {
   const handleInviteModalAccept = useCallback(
     async (inviteId: string, notificationId: string) => {
       const res = await answerChatInvite(inviteId, 'accept');
-      if (userUuid) {
+      const uid = userUuid ?? readUuidFromAccessToken(accessToken);
+      if (uid) {
         try {
-          await deleteNotification(userUuid, notificationId);
-        } catch {
-          /* ignore */
+          await deleteNotification(uid, notificationId);
+        } catch (e) {
+          if (isAxiosError(e) && e.response?.status === 404) {
+            /* уже удалено на BFF при answer */
+          } else {
+            console.warn('deleteNotification failed after chat invite accept', e);
+          }
         }
+      } else {
+        console.warn('deleteNotification skipped: no user id for notification path');
       }
       forceReconnectNotificationSse();
       await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
@@ -63,23 +72,30 @@ export function AnalyticsWorkspace() {
         void navigate(`/home/${res.conversation_id}`);
       }
     },
-    [navigate, loadHistory, queryClient, userUuid],
+    [navigate, loadHistory, queryClient, userUuid, accessToken],
   );
 
   const handleInviteModalReject = useCallback(
     async (inviteId: string, notificationId: string) => {
       await answerChatInvite(inviteId, 'reject');
-      if (userUuid) {
+      const uid = userUuid ?? readUuidFromAccessToken(accessToken);
+      if (uid) {
         try {
-          await deleteNotification(userUuid, notificationId);
-        } catch {
-          /* ignore */
+          await deleteNotification(uid, notificationId);
+        } catch (e) {
+          if (isAxiosError(e) && e.response?.status === 404) {
+            /* уже удалено на BFF при answer */
+          } else {
+            console.warn('deleteNotification failed after chat invite reject', e);
+          }
         }
+      } else {
+        console.warn('deleteNotification skipped: no user id for notification path');
       }
       forceReconnectNotificationSse();
       await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
     },
-    [queryClient, userUuid],
+    [queryClient, userUuid, accessToken],
   );
 
   const handleShareEmailsSubmit = useCallback(

@@ -43,19 +43,30 @@ class UserCRUD:
         """Получить всех пользователей"""
         return db.query(User).offset(skip).limit(limit).all()
 
-    def search_users_by_email(self, db: Session, query: str, limit: int = 20) -> List[User]:
-        """Поиск пользователей по части email (case-insensitive)."""
+    def search_users_by_email(
+        self,
+        db: Session,
+        query: str,
+        limit: int = 20,
+        exclude_email: Optional[str] = None,
+    ) -> List[User]:
+        """Поиск пользователей по части email (case-insensitive).
+
+        exclude_email — не включать эту почту (например, email того, кто запрашивает).
+        """
         q = (query or "").strip()
         if not q:
             return []
         pattern = f"%{q.lower()}%"
-        return (
+        stmt = (
             db.query(User)
             .filter(func.lower(User.email).like(pattern))
             .order_by(User.email.asc())
-            .limit(limit)
-            .all()
         )
+        ex = (exclude_email or "").strip().lower()
+        if ex:
+            stmt = stmt.filter(func.lower(User.email) != ex)
+        return stmt.limit(limit).all()
 
     def update_user(self, db: Session, user_uuid: UUID, user_update: UserUpdate) -> Optional[User]:
         """Обновить пользователя"""
