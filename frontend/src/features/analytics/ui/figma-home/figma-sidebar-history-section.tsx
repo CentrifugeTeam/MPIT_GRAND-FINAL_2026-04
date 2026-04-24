@@ -1,16 +1,16 @@
-import type { RefObject } from 'react';
-import { useMemo, useState } from 'react';
-import { Dropdown } from '@heroui/react';
-import { Icon } from '@iconify/react';
+import { useMemo, useState, type RefObject } from "react";
+import { Dropdown, ScrollShadow } from "@heroui/react";
+import { Icon } from "@iconify/react";
 
-import type { AnalyticsChatEntry } from '../../model/analytics-chat-store';
+import type { AnalyticsChatEntry } from "../../model/analytics-chat-store";
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_ITEM_DANGER,
   FIGMA_DROPDOWN_MENU,
   FIGMA_DROPDOWN_POPOVER,
-} from './figma-heroui-dropdown-classes';
-import { FigmaSidebarHistoryRows } from './figma-sidebar-history-rows';
+} from "./figma-heroui-dropdown-classes";
+import { FigmaSidebarHistoryRows } from "./figma-sidebar-history-rows";
+import { DotsVertical } from "@/shared/ui/assets/icons";
 
 export type FigmaSidebarHistorySectionProps = {
   historyOpen: boolean;
@@ -37,7 +37,7 @@ export type FigmaSidebarHistorySectionProps = {
 };
 
 function isSharedViewerEntry(e: AnalyticsChatEntry): boolean {
-  return e.kind === 'nl_chat' && e.accessRole === 'viewer';
+  return e.kind === "nl_chat" && e.accessRole === "viewer";
 }
 
 export function FigmaSidebarHistorySection({
@@ -63,13 +63,13 @@ export function FigmaSidebarHistorySection({
   onRequestDeleteRow,
   t,
 }: FigmaSidebarHistorySectionProps) {
-  const [sharedOpen, setSharedOpen] = useState(true);
+  const [sharedChatsOpen, setSharedChatsOpen] = useState(true);
   const ownEntries = useMemo(
-    () => entries.filter(e => !isSharedViewerEntry(e)),
+    () => entries.filter((e) => !isSharedViewerEntry(e)),
     [entries],
   );
   const sharedEntries = useMemo(
-    () => entries.filter(e => isSharedViewerEntry(e)),
+    () => entries.filter((e) => isSharedViewerEntry(e)),
     [entries],
   );
 
@@ -91,71 +91,71 @@ export function FigmaSidebarHistorySection({
   } as const;
 
   return (
-    <div className='flex min-h-0 flex-1 flex-col gap-[8px] pt-1 pb-[16px]'>
-      <div className='flex shrink-0 items-center gap-[4px] pl-[12px]'>
+    <div className="flex min-h-0 flex-1 flex-col gap-[8px] pt-1 pb-[16px]">
+      <div className="flex shrink-0 items-center gap-[4px] pl-[12px]">
         <button
-          type='button'
+          type="button"
           onClick={onToggleHistory}
-          className='flex cursor-pointer items-center gap-[4px] font-sans text-[14px] font-medium leading-[16px] tracking-[-0.14px] text-[#fcfcfc] transition-opacity duration-150 hover:opacity-70'
+          className="flex cursor-pointer items-center gap-[4px] font-sans text-[14px] font-medium leading-[16px] tracking-[-0.14px] text-[#fcfcfc] transition-opacity duration-150 hover:opacity-70"
         >
-          {t('home.figma.history')}
+          {t("home.figma.history")}
           <Icon
-            icon='mdi:chevron-down'
+            icon="mdi:chevron-down"
             width={16}
-            className={`text-[#fcfcfc] transition-transform ${historyOpen ? '' : '-rotate-90'}`}
+            className={`text-[#fcfcfc] transition-transform ${historyOpen ? "" : "-rotate-90"}`}
           />
         </button>
-        <div className='ml-auto'>
+        <div className="ml-auto">
           <Dropdown.Root>
+            <Dropdown.Trigger
+              aria-label={t("home.analytics.sidebarMenuAria")}
+              className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#fcfcfc] opacity-80 transition-opacity hover:bg-[#323236] hover:opacity-100"
+            >
+              <DotsVertical width={14} height={14} />
+            </Dropdown.Trigger>
             <Dropdown.Popover
-              placement='bottom end'
+              placement="bottom end"
               className={FIGMA_DROPDOWN_POPOVER}
             >
               <Dropdown.Menu className={FIGMA_DROPDOWN_MENU}>
                 <Dropdown.Item
                   className={FIGMA_DROPDOWN_ITEM}
-                  textValue={t('home.analytics.newQuestion')}
+                  textValue={t("home.analytics.newQuestion")}
                   onAction={onStartNewChat}
                 >
-                  <span className='flex items-center gap-2'>
-                    <Icon
-                      icon='mdi:message-plus-outline'
-                      width={18}
-                    />
-                    {t('home.analytics.newQuestion')}
+                  <span className="flex items-center gap-2">
+                    <Icon icon="mdi:message-plus-outline" width={18} />
+                    {t("home.analytics.newQuestion")}
                   </span>
                 </Dropdown.Item>
                 <Dropdown.Item
                   className={FIGMA_DROPDOWN_ITEM}
-                  textValue={t('home.analytics.refreshHistory')}
+                  textValue={t("home.analytics.refreshHistory")}
                   onAction={() => {
                     if (!historyBusy) onLoadHistory();
                   }}
                 >
-                  <span className='flex items-center gap-2'>
+                  <span className="flex items-center gap-2">
                     <Icon
-                      icon={historyBusy ? 'mdi:loading' : 'mdi:refresh'}
-                      className={historyBusy ? 'animate-spin' : undefined}
+                      icon={historyBusy ? "mdi:loading" : "mdi:refresh"}
+                      className={historyBusy ? "animate-spin" : undefined}
                       width={18}
                     />
                     {historyBusy
-                      ? t('home.analytics.historyLoading')
-                      : t('home.analytics.refreshHistory')}
+                      ? t("home.analytics.historyLoading")
+                      : t("home.analytics.refreshHistory")}
                   </span>
                 </Dropdown.Item>
                 <Dropdown.Item
                   className={FIGMA_DROPDOWN_ITEM_DANGER}
-                  textValue={t('home.analytics.deleteAllHistory')}
+                  textValue={t("home.analytics.deleteAllHistory")}
                   onAction={() => {
                     if (entries.length > 0) onRequestDeleteAll();
                   }}
                 >
-                  <span className='flex items-center gap-2'>
-                    <Icon
-                      icon='mdi:delete-sweep-outline'
-                      width={18}
-                    />
-                    {t('home.analytics.deleteAllHistory')}
+                  <span className="flex items-center gap-2">
+                    <Icon icon="mdi:delete-sweep-outline" width={18} />
+                    {t("home.analytics.deleteAllHistory")}
                   </span>
                 </Dropdown.Item>
               </Dropdown.Menu>
@@ -165,45 +165,56 @@ export function FigmaSidebarHistorySection({
       </div>
 
       {historyOpen && (
-        <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto'>
-          <div className='flex min-h-0 flex-1 flex-col gap-[4px]'>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ScrollShadow
+            className="min-h-0 flex-1 flex flex-col gap-[4px] overscroll-y-contain"
+            hideScrollBar
+          >
             {ownEntries.length === 0 && (
-              <p className='px-[12px] py-2 font-sans text-xs text-[#71717a]'>
-                {t('home.analytics.sidebarEmpty')}
+              <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
+                {t("home.analytics.sidebarEmpty")}
               </p>
             )}
             <FigmaSidebarHistoryRows
               entries={ownEntries}
               {...rowBlockProps}
             />
-          </div>
+          </ScrollShadow>
 
-          <div className='flex shrink-0 flex-col gap-[4px] border-t border-[#28282c] pt-2'>
-            <button
-              type='button'
-              onClick={() => setSharedOpen(v => !v)}
-              className='flex w-full cursor-pointer items-center gap-[4px] pl-[12px] font-sans text-[13px] font-medium text-[#e4e4e7] transition-opacity duration-150 hover:opacity-70'
-            >
-              {t('home.figma.sharedChats')}
-              <Icon
-                icon='mdi:chevron-down'
-                width={16}
-                className={`text-[#e4e4e7] transition-transform ${sharedOpen ? '' : '-rotate-90'}`}
-              />
-            </button>
-            {sharedOpen && (
-              <div className='flex flex-col gap-[4px]'>
+          <div className="flex min-h-0 shrink-0 flex-col border-t border-[#28282c] pt-3">
+            <div className="flex shrink-0 items-center gap-[4px] pl-[12px] pb-2">
+              <button
+                type="button"
+                onClick={() => setSharedChatsOpen((v) => !v)}
+                className="flex w-full cursor-pointer items-center gap-[4px] font-sans text-[14px] font-medium leading-[16px] tracking-[-0.14px] text-[#fcfcfc] transition-opacity duration-150 hover:opacity-70"
+              >
+                {t("home.figma.sharedChats")}
+                <Icon
+                  icon="mdi:chevron-down"
+                  width={16}
+                  className={`text-[#fcfcfc] transition-transform ${sharedChatsOpen ? "" : "-rotate-90"}`}
+                />
+              </button>
+            </div>
+
+            {sharedChatsOpen && (
+              <>
                 {sharedEntries.length === 0 ? (
-                  <p className='px-[12px] py-2 font-sans text-[11px] text-[#71717a]'>
-                    {t('home.figma.sharedChatsEmpty')}
+                  <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
+                    {t("home.figma.sharedChatsEmpty")}
                   </p>
                 ) : (
-                  <FigmaSidebarHistoryRows
-                    entries={sharedEntries}
-                    {...rowBlockProps}
-                  />
+                  <ScrollShadow
+                    className="max-h-[min(9.5rem,20vh)] min-h-0 w-full min-w-0 overscroll-y-contain"
+                    hideScrollBar
+                  >
+                    <FigmaSidebarHistoryRows
+                      entries={sharedEntries}
+                      {...rowBlockProps}
+                    />
+                  </ScrollShadow>
                 )}
-              </div>
+              </>
             )}
           </div>
         </div>

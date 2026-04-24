@@ -61,7 +61,7 @@ export function FigmaSidebarProfileButton({
   );
 
   return (
-    <Dropdown.Root placement='top start'>
+    <Dropdown.Root>
       {isOpen ? (
         trigger
       ) : (
@@ -74,6 +74,7 @@ export function FigmaSidebarProfileButton({
       )}
 
       <Dropdown.Popover
+        placement='top start'
         className={`${FIGMA_DROPDOWN_POPOVER} !min-w-[232px] !rounded-[20px] !shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06),0px_-6px_12px_0px_rgba(0,0,0,0.03),0px_14px_28px_0px_rgba(0,0,0,0.08)]`}
       >
         <Dropdown.Menu className={`${FIGMA_DROPDOWN_MENU} min-w-[216px]`}>

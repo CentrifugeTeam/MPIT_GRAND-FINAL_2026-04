@@ -209,3 +209,65 @@ body {
 .orb-container:hover .orb .orb-inner {
   width: 170%;
 }
+
+/* ------------------------------------------------------------------ */
+/* Compact orb — 28 px inline circle for chat thinking indicator       */
+/* ------------------------------------------------------------------ */
+.orb-container--compact {
+  width: 28px;
+  height: 28px;
+  transform: none;
+  transform-origin: center center;
+  rotate: 0deg;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.orb-container--compact .orb {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  filter: blur(5px);
+}
+
+.orb-container--compact .orb-inner {
+  width: 80%;
+  left: -25%;
+  top: -10%;
+}
+
+.orb-container--compact .orb-inner:nth-child(2) {
+  left: auto;
+  right: -25%;
+  top: auto;
+  bottom: -20%;
+}
+
+.orb-container--compact .orb-inner:nth-child(3) {
+  left: auto;
+  right: -30%;
+  top: auto;
+  bottom: -25%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pulsing scale animation for thinking state                          */
+/* ------------------------------------------------------------------ */
+@keyframes orb-pulse-default {
+  0%, 100% { transform: scale(0.32); }
+  50%       { transform: scale(0.38); }
+}
+
+@keyframes orb-pulse-compact {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+.orb-container--pulsing:not(.orb-container--compact) {
+  animation: orb-pulse-default 1.8s ease-in-out infinite;
+}
+
+.orb-container--compact.orb-container--pulsing {
+  animation: orb-pulse-compact 1.8s ease-in-out infinite;
+}

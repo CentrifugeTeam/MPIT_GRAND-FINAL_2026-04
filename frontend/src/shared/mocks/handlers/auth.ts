@@ -13,8 +13,11 @@ export const authHandlers = [
     HttpResponse.json(mockLoginBody),
   ),
 
-  http.post("/api/auth/create", async ({ request }) => {
-    const body = (await request.json()) as { email: string };
+  http.post("/api/auth/refresh", async () =>
+    HttpResponse.json(mockLoginBody),
+  ),
+
+  http.post("/api/auth/create", async () => {
     return HttpResponse.json({
       message: "User created successfully",
       uuid: "550e8400-e29b-41d4-a716-446655440000",
