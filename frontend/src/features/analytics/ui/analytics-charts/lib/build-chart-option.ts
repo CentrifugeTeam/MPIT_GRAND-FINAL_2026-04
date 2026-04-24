@@ -18,6 +18,14 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function formatLabel(label: string): string {
+  const m = label.match(/^(\d{4})-(\d{2})-(\d{2})(?:T|$)/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return label;
+}
+
+const MAX_PIE_SLICES = 12;
+
 /** Плоский объект для Recharts: { label: string, key1: number, key2: number, … } */
 export type ChartRow = Record<string, string | number>;
 
@@ -55,26 +63,33 @@ export function buildChartData(
 
   if (kind === "pie") {
     const values = seriesMeta[0]?.data ?? [];
-    const nums = labels.map((_, i) => toNum(values[i]));
-    const total = nums.reduce((s, v) => s + v, 0);
+    const rawNums = labels.map((_, i) => toNum(values[i]));
+    const total = rawNums.reduce((s, v) => s + v, 0);
 
-    // Один объект, где каждый лейбл — это ключ (формат для Radial Stacked)
-    const row: ChartRow = {};
-    labels.forEach((label, i) => {
-      row[label] = nums[i];
-    });
+    // Сортируем по убыванию, берём топ-(MAX_PIE_SLICES-1), остаток → "Другие"
+    const indexed = rawNums
+      .map((v, i) => ({ v, label: formatLabel(labels[i] ?? "") }))
+      .sort((a, b) => b.v - a.v);
+
+    let slices: { label: string; value: number }[];
+    if (indexed.length > MAX_PIE_SLICES) {
+      const top = indexed.slice(0, MAX_PIE_SLICES - 1);
+      const restSum = indexed.slice(MAX_PIE_SLICES - 1).reduce((s, x) => s + x.v, 0);
+      slices = [...top.map((x) => ({ label: x.label, value: x.v })), { label: "Другие", value: restSum }];
+    } else {
+      slices = indexed.map((x) => ({ label: x.label, value: x.v }));
+    }
+
+    const pieData: ChartRow[] = slices.map((s) => ({ name: s.label, value: s.value }));
 
     const pieConfig: ChartConfig = Object.fromEntries(
-      labels.map((label, i) => [
-        label,
-        { label, color: PALETTE[i % PALETTE.length] },
-      ]),
+      slices.map((s, i) => [s.label, { label: s.label, color: PALETTE[i % PALETTE.length] }]),
     );
-    return { data: [row], config: pieConfig, keys: labels, total };
+    return { data: pieData, config: pieConfig, keys: ["value"], total };
   }
 
   const data: ChartRow[] = labels.map((label, i) => {
-    const row: ChartRow = { label };
+    const row: ChartRow = { label: formatLabel(label) };
     for (const s of seriesMeta) {
       row[s.key] = toNum((s.data ?? [])[i]);
     }

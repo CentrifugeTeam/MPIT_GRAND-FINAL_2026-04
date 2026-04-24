@@ -8,10 +8,9 @@ import {
   Line,
   AreaChart,
   Area,
-  RadialBarChart,
-  RadialBar,
-  PolarRadiusAxis,
-  Label,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -86,7 +85,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         ))}
       </div>
 
-      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[200px]' : 'h-[360px]'} w-full min-w-0`}>
+      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[260px]' : 'h-[360px]'} w-full min-w-0`}>
         {mode === "bar" && (
           <BarChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
@@ -165,60 +164,56 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "pie" && (
-          <RadialBarChart
-            data={data}
-            endAngle={180}
-            innerRadius={60}
-            outerRadius={100}
-            cy="65%"
-          >
-            <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-            <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy ?? 0) - 16}
-                          className="fill-foreground text-2xl font-bold"
-                          fontSize={24}
-                          fontWeight="bold"
-                        >
-                          {(total ?? 0).toLocaleString()}
-                        </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy ?? 0) + 8}
-                          className="fill-muted"
-                          fontSize={12}
-                          fill="var(--color-muted, #888)"
-                        >
-                          всего
-                        </tspan>
-                      </text>
-                    );
-                  }
-                }}
-              />
-            </PolarRadiusAxis>
-            {keys.map((key, i) => (
-              <RadialBar
-                key={key}
-                dataKey={key}
-                stackId="a"
-                cornerRadius={4}
-                fill={PALETTE[i % PALETTE.length]}
-                className="stroke-transparent stroke-2"
-              />
-            ))}
-          </RadialBarChart>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={60}
+              outerRadius={100}
+              paddingAngle={data.length > 1 ? 2 : 0}
+              strokeWidth={0}
+            >
+              {data.map((_, i) => (
+                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+              ))}
+            </Pie>
+            <ChartTooltip
+              cursor={false}
+              content={({ payload }) => {
+                if (!payload?.length) return null;
+                const item = payload[0];
+                if (!item) return null;
+                const pct = total ? Math.round((Number(item.value) / total) * 100) : 0;
+                return (
+                  <div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-md">
+                    <p className="font-medium">{String(item.name)}</p>
+                    <p className="text-muted-foreground">
+                      {Number(item.value).toLocaleString()} ({pct}%)
+                    </p>
+                  </div>
+                );
+              }}
+            />
+          </PieChart>
         )}
 
 
       </ChartContainer>
 
+      {mode === "pie" && (
+        <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 pt-1">
+          {data.map((entry, i) => (
+            <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span
+                className="inline-block size-2.5 shrink-0 rounded-[2px]"
+                style={{ background: PALETTE[i % PALETTE.length] }}
+              />
+              {String(entry.name)}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
