@@ -25,3 +25,6 @@ export { default as ArrowRightFromSquareIcon } from './arrow-right-from-square.s
 export { default as ArrowChevronRight } from './arrow-chevron-right.svg';
 export { default as EyeCloseIcon } from './eye-close.svg';
 export { default as RocketIcon } from './rocket.svg';
+export { default as CopyIcon } from './copy.svg';
+export { default as ArrowRotateRight } from './arrow-rotate-right.svg';
+export { default as ArrowDownToSquare } from './arrow-down-to-square.svg';

@@ -87,6 +87,7 @@
       "rerun": "Перезапустить",
       "newQuestion": "Новый чат",
       "downloadPng": "Скачать PNG",
+      "download": "Экспорт в PDF",
       "chartHint": "На графике есть панель инструментов — сохранение PNG (Apache ECharts).",
       "tableEmpty": "Нет строк для отображения.",
       "tableTruncated": "Показаны первые {{max}} из {{total}} строк в браузере.",
@@ -378,4 +379,3 @@
     }
   }
 }
-

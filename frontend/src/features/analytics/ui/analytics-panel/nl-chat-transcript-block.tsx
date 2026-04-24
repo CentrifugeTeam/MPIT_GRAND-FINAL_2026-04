@@ -24,6 +24,12 @@ import {
 import { AnalyticsCharts } from '../analytics-charts';
 import { FigmaSimpleTooltip } from '../figma-home/figma-simple-tooltip';
 import { DataTablePreview } from '@/shared/ui/organisms/data-table-preview';
+import {
+  ArrowDownToSquare,
+  ArrowRotateRight,
+  CopyIcon,
+  DotsVertical,
+} from '@/shared/ui/assets/icons';
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -190,34 +196,7 @@ function GrokAssistantToolbar({
   const iconWrapDisabled = 'pointer-events-none cursor-not-allowed opacity-40';
 
   return (
-    <div className='mt-3 flex flex-wrap items-center gap-0.5'>
-      {plain ? (
-        <FigmaSimpleTooltip
-          label={copyTooltipLabel}
-          side='top'
-        >
-          <motion.span
-            className='inline-flex'
-            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
-            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
-            transition={iconMotionTransition}
-          >
-            <button
-              type='button'
-              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ''}`}
-              aria-label={copyTooltipLabel}
-              aria-disabled={actionsLocked}
-              disabled={actionsLocked}
-              onClick={() => void handleCopy()}
-            >
-              <Icon
-                icon='mdi:content-copy'
-                width={18}
-              />
-            </button>
-          </motion.span>
-        </FigmaSimpleTooltip>
-      ) : null}
+    <div className='mt-3 flex flex-wrap items-center gap-0.5 mx-2.5'>
       {userCtx?.text?.trim() ? (
         <FigmaSimpleTooltip
           label={actionsLocked ? lockHint : t('home.analytics.chatActionRetry')}
@@ -243,9 +222,36 @@ function GrokAssistantToolbar({
                 })
               }
             >
-              <Icon
-                icon='mdi:refresh'
-                width={20}
+              <ArrowRotateRight
+                width={18}
+                height={18}
+              />
+            </button>
+          </motion.span>
+        </FigmaSimpleTooltip>
+      ) : null}
+      {plain ? (
+        <FigmaSimpleTooltip
+          label={copyTooltipLabel}
+          side='top'
+        >
+          <motion.span
+            className='inline-flex'
+            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
+            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            transition={iconMotionTransition}
+          >
+            <button
+              type='button'
+              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ''}`}
+              aria-label={copyTooltipLabel}
+              aria-disabled={actionsLocked}
+              disabled={actionsLocked}
+              onClick={() => void handleCopy()}
+            >
+              <CopyIcon
+                width={18}
+                height={18}
               />
             </button>
           </motion.span>
@@ -253,9 +259,7 @@ function GrokAssistantToolbar({
       ) : null}
       {userCtx?.text?.trim() ? (
         <FigmaSimpleTooltip
-          label={
-            actionsLocked ? lockHint : t('home.analytics.chatActionCreateTask')
-          }
+          label={actionsLocked ? lockHint : t('home.analytics.download')}
           side='top'
         >
           <motion.span
@@ -274,9 +278,9 @@ function GrokAssistantToolbar({
                 void handlers.onCreateReportTask(userCtx.text.trim())
               }
             >
-              <Icon
-                icon='mdi:clipboard-text-outline'
-                width={20}
+              <ArrowDownToSquare
+                width={18}
+                height={18}
               />
             </button>
           </motion.span>

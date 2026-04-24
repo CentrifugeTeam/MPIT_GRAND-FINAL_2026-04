@@ -87,6 +87,7 @@
       "rerun": "Run again",
       "newQuestion": "New chat",
       "downloadPng": "Download PNG",
+      "download": "Export to PDF",
       "chartHint": "Toolbar on the chart also saves PNG (Apache ECharts).",
       "tableEmpty": "No rows to display.",
       "tableTruncated": "Showing first {{max}} of {{total}} rows in the browser.",
