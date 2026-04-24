@@ -19,3 +19,6 @@ export { default as TrashIcon } from './trash-bin.svg';
 export { default as PlayIcon } from './circle-play.svg';
 export { default as PauseIcon } from './pause.svg';
 export { default as CloseIcon } from './xmark.svg';
+export { default as PersonIcon } from './person.svg';
+export { default as GearIcon } from './gear.svg';
+export { default as ArrowRightFromSquareIcon } from './arrow-right-from-square.svg';

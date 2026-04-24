@@ -4,7 +4,12 @@ import { useNavigate } from 'react-router';
 import { useAnalyticsChatStore } from '../../model/analytics-chat-store';
 import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from '../../config/figma-sidebar-styles';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
-import { NewChatIcon, ReportsIcon, SearchIcon } from '@/shared/ui/assets/icons';
+import {
+  GearIcon,
+  NewChatIcon,
+  ReportsIcon,
+  SearchIcon,
+} from '@/shared/ui/assets/icons';
 
 export type FigmaSidebarPrimaryNavProps = {
   isOpen: boolean;
@@ -112,9 +117,10 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
-            <ReportsIcon
+            <GearIcon
               className='shrink-0 text-[#a1a1aa]'
               width={16}
+              height={16}
             />
             <span className='min-w-0 flex-1 truncate font-sans text-[14px] font-medium text-[#fcfcfc]'>
               {t('home.figma.reports')}

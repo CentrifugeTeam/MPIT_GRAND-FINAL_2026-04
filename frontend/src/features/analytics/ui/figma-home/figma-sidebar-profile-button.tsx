@@ -10,6 +10,11 @@ import {
   FIGMA_DROPDOWN_POPOVER,
 } from './figma-heroui-dropdown-classes';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
+import {
+  ArrowRightFromSquareIcon,
+  GearIcon,
+  PersonIcon,
+} from '@/shared/ui/assets/icons';
 
 type FigmaSidebarProfileButtonProps = {
   isOpen: boolean;
@@ -30,7 +35,11 @@ export function FigmaSidebarProfileButton({
       aria-label={t('home.figma.profileAria')}
       className='flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#27272a] transition-all duration-200 hover:bg-[#3f3f46] active:scale-[0.97]'
     >
-      <Icon icon='mdi:account' className='text-[#a1a1aa]' width={16} />
+      <PersonIcon
+        className='text-[#a1a1aa]'
+        width={16}
+        height={16}
+      />
     </Dropdown.Trigger>
   );
 
@@ -39,7 +48,10 @@ export function FigmaSidebarProfileButton({
       {isOpen ? (
         trigger
       ) : (
-        <FigmaSimpleTooltip label={t('home.figma.profileAria')} side='right'>
+        <FigmaSimpleTooltip
+          label={t('home.figma.profileAria')}
+          side='right'
+        >
           {trigger}
         </FigmaSimpleTooltip>
       )}
@@ -54,7 +66,11 @@ export function FigmaSidebarProfileButton({
             onAction={() => onOpenSettings()}
           >
             <span className='flex items-center gap-3'>
-              <Icon icon='mdi:cog-outline' width={16} className='shrink-0 text-[#a1a1aa]' />
+              <GearIcon
+                width={16}
+                height={16}
+                className='shrink-0 text-[#a1a1aa]'
+              />
               {t('home.figma.profileSettings')}
             </span>
           </Dropdown.Item>
@@ -66,10 +82,10 @@ export function FigmaSidebarProfileButton({
               void navigate('/auth/login');
             }}
           >
-            <span className='flex items-center gap-3'>
-              <Icon
-                icon='mdi:logout'
+            <span className='flex items-center gap-3 text-danger'>
+              <ArrowRightFromSquareIcon
                 width={16}
+                height={16}
                 className='shrink-0'
               />
               {t('home.figma.profileLogout')}
