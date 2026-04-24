@@ -114,7 +114,6 @@ body {
   overflow: hidden;
   border-radius: 50%;
   rotate: 90deg;
-  cursor: pointer;
   transition: all 0.3s ease;
 }
 

@@ -192,7 +192,7 @@ export function TaskDetailPanel({
   const dispatchMutation = useMutation({
     mutationFn: () => dispatchReportTask(task.id),
     onSuccess: () => {
-      setTimeout(refetch, 10000);
+      setTimeout(refetch, 3000);
     },
   });
 
