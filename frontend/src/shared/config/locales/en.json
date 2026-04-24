@@ -157,6 +157,7 @@
       "viewerReadOnlyHint": "You are viewing someone else's chat. Messages are read-only; clone the chat to continue the conversation in your own copy.",
       "cloneSharedCta": "Clone chat to my history",
       "cloneSharedWorking": "Cloning…",
+      "viewerContinueCta": "Continue conversation",
       "chatMenuTooltip": "Chat actions",
       "chatMenuAria": "Chat menu",
       "linkCopied": "Link copied",

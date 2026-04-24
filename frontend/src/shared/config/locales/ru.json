@@ -157,6 +157,7 @@
       "viewerReadOnlyHint": "Вы в чужом чате в режиме просмотра. Чтобы писать и менять данные, склонируйте чат — появится ваша копия.",
       "cloneSharedCta": "Склонировать чат в мою историю",
       "cloneSharedWorking": "Клонируем…",
+      "viewerContinueCta": "Продолжить разговор",
       "chatMenuTooltip": "Действия с чатом",
       "chatMenuAria": "Меню чата",
       "linkCopied": "Ссылка скопирована",
