@@ -15,7 +15,6 @@ import {
   CHAT_INVITES_QUERY_KEY,
   useAnalyticsPanel,
 } from "@/features/analytics";
-import { FigmaNotificationsPanelModal } from "@/features/analytics";
 import { deleteNotification } from "@/shared/api/notifications-api";
 import { readUuidFromAccessToken, useAuthStore } from "@/shared/lib/auth-store";
 import { forceReconnectNotificationSse } from "@/shared/lib/notification-sse-broadcast";
@@ -44,7 +43,6 @@ export function AnalyticsWorkspace() {
     sendComposerMessage,
   } = p;
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   const [cloneSharedBusy, setCloneSharedBusy] = useState(false);
 
   const handleInviteModalAccept = useCallback(
@@ -230,8 +228,9 @@ export function AnalyticsWorkspace() {
           onStartEditingRow={p.startEditingRow}
           onDeleteHistoryEntry={(id) => void p.deleteHistoryEntry(id)}
           t={p.t}
-          onOpenNotifications={() => setNotificationsPanelOpen(true)}
-          hasNotificationBadge={notifications.length > 0}
+          notifications={notifications}
+          onNotificationAccept={handleInviteModalAccept}
+          onNotificationReject={handleInviteModalReject}
         />
       </div>
 
@@ -292,19 +291,6 @@ export function AnalyticsWorkspace() {
             open
             onClose={() => setShareModalOpen(false)}
             onConfirm={({ emails }) => handleShareEmailsSubmit(emails)}
-          />
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {notificationsPanelOpen ? (
-          <FigmaNotificationsPanelModal
-            key="figma-notifications-panel"
-            t={p.t}
-            notifications={notifications}
-            onClose={() => setNotificationsPanelOpen(false)}
-            onAccept={handleInviteModalAccept}
-            onReject={handleInviteModalReject}
           />
         ) : null}
       </AnimatePresence>

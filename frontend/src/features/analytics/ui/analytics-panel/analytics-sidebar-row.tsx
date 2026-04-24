@@ -87,10 +87,14 @@ export function AnalyticsSidebarRow({
           className="hover:bg-default/25 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg px-2.5 pb-2 pt-2.5 text-left text-sm transition-colors"
         >
           <div className="min-h-[2.75rem] shrink-0">
-            <div className="line-clamp-2 text-[13px] font-medium leading-snug">{rowLabel}</div>
+            <div className="line-clamp-2 text-[13px] font-medium leading-snug">
+              {rowLabel}
+            </div>
           </div>
           <div className="border-border/50 text-muted mt-auto shrink-0 space-y-0.5 border-t pt-2 text-[11px] tabular-nums">
-            <div className="break-words leading-relaxed">{formatChatTime(e.createdAt)}</div>
+            <div className="break-words leading-relaxed">
+              {formatChatTime(e.createdAt)}
+            </div>
             {e.kind === "sql_job" && e.maxRows != null && (
               <div className="text-muted/85">LIMIT {e.maxRows}</div>
             )}
@@ -134,3 +138,4 @@ export function AnalyticsSidebarRow({
     </div>
   );
 }
+

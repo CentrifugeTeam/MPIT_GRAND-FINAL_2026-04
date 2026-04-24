@@ -107,7 +107,9 @@ export function AnalyticsSidebar({
       </div>
       <div className="flex max-h-[min(520px,55vh)] flex-col gap-2 overflow-y-auto lg:max-h-[calc(100vh-220px)]">
         {entries.length === 0 && (
-          <p className="text-muted px-2 py-4 text-xs">{t("home.analytics.sidebarEmpty")}</p>
+          <p className="text-muted px-2 py-4 text-xs">
+            {t("home.analytics.sidebarEmpty")}
+          </p>
         )}
         {entries.map((e) => (
           <AnalyticsSidebarRow
@@ -133,3 +135,4 @@ export function AnalyticsSidebar({
     </aside>
   );
 }
+
