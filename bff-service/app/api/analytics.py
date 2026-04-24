@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.auth import get_current_user
 from app.schemas.openapi_analytics import (
+    AllowedDataSourceKeysResponse,
     AnalyticsHistoryResponse,
     CreateNlChatBody,
     CreateNlChatResponse,
@@ -301,6 +302,21 @@ async def list_data_sources(
 ) -> DataSourcesListResponse:
     raw = await _proxy.list_data_sources()
     return DataSourcesListResponse.model_validate(raw)
+
+
+@router.get(
+    "/data-sources/allowed-keys",
+    response_model=AllowedDataSourceKeysResponse,
+    summary="Ключи источников, доступных текущей роли",
+    description="По политикам analytics; для шаблонов отчётов и выбора источника. " + _AUTH_DESC,
+)
+async def list_allowed_data_source_keys(
+    current_user: dict = Depends(get_current_user),
+) -> AllowedDataSourceKeysResponse:
+    uid = current_user.get("uuid")
+    role = str(current_user.get("role") or "USER")
+    raw = await _proxy.list_allowed_analytics_source_keys(uid, user_role=role)
+    return AllowedDataSourceKeysResponse(keys=raw)
 
 
 @router.post(

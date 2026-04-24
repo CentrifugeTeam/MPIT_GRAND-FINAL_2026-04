@@ -8,6 +8,9 @@ import {
   websocketTokenResponseSchema,
 } from '@/entities/analytics';
 
+/** BFF: прокси report-task-service (не analytics). */
+const REPORT_TASKS_BFF = '/api/report-tasks';
+
 export type GlossaryMatchApi = {
   id: string;
   title?: string | null;
@@ -147,6 +150,7 @@ export type NlChatMessagesResponse = {
     role: string;
     payload: Record<string, unknown>;
     created_at: string;
+    client_message_id?: string | null;
   }>;
 };
 
@@ -253,14 +257,51 @@ export type CreateReportBody = {
   error?: string | null;
 };
 
+/** Шаблон отчётной задачи (BFF GET /api/report-tasks/templates). */
+export type ReportTaskTemplate = Pick<
+  ReportTask,
+  | 'title'
+  | 'instruction'
+  | 'analytics_source_key'
+  | 'schedule_type'
+  | 'timezone'
+  | 'once_at'
+  | 'daily_time'
+  | 'weekly_day'
+  | 'weekly_time'
+  | 'monthly_day'
+  | 'monthly_time'
+  | 'yearly_date_ddmm'
+  | 'yearly_time'
+> & {
+  id: string;
+  user_id: string;
+  is_system?: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportTaskTemplateListResponse = {
+  items: ReportTaskTemplate[];
+  total: number;
+};
+
+export async function fetchReportTaskTemplates(limit = 100, offset = 0) {
+  const { data } = await api.get<ReportTaskTemplateListResponse>(
+    `${REPORT_TASKS_BFF}/templates`,
+    { params: { limit, offset } },
+  );
+  return data;
+}
+
 export async function createReportTask(body: CreateReportTaskBody) {
-  const { data } = await api.post<ReportTask>('/api/analytics/tasks', body);
+  const { data } = await api.post<ReportTask>(`${REPORT_TASKS_BFF}/tasks`, body);
   return data;
 }
 
 export async function fetchReportTasks(limit = 50, offset = 0) {
   const { data } = await api.get<ReportTaskListResponse>(
-    '/api/analytics/tasks',
+    `${REPORT_TASKS_BFF}/tasks`,
     {
       params: { limit, offset },
     },
@@ -269,13 +310,15 @@ export async function fetchReportTasks(limit = 50, offset = 0) {
 }
 
 export async function fetchReportTaskById(taskId: string) {
-  const { data } = await api.get<ReportTask>(`/api/analytics/tasks/${taskId}`);
+  const { data } = await api.get<ReportTask>(
+    `${REPORT_TASKS_BFF}/tasks/${taskId}`,
+  );
   return data;
 }
 
 export async function dispatchReportTask(taskId: string) {
   const { data } = await api.post<ReportRun>(
-    `/api/analytics/tasks/${taskId}/dispatch`,
+    `${REPORT_TASKS_BFF}/tasks/${taskId}/dispatch`,
   );
   return data;
 }
@@ -284,16 +327,16 @@ export async function patchReportTask(
   taskId: string,
   body: Partial<CreateReportTaskBody>,
 ) {
-  await api.post(`/api/analytics/tasks/${taskId}`, body);
+  await api.post(`${REPORT_TASKS_BFF}/tasks/${taskId}`, body);
 }
 
 export async function deleteReportTask(taskId: string) {
-  await api.delete(`/api/analytics/tasks/${taskId}`);
+  await api.delete(`${REPORT_TASKS_BFF}/tasks/${taskId}`);
 }
 
 export async function fetchReports(limit = 50, offset = 0) {
   const { data } = await api.get<ReportRunListResponse>(
-    '/api/analytics/reports',
+    `${REPORT_TASKS_BFF}/history`,
     {
       params: { limit, offset },
     },
@@ -302,13 +345,13 @@ export async function fetchReports(limit = 50, offset = 0) {
 }
 
 export async function createReport(body: CreateReportBody) {
-  const { data } = await api.post<ReportRun>('/api/analytics/reports', body);
+  const { data } = await api.post<ReportRun>(`${REPORT_TASKS_BFF}/reports`, body);
   return data;
 }
 
 export async function fetchReportById(reportId: string) {
   const { data } = await api.get<ReportRun>(
-    `/api/analytics/reports/${reportId}`,
+    `${REPORT_TASKS_BFF}/reports/${reportId}`,
   );
   return data;
 }
@@ -317,9 +360,9 @@ export async function patchReport(
   reportId: string,
   body: Partial<CreateReportBody>,
 ) {
-  await api.patch(`/api/analytics/reports/${reportId}`, body);
+  await api.patch(`${REPORT_TASKS_BFF}/reports/${reportId}`, body);
 }
 
 export async function deleteReport(reportId: string) {
-  await api.delete(`/api/analytics/reports/${reportId}`);
+  await api.delete(`${REPORT_TASKS_BFF}/reports/${reportId}`);
 }

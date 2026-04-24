@@ -21,6 +21,18 @@ _proxy = AnalyticsProxy()
 _AUTH = "JWT Bearer; X-User-Id / X-User-Role проксируются в report-task-service."
 
 
+async def _require_analytics_source_in_policy(
+    uid: str, role: str, analytics_source_key: str
+) -> None:
+    allowed = await _proxy.list_allowed_analytics_source_keys(uid, user_role=role)
+    sk = (analytics_source_key or "").strip()
+    if sk not in set(allowed):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Нет доступа к выбранному источнику данных",
+        )
+
+
 class TaskScheduleBody(BaseModel):
     """Совпадает с report-task-service/app/schemas/tasks.py:TaskScheduleBody (валидация полей по schedule_type)."""
 
@@ -377,6 +389,7 @@ async def create_report_task_template(
 ) -> TaskTemplateApi:
     uid = current_user.get("uuid")
     role = str(current_user.get("role") or "USER")
+    await _require_analytics_source_in_policy(uid, role, body.analytics_source_key)
     raw = await _proxy.create_report_task_template(
         uid, body.model_dump(mode="json", exclude_none=True), user_role=role
     )
@@ -435,6 +448,9 @@ async def replace_report_task_template(
         raise HTTPException(status_code=400, detail="Nothing to update")
     uid = current_user.get("uuid")
     role = str(current_user.get("role") or "USER")
+    sk = payload.get("analytics_source_key")
+    if isinstance(sk, str) and sk.strip():
+        await _require_analytics_source_in_policy(uid, role, sk)
     await _proxy.replace_report_task_template(uid, template_id, payload, user_role=role)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

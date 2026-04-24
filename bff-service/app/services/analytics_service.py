@@ -253,6 +253,31 @@ class AnalyticsProxy:
             )
         return r.json()
 
+    async def list_allowed_analytics_source_keys(
+        self, user_id: str, user_role: str | None = None
+    ) -> list[str]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.base_url}/api/analytics/data-sources/allowed-keys",
+                    headers=self._user_headers(user_id, user_role),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(
+                status_code=r.status_code,
+                detail=self._detail(r),
+            )
+        body = r.json()
+        keys = body.get("keys")
+        if not isinstance(keys, list):
+            return []
+        return [str(x).strip() for x in keys if str(x).strip()]
+
     async def create_data_source(self, body: dict[str, Any]) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -459,12 +484,18 @@ class AnalyticsProxy:
     async def list_report_task_templates(
         self, user_id: str, limit: int = 50, offset: int = 0, user_role: str | None = None
     ) -> dict[str, Any]:
+        allowed = await self.list_allowed_analytics_source_keys(user_id, user_role)
+        hdr = ",".join(allowed)
+        headers = {
+            **self._user_headers(user_id, user_role),
+            "X-Allowed-Analytics-Source-Keys": hdr,
+        }
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 r = await client.get(
                     f"{self.report_base_url}/api/reports/task-templates",
                     params={"limit": limit, "offset": offset},
-                    headers=self._user_headers(user_id, user_role),
+                    headers=headers,
                 )
         except httpx.RequestError as e:
             raise HTTPException(
@@ -478,11 +509,17 @@ class AnalyticsProxy:
     async def get_report_task_template(
         self, user_id: str, template_id: str, user_role: str | None = None
     ) -> dict[str, Any]:
+        allowed = await self.list_allowed_analytics_source_keys(user_id, user_role)
+        hdr = ",".join(allowed)
+        headers = {
+            **self._user_headers(user_id, user_role),
+            "X-Allowed-Analytics-Source-Keys": hdr,
+        }
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 r = await client.get(
                     f"{self.report_base_url}/api/reports/task-templates/{template_id}",
-                    headers=self._user_headers(user_id, user_role),
+                    headers=headers,
                 )
         except httpx.RequestError as e:
             raise HTTPException(
@@ -658,3 +695,55 @@ class AnalyticsProxy:
             ) from e
         if r.is_error:
             raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+
+    async def delete_nl_chat_messages(
+        self,
+        user_id: str,
+        conversation_id: str,
+        message_ids: list[str],
+        user_role: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.base_url}/api/analytics/chats/{conversation_id}/messages/delete",
+                    json={"message_ids": message_ids},
+                    headers=self._user_headers(user_id, user_role),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(
+                status_code=r.status_code,
+                detail=self._detail(r),
+            )
+        return r.json()
+
+    async def delete_nl_chat_messages_tail(
+        self,
+        user_id: str,
+        conversation_id: str,
+        from_message_id: str,
+        user_role: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.base_url}/api/analytics/chats/{conversation_id}/messages/delete-tail",
+                    json={"from_message_id": from_message_id},
+                    headers=self._user_headers(user_id, user_role),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(
+                status_code=r.status_code,
+                detail=self._detail(r),
+            )
+        return r.json()

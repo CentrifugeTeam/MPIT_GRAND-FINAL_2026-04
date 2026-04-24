@@ -14,11 +14,13 @@ import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 type FigmaSidebarProfileButtonProps = {
   isOpen: boolean;
   t: (key: string) => string;
+  onOpenSettings: () => void;
 };
 
 export function FigmaSidebarProfileButton({
   isOpen,
   t,
+  onOpenSettings,
 }: FigmaSidebarProfileButtonProps) {
   const clearSession = useAuthStore(s => s.clearSession);
   const navigate = useNavigate();
@@ -49,7 +51,7 @@ export function FigmaSidebarProfileButton({
           <Dropdown.Item
             className={FIGMA_DROPDOWN_ITEM}
             textValue={t('home.figma.profileSettings')}
-            onAction={() => void navigate('/settings')}
+            onAction={() => onOpenSettings()}
           >
             <span className='flex items-center gap-3'>
               <Icon icon='mdi:cog-outline' width={16} className='shrink-0 text-[#a1a1aa]' />

@@ -30,6 +30,10 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     lines: nlChatLines,
     nlChatBusy,
     sendChat,
+    trimForRetry,
+    requestDeleteChatMessages,
+    getRetryTailAnchorId,
+    requestDeleteChatTailFrom,
   } = useNlOrchestratorChat(t, nlConversationId);
   const entries = useAnalyticsChatStore(s => s.entries);
   const activeId = useAnalyticsChatStore(s => s.activeId);
@@ -110,23 +114,24 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     setInterpretationHint(null);
   }, [setActive]);
 
-  const { sendComposerMessage, interpretBusy } = useAnalyticsSendMessage({
-    question,
-    setQuestion,
-    nlChatBusy,
-    nlConversationId,
-    setNlConversationId,
-    setPreferDraftNl,
-    setActive,
-    loadHistory,
-    dataSourcesLoaded,
-    dataSourcesLength: dataSources.length,
-    selectedSourceKey,
-    selectedSourceLabel,
-    sendChat,
-    setInterpretationHint,
-    maxRowsStr,
-  });
+  const { sendComposerMessage, sendMessageWithText, interpretBusy } =
+    useAnalyticsSendMessage({
+      question,
+      setQuestion,
+      nlChatBusy,
+      nlConversationId,
+      setNlConversationId,
+      setPreferDraftNl,
+      setActive,
+      loadHistory,
+      dataSourcesLoaded,
+      dataSourcesLength: dataSources.length,
+      selectedSourceKey,
+      selectedSourceLabel,
+      sendChat,
+      setInterpretationHint,
+      maxRowsStr,
+    });
 
   const chartPayload = result?.chart_payload;
   const showChart = useMemo(() => {
@@ -167,11 +172,16 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     setMaxRowsStr,
     composerBusy,
     sendComposerMessage,
+    sendMessageWithText,
     result,
     showChart,
     chartPayload,
     interpretationHint,
     nlChatLines,
+    trimForRetry,
+    requestDeleteChatMessages,
+    getRetryTailAnchorId,
+    requestDeleteChatTailFrom,
     nlConversationId,
     nlChatReady,
     dataSources,

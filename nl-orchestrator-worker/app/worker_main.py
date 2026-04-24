@@ -33,7 +33,8 @@ logger = logging.getLogger("nl_orchestrator_worker")
 @dataclass
 class PendingCtx:
     conversation_id: str
-    message_id_in: str
+    """client_message_id для ответа ассистента (WS + sync); не совпадает с id сообщения пользователя."""
+    assistant_message_id: str
     user_text: str
     user_id: str
     scheduled_report: bool = False
@@ -356,6 +357,7 @@ async def _handle_chat_incoming(
         uid = str(data.get("user_id") or "").strip()
         user_role = str(data.get("user_role") or "USER").strip()
         mid = str(data.get("message_id") or uuid.uuid4())
+        assistant_mid = str(uuid.uuid4())
         content = str(data.get("content") or "").strip()
         scheduled_report = bool(data.get("scheduled_report"))
         if not conv or not content:
@@ -379,7 +381,7 @@ async def _handle_chat_incoming(
                     {
                         "type": "chat_assistant",
                         "conversation_id": conv,
-                        "message_id": mid,
+                        "message_id": assistant_mid,
                         "text": err_txt,
                         "sql": None,
                         "status": "error",
@@ -389,7 +391,7 @@ async def _handle_chat_incoming(
                     "assistant_message",
                     uid,
                     conv,
-                    mid,
+                    assistant_mid,
                     {
                         "text": err_txt,
                         "report": "",
@@ -443,7 +445,7 @@ async def _handle_chat_incoming(
                         {
                             "type": "chat_assistant",
                             "conversation_id": conv,
-                            "message_id": mid,
+                            "message_id": assistant_mid,
                             "text": clarify,
                             "sql": None,
                             "status": "done",
@@ -453,7 +455,7 @@ async def _handle_chat_incoming(
                         "assistant_message",
                         uid,
                         conv,
-                        mid,
+                        assistant_mid,
                         {
                             "text": clarify,
                             "report": "",
@@ -494,7 +496,7 @@ async def _handle_chat_incoming(
                 {
                     "type": "chat_thinking",
                     "conversation_id": conv,
-                    "message_id": mid,
+                    "message_id": assistant_mid,
                     "reasoning": r,
                     "status": "thinking",
                 },
@@ -517,7 +519,7 @@ async def _handle_chat_incoming(
                     {
                         "type": "chat_assistant",
                         "conversation_id": conv,
-                        "message_id": mid,
+                        "message_id": assistant_mid,
                         "text": busy_text,
                         "sql": None,
                         "status": "error",
@@ -527,7 +529,7 @@ async def _handle_chat_incoming(
                     "assistant_message",
                     uid,
                     conv,
-                    mid,
+                    assistant_mid,
                     {
                         "text": busy_text,
                         "report": "",
@@ -559,7 +561,7 @@ async def _handle_chat_incoming(
             async with _pending_lock:
                 pending[job_id] = PendingCtx(
                     conversation_id=conv,
-                    message_id_in=mid,
+                    assistant_message_id=assistant_mid,
                     user_text=content,
                     user_id=uid,
                     scheduled_report=scheduled_report,
@@ -573,7 +575,7 @@ async def _handle_chat_incoming(
                     {
                         "type": "chat_thinking",
                         "conversation_id": conv,
-                        "message_id": mid,
+                        "message_id": assistant_mid,
                         "reasoning": plan_r,
                         "status": "thinking",
                     },
@@ -627,7 +629,7 @@ async def _handle_chat_incoming(
                     {
                         "type": "chat_sql_queued",
                         "conversation_id": conv,
-                        "message_id": mid,
+                        "message_id": assistant_mid,
                         "job_id": job_id,
                         "sql_turn_id": turn_id,
                         "preface": plan.get("reply_ru") or "",
@@ -672,7 +674,7 @@ async def _handle_chat_incoming(
                     {
                         "type": "chat_assistant",
                         "conversation_id": conv,
-                        "message_id": mid,
+                        "message_id": assistant_mid,
                         "text": plan.get("reply_ru") or "",
                         "reasoning": plan.get("reasoning") or "",
                         "sql": None,
@@ -683,7 +685,7 @@ async def _handle_chat_incoming(
                     "assistant_message",
                     uid,
                     conv,
-                    mid,
+                    assistant_mid,
                     {
                         "text": plan.get("reply_ru") or "",
                         "reasoning": plan.get("reasoning") or "",
@@ -792,7 +794,7 @@ async def _handle_sql_chat_result(
                 {
                     "type": "chat_thinking",
                     "conversation_id": ctx.conversation_id,
-                    "message_id": ctx.message_id_in,
+                    "message_id": ctx.assistant_message_id,
                     "reasoning": merged,
                     "status": "thinking",
                 },
@@ -829,7 +831,7 @@ async def _handle_sql_chat_result(
         ws_body: Dict[str, Any] = {
             "type": "chat_assistant",
             "conversation_id": ctx.conversation_id,
-            "message_id": ctx.message_id_in,
+            "message_id": ctx.assistant_message_id,
             "text": final.get("reply_ru") or "",
             "report": final.get("report_ru") or "",
             "reasoning": full_reasoning,
@@ -862,7 +864,7 @@ async def _handle_sql_chat_result(
                 "assistant_message",
                 ctx.user_id,
                 ctx.conversation_id,
-                ctx.message_id_in,
+                ctx.assistant_message_id,
                 sync_pl,
             )
         elif ctx.report_id:

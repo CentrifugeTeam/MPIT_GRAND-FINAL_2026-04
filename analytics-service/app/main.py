@@ -12,6 +12,10 @@ from app.api.data_sources import router as data_sources_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.db.platform_session import init_platform_tables
+    from app.services.report_template_queue_consumer import (
+        start_report_template_consumer,
+        stop_report_template_consumer,
+    )
     from app.services.schema_scheduler import (
         refresh_schema_cache,
         start_schema_scheduler,
@@ -23,7 +27,9 @@ async def lifespan(app: FastAPI):
     refresh_schema_cache()
     s = get_settings()
     start_schema_scheduler(s.SCHEMA_CRON_HOUR)
+    start_report_template_consumer()
     yield
+    await stop_report_template_consumer()
     stop_schema_scheduler()
 
 

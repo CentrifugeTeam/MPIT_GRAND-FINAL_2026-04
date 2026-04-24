@@ -16,8 +16,8 @@ export const authHandlers = [
   http.post("/api/auth/create", async ({ request }) => {
     const body = (await request.json()) as { email: string };
     return HttpResponse.json({
-      message: "created",
-      email: body.email,
+      message: "User created successfully",
+      uuid: "550e8400-e29b-41d4-a716-446655440000",
     });
   }),
 ];

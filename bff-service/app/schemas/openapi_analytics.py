@@ -128,3 +128,10 @@ class DataSourcesListResponse(BaseModel):
         default=None,
         description="Ключ источника по умолчанию",
     )
+
+
+class AllowedDataSourceKeysResponse(BaseModel):
+    keys: list[str] = Field(
+        default_factory=list,
+        description="Источники, разрешённые политикой для X-User-Role",
+    )

@@ -17,6 +17,7 @@ export function subscribeNlChatWs(
   tRef: TRef,
   appendLine: (line: NlChatLine) => void,
   setNlChatBusy: (v: boolean) => void,
+  removeLinesByIds: (ids: string[]) => void,
 ): () => void {
   const unsubs: Array<() => void> = [];
   unsubs.push(
@@ -70,6 +71,15 @@ export function subscribeNlChatWs(
         rowCount: rcNum,
       });
       setNlChatBusy(false);
+    }),
+  );
+  unsubs.push(
+    wsClient.on("chat_messages_deleted", (payload: Record<string, unknown>) => {
+      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+        return;
+      const raw = payload.message_ids;
+      if (!Array.isArray(raw) || raw.length === 0) return;
+      removeLinesByIds(raw.map((x) => String(x)));
     }),
   );
   unsubs.push(

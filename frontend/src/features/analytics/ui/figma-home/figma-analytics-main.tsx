@@ -10,7 +10,10 @@ import type {
 } from '../../config/figma-analytics-faq';
 import type { InterpretationHint } from '../../lib/interpretation-hint';
 import type { NlChatLine } from '../../lib/use-nl-orchestrator-chat';
-import { NlChatTranscriptBlock } from '../analytics-panel/nl-chat-transcript-block';
+import {
+  NlChatTranscriptBlock,
+  type NlChatAssistantActionHandlers,
+} from '../analytics-panel/nl-chat-transcript-block';
 
 import { FigmaAnalyticsHero } from './figma-analytics-hero';
 import { FigmaChatHeaderRow } from './figma-chat-header-row';
@@ -43,6 +46,7 @@ export type FigmaAnalyticsMainProps = {
   onQuestionChange: (v: string) => void;
   onSend: () => void;
   onStartNewChat: () => void;
+  nlAssistantActionHandlers?: NlChatAssistantActionHandlers | null;
 };
 
 const chatColClass = 'mx-auto w-full py-1 pb-4';
@@ -70,6 +74,7 @@ export function FigmaAnalyticsMain({
   onQuestionChange,
   onSend,
   onStartNewChat,
+  nlAssistantActionHandlers,
 }: FigmaAnalyticsMainProps) {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
@@ -158,6 +163,8 @@ export function FigmaAnalyticsMain({
                     nlChatLines={nlChatLines}
                     variant='grok'
                     emptyLabel={t('home.analytics.chatEmpty')}
+                    assistantActionHandlers={nlAssistantActionHandlers ?? null}
+                    assistantActionsLocked={composerBusy}
                   />
                 </div>
               </ScrollShadow>

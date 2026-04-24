@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Сброс «зависшего» ожидания ответа, если chat_assistant не пришёл (сеть, рассинхрон pending). */
 const NL_CHAT_BUSY_WATCHDOG_MS = 120_000;
 
 import { ANALYTICS_MAX_ROWS_CAP } from "../config/constants";
@@ -34,6 +33,12 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   const transcriptLoadGen = useRef(0);
   const routingCidRef = useRef<string | null>(conversationId);
   const tRef = useRef(t);
+  /** Оптимистичное user-сообщение, если GET /messages ещё без записи в БД (гонка с sync). */
+  const pendingUserLineRef = useRef<{
+    conversationId: string;
+    clientMessageId: string;
+    line: NlChatLine;
+  } | null>(null);
 
   useEffect(() => {
     joinedRef.current = false;
@@ -63,19 +68,47 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     linesRef.current = lines;
   }, [lines]);
 
+  const removeLinesByIds = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    const del = new Set(ids);
+    setLines((prev) => {
+      const next = prev.filter((l) => !del.has(l.id));
+      linesRef.current = next;
+      return next;
+    });
+  }, []);
+
   const appendLine = useCallback((line: NlChatLine) => {
     setLines((prev) => {
       const idx = prev.findIndex((p) => p.id === line.id);
       if (line.role === "assistant" && idx >= 0) {
         const prevLine = prev[idx]!;
-        const merged: NlChatLine = {
-          ...prevLine,
-          ...line,
-          chartPayload: line.chartPayload ?? prevLine.chartPayload,
-          columns: line.columns ?? prevLine.columns,
-          rows: line.rows ?? prevLine.rows,
-        };
-        return [...prev.slice(0, idx), merged, ...prev.slice(idx + 1)];
+        if (prevLine.role === "assistant") {
+          const merged: NlChatLine = {
+            ...prevLine,
+            ...line,
+            chartPayload: line.chartPayload ?? prevLine.chartPayload,
+            columns: line.columns ?? prevLine.columns,
+            rows: line.rows ?? prevLine.rows,
+          };
+          return [...prev.slice(0, idx), merged, ...prev.slice(idx + 1)];
+        }
+        // Старый воркер: тот же message_id у user и assistant — не затирать вопрос.
+        const altId = `${line.id}-a`;
+        const j = prev.findIndex((p) => p.id === altId);
+        if (j >= 0 && prev[j]!.role === "assistant") {
+          const prevA = prev[j]!;
+          const merged: NlChatLine = {
+            ...prevA,
+            ...line,
+            id: altId,
+            chartPayload: line.chartPayload ?? prevA.chartPayload,
+            columns: line.columns ?? prevA.columns,
+            rows: line.rows ?? prevA.rows,
+          };
+          return [...prev.slice(0, j), merged, ...prev.slice(j + 1)];
+        }
+        return [...prev, { ...line, id: altId }];
       }
       if (idx >= 0) return prev;
       return [...prev, line];
@@ -83,8 +116,14 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   }, []);
 
   useEffect(() => {
-    return subscribeNlChatWs(routingCidRef, tRef, appendLine, setNlChatBusy);
-  }, [appendLine]);
+    return subscribeNlChatWs(
+      routingCidRef,
+      tRef,
+      appendLine,
+      setNlChatBusy,
+      removeLinesByIds,
+    );
+  }, [appendLine, removeLinesByIds]);
 
   const joinChatRoom = useCallback((explicitConversationId?: string | null) => {
     const cid = explicitConversationId ?? conversationId;
@@ -97,13 +136,36 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   }, [conversationId]);
 
   useEffect(() => {
+    return () => {
+      pendingUserLineRef.current = null;
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
     if (!conversationId) return;
     const gen = ++transcriptLoadGen.current;
     let cancelled = false;
     void fetchNlChatMessages(conversationId)
       .then((data) => {
         if (cancelled || gen !== transcriptLoadGen.current) return;
-        setLines(data.items.map((row) => apiNlMessageToLine(row, t)));
+        const pend = pendingUserLineRef.current;
+        let present = false;
+        if (pend && pend.conversationId === conversationId) {
+          const mid = pend.clientMessageId;
+          present = data.items.some(
+            (r) =>
+              String(r.client_message_id || "").trim() === mid ||
+              String(r.id) === mid,
+          );
+          if (present) pendingUserLineRef.current = null;
+        }
+        const mapped = data.items.map((row) => apiNlMessageToLine(row, tRef.current));
+        if (pend && pend.conversationId === conversationId && !present) {
+          setLines([...mapped, pend.line]);
+          pendingUserLineRef.current = null;
+        } else {
+          setLines(mapped);
+        }
       })
       .catch(() => {
         if (!cancelled && gen === transcriptLoadGen.current) setLines([]);
@@ -111,10 +173,11 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, t]);
+  }, [conversationId]);
 
   useEffect(() => {
     if (conversationId) return;
+    pendingUserLineRef.current = null;
     setLines([]);
   }, [conversationId]);
 
@@ -156,6 +219,74 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     };
   }, [conversationId]);
 
+  /** Удалить пару user+assistant (или только assistant) для повтора из композера; linesRef синхронно. */
+  const requestDeleteChatMessages = useCallback(
+    async (messageIds: string[]) => {
+      const cid = conversationId;
+      const ids = [...new Set(messageIds.map((s) => s.trim()).filter(Boolean))];
+      if (!cid || !ids.length) return;
+      try {
+        await ensureWsConnected();
+        joinChatRoom(cid);
+        wsClient.sendPlain({
+          type: "delete_chat_messages",
+          conversation_id: cid,
+          message_ids: ids,
+        });
+      } catch {
+        /* локальная лента уже подрезана */
+      }
+    },
+    [conversationId, ensureWsConnected, joinChatRoom],
+  );
+
+  /** Первый id в локальной ленте, с которого нужно срезать при retry (как в trimForRetry). */
+  const getRetryTailAnchorId = useCallback((assistantLineId: string): string | null => {
+    const prev = linesRef.current;
+    const idx = prev.findIndex((row) => row.id === assistantLineId);
+    if (idx < 0) return null;
+    let start = idx;
+    if (idx > 0 && prev[idx - 1]!.role === "user") {
+      start = idx - 1;
+    }
+    return prev[start]?.id ?? null;
+  }, []);
+
+  /** Удалить на сервере якорь и все сообщения после него в сессии (синхрон с trimForRetry). */
+  const requestDeleteChatTailFrom = useCallback(
+    async (fromMessageId: string) => {
+      const cid = conversationId;
+      const anchor = fromMessageId.trim();
+      if (!cid || !anchor) return;
+      try {
+        await ensureWsConnected();
+        joinChatRoom(cid);
+        wsClient.sendPlain({
+          type: "delete_chat_messages",
+          conversation_id: cid,
+          from_message_id: anchor,
+        });
+      } catch {
+        /* локальная лента уже подрезана */
+      }
+    },
+    [conversationId, ensureWsConnected, joinChatRoom],
+  );
+
+  const trimForRetry = useCallback((assistantLineId: string) => {
+    setLines((prev) => {
+      const idx = prev.findIndex((row) => row.id === assistantLineId);
+      if (idx < 0) return prev;
+      let start = idx;
+      if (idx > 0 && prev[idx - 1]!.role === "user") {
+        start = idx - 1;
+      }
+      const next = prev.slice(0, start);
+      linesRef.current = next;
+      return next;
+    });
+  }, []);
+
   const sendChat = useCallback(
     async (text: string, options?: NlChatSendOptions) => {
       const trimmed = text.trim();
@@ -164,8 +295,9 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
       if (!trimmed || nlChatBusy || !cid) return;
       routingCidRef.current = cid;
 
+      const mid = crypto.randomUUID();
       const userLine: NlChatLine = {
-        id: crypto.randomUUID(),
+        id: mid,
         role: "user",
         text: trimmed,
       };
@@ -179,6 +311,11 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
 
       setNlChatBusy(true);
       appendLine(userLine);
+      pendingUserLineRef.current = {
+        conversationId: cid,
+        clientMessageId: mid,
+        line: userLine,
+      };
 
       const maxRows = options?.maxRows;
       const glossaryContext = options?.glossaryContext?.trim();
@@ -189,6 +326,7 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
         const payload: Record<string, unknown> = {
           type: "chat_message",
           conversation_id: cid,
+          message_id: mid,
           content: trimmed,
           history,
         };
@@ -212,6 +350,7 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
         }
         wsClient.sendPlain(payload);
       } catch {
+        pendingUserLineRef.current = null;
         setNlChatBusy(false);
         appendLine({
           id: crypto.randomUUID(),
@@ -223,5 +362,13 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
     [appendLine, conversationId, ensureWsConnected, joinChatRoom, nlChatBusy],
   );
 
-  return { lines, nlChatBusy, sendChat };
+  return {
+    lines,
+    nlChatBusy,
+    sendChat,
+    trimForRetry,
+    requestDeleteChatMessages,
+    getRetryTailAnchorId,
+    requestDeleteChatTailFrom,
+  };
 }

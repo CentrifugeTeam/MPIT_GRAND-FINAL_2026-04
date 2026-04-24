@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.tasks import ScheduleType, TaskScheduleBody
 
@@ -51,8 +51,31 @@ class TaskTemplateApi(BaseModel):
     monthly_time: Optional[str] = None
     yearly_date_ddmm: Optional[str] = None
     yearly_time: Optional[str] = None
+    is_system: bool = False
     created_at: datetime
     updated_at: datetime
+
+
+class TaskTemplateBulkItem(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    instruction: str = Field(..., min_length=1)
+    analytics_source_key: str = Field(..., min_length=1, max_length=64)
+    schedule: TaskScheduleBody
+
+
+class TaskTemplateBulkBody(BaseModel):
+    templates: list[TaskTemplateBulkItem] = Field(..., max_length=8)
+
+    @field_validator("templates")
+    @classmethod
+    def max_five(cls, v: list[TaskTemplateBulkItem]) -> list[TaskTemplateBulkItem]:
+        if len(v) > 5:
+            raise ValueError("at most 5 templates per request")
+        return v
+
+
+class TaskTemplateBulkResponse(BaseModel):
+    inserted: int
 
 
 class TaskTemplateListResponse(BaseModel):

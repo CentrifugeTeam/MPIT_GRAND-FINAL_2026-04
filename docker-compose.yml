@@ -154,6 +154,8 @@ services:
       - ANALYTICS_SOURCES_WRITE_TOKEN=${ANALYTICS_SOURCES_WRITE_TOKEN:-}
       - DEFAULT_ANALYTICS_SOURCE_KEY=${DEFAULT_ANALYTICS_SOURCE_KEY:-main-db}
       - ANALYTICS_SOURCES_INLINE=${ANALYTICS_SOURCES_INLINE:-main-db|postgresql://postgres:postgres@main-db:5432/main_db|Warehouse (main_db, drivee_orders)||postgres-main|postgresql://postgres:postgres@postgres-db:5432/postgres-db|Platform metadata (users, chats; no drivee_orders)}
+      - REPORT_TASK_SERVICE_URL=${REPORT_TASK_SERVICE_URL:-http://report-task-service:8010}
+      - REPORT_TASK_INTERNAL_TOKEN=${REPORT_TASK_INTERNAL_TOKEN:-dev-report-internal-token}
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -163,6 +165,8 @@ services:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      report-task-service:
+        condition: service_started
     volumes:
       - ./analytics-service:/app
     networks:

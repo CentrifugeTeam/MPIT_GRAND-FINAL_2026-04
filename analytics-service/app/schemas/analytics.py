@@ -166,10 +166,34 @@ class NlChatMessageApi(BaseModel):
     role: str
     payload: dict[str, Any]
     created_at: datetime
+    client_message_id: Optional[str] = None
 
 
 class NlChatTranscriptResponse(BaseModel):
     items: list[NlChatMessageApi]
+
+
+class NlChatDeleteMessagesBody(BaseModel):
+    message_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=32,
+        description="Идентификаторы сообщений: UUID строки в БД или client_message_id",
+    )
+
+
+class NlChatDeleteMessagesResponse(BaseModel):
+    deleted_message_ids: list[str]
+    deleted_count: int
+
+
+class NlChatDeleteTailBody(BaseModel):
+    from_message_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="UUID строки или client_message_id первого удаляемого сообщения; далее до конца ленты.",
+    )
 
 
 class NlChatSyncAck(BaseModel):

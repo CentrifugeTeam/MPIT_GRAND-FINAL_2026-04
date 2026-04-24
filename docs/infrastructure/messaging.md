@@ -21,6 +21,7 @@
 | Имя очереди | Константа | Кто публикует | Кто потребляет |
 |-------------|-----------|---------------|----------------|
 | `report_task_incoming_v1` | `QUEUE_REPORT_TASK_INCOMING` / `QUEUE_REPORT_TASK_INCOMING_V1` | report-task-service | nl-orchestrator-worker |
+| `report_template_plan_request_v1` | `QUEUE_REPORT_TEMPLATE_PLAN_REQUEST` | report-task-service (стартовая дедуп-публикация), analytics-service (после `POST /data-sources`) | analytics-service (`report_template_queue_consumer`) |
 
 ## Уведомления по email
 

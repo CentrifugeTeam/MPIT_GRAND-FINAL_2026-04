@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Синхронизация сообщений NL-чата из nl-orchestrator-worker (заголовок X-Chat-Sync-Token)
     INTERNAL_NL_CHAT_SYNC_TOKEN: str = ""
 
+    # Запись системных шаблонов отчётов (report-task-service, тот же токен что REPORT_TASK_INTERNAL_TOKEN)
+    REPORT_TASK_SERVICE_URL: str = "http://report-task-service:8010"
+    REPORT_TASK_INTERNAL_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
 

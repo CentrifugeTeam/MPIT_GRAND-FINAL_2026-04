@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     RABBITMQ_PORT: int = 5672
     DISPATCH_INTERVAL_SECONDS: int = 60
     REPORT_TASK_INTERNAL_TOKEN: str = "dev-report-internal-token"
+    # Владелец системных шаблонов (автогенерация по источникам данных)
+    REPORT_TEMPLATE_SYSTEM_USER_ID: str = "00000000-0000-0000-0000-000000000001"
 
     class Config:
         env_file = ".env"

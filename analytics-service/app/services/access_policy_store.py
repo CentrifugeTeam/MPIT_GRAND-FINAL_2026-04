@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.db.platform_models import AnalyticsAccessPolicy
 from app.services.access_policy import AccessPolicyView, admin_bypass, policy_view_from_row
-from app.services.data_sources_store import get_default_source_key
+from app.services.data_sources_store import get_default_source_key, list_sources_public
 from app.db.platform_session import PlatformSessionLocal
 
 
@@ -57,6 +57,22 @@ def resolve_effective_policy(
     if not row:
         return None
     return policy_view_from_row(row.allowed_tables, row.denied_columns)
+
+
+def list_allowed_source_keys_for_role(user_role: Optional[str]) -> list[str]:
+    """Ключи источников с effective policy для роли; ADMIN — все зарегистрированные источники."""
+    items = list_sources_public()
+    keys_sorted = sorted(
+        {str(x["key"]).strip() for x in items if x.get("key") and str(x["key"]).strip()}
+    )
+    if admin_bypass(user_role):
+        return list(keys_sorted)
+    with PlatformSessionLocal() as db:
+        out: list[str] = []
+        for sk in keys_sorted:
+            if resolve_effective_policy(user_role=user_role, source_key=sk, db=db):
+                out.append(sk)
+        return out
 
 
 def policy_to_payload(policy: AccessPolicyView) -> dict[str, Any]:

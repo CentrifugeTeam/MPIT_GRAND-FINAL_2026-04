@@ -11,6 +11,9 @@ from app.schemas.analytics import (
     CreateNlChatResponse,
     GlossaryMatchItem,
     InterpretQuestionResponse,
+    NlChatDeleteMessagesBody,
+    NlChatDeleteMessagesResponse,
+    NlChatDeleteTailBody,
     NlChatMessageApi,
     NlChatSyncAck,
     NlChatTitlePatch,
@@ -37,6 +40,8 @@ from app.services.chat_store import (
     append_message,
     create_empty_session,
     delete_all_sessions_for_user,
+    delete_messages_by_keys,
+    delete_messages_from_anchor_inclusive,
     delete_session,
     ensure_session,
     get_session_for_user,
@@ -313,6 +318,56 @@ async def get_nl_chat_messages_route(
     rows = list_messages(x_user_id, cid)
     return NlChatTranscriptResponse(
         items=[NlChatMessageApi.model_validate(r) for r in rows],
+    )
+
+
+@router.post(
+    "/chats/{conversation_id}/messages/delete",
+    response_model=NlChatDeleteMessagesResponse,
+    summary="Удалить сообщения NL-чата",
+    description="По UUID строки или client_message_id; только своя сессия.",
+)
+async def delete_nl_chat_messages_route(
+    conversation_id: uuid.UUID,
+    body: NlChatDeleteMessagesBody,
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
+):
+    cid = str(conversation_id)
+    if get_session_for_user(x_user_id, cid) is None:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+    try:
+        deleted_ui = delete_messages_by_keys(x_user_id, cid, body.message_ids)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+    return NlChatDeleteMessagesResponse(
+        deleted_message_ids=deleted_ui,
+        deleted_count=len(deleted_ui),
+    )
+
+
+@router.post(
+    "/chats/{conversation_id}/messages/delete-tail",
+    response_model=NlChatDeleteMessagesResponse,
+    summary="Удалить хвост NL-чата с сообщения",
+    description="Сообщение-якорь и все следующие по времени в сессии.",
+)
+async def delete_nl_chat_messages_tail_route(
+    conversation_id: uuid.UUID,
+    body: NlChatDeleteTailBody,
+    x_user_id: str = Header(..., alias="X-User-Id", description="UUID владельца"),
+):
+    cid = str(conversation_id)
+    if get_session_for_user(x_user_id, cid) is None:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+    try:
+        deleted_ui = delete_messages_from_anchor_inclusive(
+            x_user_id, cid, body.from_message_id
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+    return NlChatDeleteMessagesResponse(
+        deleted_message_ids=deleted_ui,
+        deleted_count=len(deleted_ui),
     )
 
 

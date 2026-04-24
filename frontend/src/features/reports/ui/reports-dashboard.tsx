@@ -1,19 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '@iconify/react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { ScrollShadow, Spinner } from '@heroui/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { FigmaAnalyticsSidebar, useAnalyticsPanel } from '@/features/analytics';
-import type { ReportTask } from '@/features/analytics/api/analytics-api';
+import type { ReportTask, ReportTaskTemplate } from '@/features/analytics/api/analytics-api';
 import { patchReportTask } from '@/features/analytics/api/analytics-api';
 import { useReportTasks } from '../model/use-report-tasks';
+import { useReportTemplates } from '../model/use-report-templates';
 import { CreateReportModal } from './create-report-modal';
 import { ReportTaskItem } from './report-task-item';
+import { ReportTemplatesCarousel } from './report-templates-carousel';
 import { TaskDetailPanel } from './task-detail-panel';
 import { useDataSources } from '../model/use-data-sources';
 
 const WEEK_DAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+
+type ReportsLocationState = {
+  createReportFromChat?: { instruction: string };
+};
 
 function trimTime(t: string): string {
   return t.slice(0, 5);
@@ -58,11 +64,22 @@ function formatSchedule(task: ReportTask): string {
 export function ReportsDashboard() {
   const p = useAnalyticsPanel();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<ReportTask | null>(null);
+  const [templatePrefill, setTemplatePrefill] =
+    useState<ReportTaskTemplate | null>(null);
+  const [chatInstructionPrefill, setChatInstructionPrefill] = useState<
+    string | null
+  >(null);
   const { data, isLoading, isError, refetch } = useReportTasks();
+  const {
+    data: templatesData,
+    isLoading: isLoadingTemplates,
+    isError: isTemplatesError,
+  } = useReportTemplates();
 
   const selectedTask = data?.items.find(t => t.id === selectedTaskId) ?? null;
 
@@ -87,6 +104,17 @@ export function ReportsDashboard() {
   };
   const { data: dataSources, isLoading: isLoadingDataSources } =
     useDataSources();
+
+  useEffect(() => {
+    const st = location.state as ReportsLocationState | undefined;
+    const ins = st?.createReportFromChat?.instruction?.trim();
+    if (!ins) return;
+    setChatInstructionPrefill(ins);
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: {},
+    });
+  }, [location.state, location.pathname, location.search, navigate]);
 
   return (
     <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0'>
@@ -145,6 +173,12 @@ export function ReportsDashboard() {
               <CreateReportModal
                 dataSources={dataSources?.items}
                 refetch={refetch}
+                templatePrefill={templatePrefill}
+                onTemplatePrefillConsumed={() => setTemplatePrefill(null)}
+                chatInstructionPrefill={chatInstructionPrefill}
+                onChatInstructionPrefillConsumed={() =>
+                  setChatInstructionPrefill(null)
+                }
               />
               {editingTask && (
                 <CreateReportModal
@@ -157,17 +191,27 @@ export function ReportsDashboard() {
               )}
             </div>
           </div>
+          <div className='shrink-0 w-full max-w-[900px] mx-auto px-10 pb-2'>
+            <ReportTemplatesCarousel
+              items={templatesData?.items ?? []}
+              isLoading={isLoadingTemplates}
+              isError={isTemplatesError}
+              onSelectTemplate={tpl => {
+                setChatInstructionPrefill(null);
+                setTemplatePrefill(tpl);
+              }}
+            />
+          </div>
           <ScrollShadow
             className='min-h-0 flex-1'
             hideScrollBar
           >
             <div className='w-full max-w-[900px] mx-auto px-10 pb-10'>
-              {isLoading ||
-                (isLoadingDataSources && (
-                  <div className='flex items-center justify-center py-16'>
-                    <Spinner size='lg' />
-                  </div>
-                ))}
+              {(isLoading || isLoadingDataSources) && (
+                <div className='flex items-center justify-center py-16'>
+                  <Spinner size='lg' />
+                </div>
+              )}
               {isError && (
                 <div className='flex items-center justify-center py-16'>
                   <span className='text-sm text-danger'>

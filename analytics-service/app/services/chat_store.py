@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Any, Optional
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.db.platform_models import NlChatMessage, NlChatSession
 from app.db.platform_session import PlatformSessionLocal
@@ -149,6 +149,128 @@ def list_chat_sessions_for_user(
                 }
             )
         return out, total
+    finally:
+        db.close()
+
+
+def delete_messages_by_keys(
+    user_id: str,
+    conversation_id: str,
+    keys: list[str],
+    *,
+    max_keys: int = 32,
+) -> list[str]:
+    """Удалить сообщения по pk (UUID) или по client_message_id. Возвращает id строк UI: client_message_id или str(pk)."""
+    uid = _uid(user_id)
+    cid = _uid(conversation_id)
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for k in keys:
+        s = str(k).strip()
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        cleaned.append(s)
+        if len(cleaned) >= max_keys:
+            break
+    if not cleaned:
+        return []
+    db = PlatformSessionLocal()
+    try:
+        sess = (
+            db.query(NlChatSession)
+            .filter(NlChatSession.id == cid, NlChatSession.user_id == uid)
+            .one_or_none()
+        )
+        if sess is None:
+            raise ValueError("chat session not found")
+        uuid_keys: list[uuid.UUID] = []
+        for s in cleaned:
+            try:
+                uuid_keys.append(uuid.UUID(s))
+            except ValueError:
+                pass
+        conds = []
+        if uuid_keys:
+            conds.append(NlChatMessage.id.in_(uuid_keys))
+        conds.append(NlChatMessage.client_message_id.in_(cleaned))
+        rows = (
+            db.query(NlChatMessage)
+            .filter(NlChatMessage.session_id == cid, or_(*conds))
+            .all()
+        )
+        ui_seen: set[str] = set()
+        ui_ids: list[str] = []
+        for r in rows:
+            cm = (r.client_message_id or "").strip()
+            u = cm if cm else str(r.id)
+            if u not in ui_seen:
+                ui_seen.add(u)
+                ui_ids.append(u)
+            db.delete(r)
+        remaining = (
+            db.query(NlChatMessage).filter(NlChatMessage.session_id == cid).count()
+        )
+        sess.message_count = int(remaining)
+        sess.updated_at = datetime.utcnow()
+        db.commit()
+        return ui_ids
+    finally:
+        db.close()
+
+
+def delete_messages_from_anchor_inclusive(
+    user_id: str,
+    conversation_id: str,
+    anchor_key: str,
+) -> list[str]:
+    """Удалить все сообщения сессии начиная с якоря (включительно) по порядку created_at."""
+    uid = _uid(user_id)
+    cid = _uid(conversation_id)
+    anchor = str(anchor_key).strip()
+    if not anchor:
+        return []
+    db = PlatformSessionLocal()
+    try:
+        sess = (
+            db.query(NlChatSession)
+            .filter(NlChatSession.id == cid, NlChatSession.user_id == uid)
+            .one_or_none()
+        )
+        if sess is None:
+            raise ValueError("chat session not found")
+        rows = (
+            db.query(NlChatMessage)
+            .filter(NlChatMessage.session_id == cid)
+            .order_by(NlChatMessage.created_at.asc())
+            .all()
+        )
+        start_i: int | None = None
+        for i, r in enumerate(rows):
+            rid = str(r.id)
+            cm = (r.client_message_id or "").strip()
+            if rid == anchor or cm == anchor:
+                start_i = i
+                break
+        if start_i is None:
+            return []
+        to_delete = rows[start_i:]
+        ui_seen: set[str] = set()
+        ui_ids: list[str] = []
+        for r in to_delete:
+            cm = (r.client_message_id or "").strip()
+            u = cm if cm else str(r.id)
+            if u not in ui_seen:
+                ui_seen.add(u)
+                ui_ids.append(u)
+            db.delete(r)
+        remaining = (
+            db.query(NlChatMessage).filter(NlChatMessage.session_id == cid).count()
+        )
+        sess.message_count = int(remaining)
+        sess.updated_at = datetime.utcnow()
+        db.commit()
+        return ui_ids
     finally:
         db.close()
 

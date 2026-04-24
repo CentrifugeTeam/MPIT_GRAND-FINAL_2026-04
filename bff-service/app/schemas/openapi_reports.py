@@ -64,6 +64,7 @@ class TaskTemplateApi(BaseModel):
     monthly_time: Optional[str] = None
     yearly_date_ddmm: Optional[str] = None
     yearly_time: Optional[str] = None
+    is_system: bool = False
     created_at: datetime
     updated_at: datetime
 

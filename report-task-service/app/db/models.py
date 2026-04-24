@@ -51,6 +51,7 @@ class ReportTaskTemplate(PlatformBase):
     yearly_date_ddmm = Column(String(5), nullable=True)
     yearly_time = Column(String(8), nullable=True)
     timezone = Column(String(64), nullable=False, default="UTC")
+    is_system = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

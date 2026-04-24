@@ -9,6 +9,7 @@ export type NlChatMessageApiRow = {
   role: string;
   payload: Record<string, unknown>;
   created_at: string;
+  client_message_id?: string | null;
 };
 
 /** Строка из GET /api/analytics/chats/:id/messages → лента UI. */
@@ -41,6 +42,8 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
         })
       : text;
 
+  // Всегда pk строки: иначе при одинаковом client_message_id у user/assistant (старые данные)
+  // получаются дубли React key и пропадает одно из сообщений.
   return {
     id: row.id,
     role,

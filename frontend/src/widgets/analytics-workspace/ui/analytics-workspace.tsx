@@ -40,6 +40,32 @@ export function AnalyticsWorkspace() {
     if (matched) selectEntry(matched.id);
   }, [entries, historyBusy, routeChatId, selectEntry]);
 
+  const nlAssistantActionHandlers = {
+    /** Локально обрезает ленту; при перезагрузке чата сообщения снова придут с сервера. */
+    onRetry: ({
+      assistantLineId,
+      userMessage,
+    }: {
+      assistantLineId: string;
+      userMessage: string;
+      userLineId: string | null;
+    }) => {
+      const anchor =
+        p.getRetryTailAnchorId(assistantLineId) ?? assistantLineId;
+      p.trimForRetry(assistantLineId);
+      void p.requestDeleteChatTailFrom(anchor);
+      p.setQuestion(userMessage);
+      queueMicrotask(() => {
+        void p.sendComposerMessage();
+      });
+    },
+    onCreateReportTask: (userQuestion: string) => {
+      void navigate('/reports', {
+        state: { createReportFromChat: { instruction: userQuestion } },
+      });
+    },
+  } as const;
+
   const handleShareChat = useCallback(async () => {
     if (!p.nlConversationId) return;
     const u = new URL(window.location.href);
@@ -117,6 +143,7 @@ export function AnalyticsWorkspace() {
             p.startNewChat();
             void navigate('/home');
           }}
+          nlAssistantActionHandlers={nlAssistantActionHandlers}
         />
 
         {p.result && (

@@ -1,6 +1,8 @@
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException, Response, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
@@ -14,9 +16,11 @@ from app.services.data_sources_store import (
     set_default_source,
     update_source,
 )
+from app.services.report_template_queue_consumer import publish_template_plan_request
 from app.services.schema_scheduler import refresh_schema_cache
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _require_write_token(x: Optional[str] = Header(None, alias="X-Analytics-Sources-Write-Token")) -> None:
@@ -39,6 +43,13 @@ class DataSourcePublic(BaseModel):
 class DataSourcesListResponse(BaseModel):
     items: list[DataSourcePublic]
     default_key: str | None = None
+
+
+class AllowedDataSourceKeysResponse(BaseModel):
+    keys: list[str] = Field(
+        default_factory=list,
+        description="Источники, к которым у роли из X-User-Role есть политика доступа (или все для ADMIN)",
+    )
 
 
 class DataSourceCreateBody(BaseModel):
@@ -83,6 +94,26 @@ async def list_data_sources():
     return DataSourcesListResponse(items=items, default_key=get_default_source_key())
 
 
+@router.get(
+    "/data-sources/allowed-keys",
+    response_model=AllowedDataSourceKeysResponse,
+    summary="Ключи источников, доступных роли",
+    description="Учитывает analytics_access_policies и X-User-Role (ADMIN — все источники).",
+)
+async def list_allowed_data_source_keys(
+    x_user_role: Optional[str] = Header(
+        None,
+        alias="X-User-Role",
+        description="Роль из BFF; по умолчанию USER",
+    ),
+):
+    from app.services import access_policy_store as aps
+
+    role = (x_user_role or "USER").strip()
+    keys = aps.list_allowed_source_keys_for_role(role)
+    return AllowedDataSourceKeysResponse(keys=keys)
+
+
 @router.post(
     "/data-sources",
     response_model=DataSourcePublic,
@@ -91,6 +122,7 @@ async def list_data_sources():
 )
 async def add_data_source(
     body: DataSourceCreateBody,
+    background_tasks: BackgroundTasks,
     x_analytics_sources_write_token: Optional[str] = Header(
         None,
         alias="X-Analytics-Sources-Write-Token",
@@ -110,6 +142,16 @@ async def add_data_source(
     dispose_analytics_engine_cache()
     schema_cache.invalidate()
     refresh_schema_cache()
+
+    async def _enqueue_templates() -> None:
+        try:
+            await publish_template_plan_request(row["key"])
+        except Exception:
+            logger.exception(
+                "enqueue report template plan failed for source_key=%s", row["key"]
+            )
+
+    background_tasks.add_task(_enqueue_templates)
     return DataSourcePublic(**row)
 
 

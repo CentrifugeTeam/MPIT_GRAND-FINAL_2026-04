@@ -52,7 +52,10 @@ export function AuthRegisterForm() {
         password: data.password,
         confirm_password: data.confirmPassword,
       });
-      navigate('/home', { replace: true });
+      navigate('/auth/login', {
+        replace: true,
+        state: { registeredEmail: data.email.trim() },
+      });
     } catch {
       /* registration failed — isError handles UI */
     }

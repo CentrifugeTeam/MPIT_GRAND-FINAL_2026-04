@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -22,6 +22,7 @@ import type { DateValue } from '@internationalized/date';
 import type {
   AnalyticsDataSourceItem,
   ReportTask,
+  ReportTaskTemplate,
 } from '@/features/analytics/api/analytics-api';
 import {
   createReportTask,
@@ -40,6 +41,12 @@ type Props = {
   taskToEdit?: ReportTask | null;
   externalOpen?: boolean;
   onExternalClose?: () => void;
+  /** Открыть модалку создания с полями из шаблона (сбрасывайте после закрытия). */
+  templatePrefill?: ReportTaskTemplate | null;
+  onTemplatePrefillConsumed?: () => void;
+  /** Текст инструкции из чата аналитики (сброс после закрытия). */
+  chatInstructionPrefill?: string | null;
+  onChatInstructionPrefillConsumed?: () => void;
 };
 
 type FormValues = {
@@ -81,21 +88,39 @@ function parseTime(str: string | null | undefined): Time | null {
   return new Time(h, m);
 }
 
-function taskToFormValues(task: ReportTask): Partial<FormValues> {
+type ScheduleFormSource = Pick<
+  ReportTask,
+  | 'title'
+  | 'instruction'
+  | 'analytics_source_key'
+  | 'schedule_type'
+  | 'once_at'
+  | 'daily_time'
+  | 'weekly_day'
+  | 'weekly_time'
+  | 'monthly_day'
+  | 'monthly_time'
+  | 'yearly_date_ddmm'
+  | 'yearly_time'
+>;
+
+function scheduleEntityToFormValues(
+  entity: ScheduleFormSource,
+): Partial<FormValues> {
   const values: Partial<FormValues> = {
-    reportName: task.title,
-    query: task.instruction,
-    sourceKey: task.analytics_source_key,
-    scheduleTab: task.schedule_type,
+    reportName: entity.title,
+    query: entity.instruction,
+    sourceKey: entity.analytics_source_key,
+    scheduleTab: entity.schedule_type,
     weekday:
-      task.weekly_day != null
-        ? (ISO_TO_WEEKDAY[task.weekly_day] ?? 'monday')
+      entity.weekly_day != null
+        ? (ISO_TO_WEEKDAY[entity.weekly_day] ?? 'monday')
         : 'monday',
-    monthDay: task.monthly_day ?? 1,
+    monthDay: entity.monthly_day ?? 1,
   };
 
-  if (task.schedule_type === 'once' && task.once_at) {
-    const d = new Date(task.once_at);
+  if (entity.schedule_type === 'once' && entity.once_at) {
+    const d = new Date(entity.once_at);
     values.dateOnce = new CalendarDate(
       d.getFullYear(),
       d.getMonth() + 1,
@@ -104,19 +129,41 @@ function taskToFormValues(task: ReportTask): Partial<FormValues> {
     values.time = new Time(d.getHours(), d.getMinutes());
   } else {
     values.time = parseTime(
-      task.daily_time ??
-        task.weekly_time ??
-        task.monthly_time ??
-        task.yearly_time,
+      entity.daily_time ??
+        entity.weekly_time ??
+        entity.monthly_time ??
+        entity.yearly_time,
     );
   }
 
-  if (task.yearly_date_ddmm) {
-    const [dd, mm] = task.yearly_date_ddmm.split(':').map(Number);
+  if (entity.yearly_date_ddmm) {
+    const [dd, mm] = entity.yearly_date_ddmm.split(':').map(Number);
     values.dateYearly = new CalendarDate(new Date().getFullYear(), mm, dd);
   }
 
   return values;
+}
+
+function taskToFormValues(task: ReportTask): Partial<FormValues> {
+  return scheduleEntityToFormValues(task);
+}
+
+function chatInstructionToInitialForm(
+  instruction: string,
+  defaultSourceKey: string,
+  defaultReportTitle: string,
+): Partial<FormValues> {
+  return {
+    reportName: defaultReportTitle,
+    query: instruction.slice(0, 12000).trim(),
+    sourceKey: defaultSourceKey,
+    scheduleTab: 'once',
+    monthDay: 1,
+    weekday: 'monday',
+    time: null,
+    dateOnce: null,
+    dateYearly: null,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -595,6 +642,10 @@ export function CreateReportModal({
   taskToEdit,
   externalOpen,
   onExternalClose,
+  templatePrefill,
+  onTemplatePrefillConsumed,
+  chatInstructionPrefill,
+  onChatInstructionPrefillConsumed,
 }: Props) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -602,6 +653,7 @@ export function CreateReportModal({
   const isControlled = externalOpen !== undefined;
   const [isOpen, setIsOpen] = useState(false);
   const open = isControlled ? (externalOpen ?? false) : isOpen;
+  const modalPanelRef = useRef<HTMLDivElement>(null);
 
   const createMutation = useMutation({
     mutationFn: createReportTask,
@@ -634,12 +686,21 @@ export function CreateReportModal({
   const isPending = createMutation.isPending || patchMutation.isPending;
 
   const handleClose = useCallback(() => {
+    if (templatePrefill) onTemplatePrefillConsumed?.();
+    if (chatInstructionPrefill) onChatInstructionPrefillConsumed?.();
     if (isControlled) {
       onExternalClose?.();
     } else {
       setIsOpen(false);
     }
-  }, [isControlled, onExternalClose]);
+  }, [
+    isControlled,
+    onExternalClose,
+    onTemplatePrefillConsumed,
+    onChatInstructionPrefillConsumed,
+    templatePrefill,
+    chatInstructionPrefill,
+  ]);
 
   function handleSubmit(body: CreateReportTaskBody) {
     if (taskToEdit) {
@@ -658,8 +719,46 @@ export function CreateReportModal({
     return () => document.removeEventListener('keydown', handler);
   }, [open, handleClose]);
 
-  const initialValues = taskToEdit ? taskToFormValues(taskToEdit) : undefined;
-  const formKey = taskToEdit ? taskToEdit.id : 'create';
+  useEffect(() => {
+    if (isControlled || taskToEdit) return;
+    if (templatePrefill || chatInstructionPrefill) setIsOpen(true);
+  }, [templatePrefill, chatInstructionPrefill, isControlled, taskToEdit]);
+
+  const initialValues = taskToEdit
+    ? taskToFormValues(taskToEdit)
+    : chatInstructionPrefill
+      ? chatInstructionToInitialForm(
+          chatInstructionPrefill,
+          dataSources?.[0]?.key ?? '',
+          t('reports.prefillTitleFromChat'),
+        )
+      : templatePrefill
+        ? scheduleEntityToFormValues(templatePrefill)
+        : undefined;
+  const formKey = taskToEdit
+    ? taskToEdit.id
+    : chatInstructionPrefill
+      ? `chat-${chatInstructionPrefill.length}-${chatInstructionPrefill.slice(0, 32)}`
+      : templatePrefill
+        ? `tpl-${templatePrefill.id}`
+        : 'create';
+
+  useEffect(() => {
+    if (!open) return;
+    const outer = requestAnimationFrame(() => {
+      const root = modalPanelRef.current;
+      if (!root) return;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && !root.contains(ae)) ae.blur();
+      requestAnimationFrame(() => {
+        const el = root.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([disabled]), textarea:not([disabled])',
+        );
+        el?.focus({ preventScroll: true });
+      });
+    });
+    return () => cancelAnimationFrame(outer);
+  }, [open, formKey]);
 
   const modalContent = (
     <AnimatePresence>
@@ -684,7 +783,10 @@ export function CreateReportModal({
             onClick={handleClose}
           />
           <motion.div
+            ref={modalPanelRef}
             className='relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950'
+            role='dialog'
+            aria-modal='true'
             initial={{ opacity: 0, scale: 1.05, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}

@@ -4,7 +4,6 @@ import { RootLayout } from '@/app/layout';
 import { ProtectedRoute } from '@/app/protected-route';
 import { GuestRoute } from '@/app/guest-route';
 import { HomePage } from '@/pages/home';
-import { SettingsPage } from '@/pages/settings';
 import { NotFoundPage } from '@/pages/not-found';
 import { LoginPage } from '@/pages/auth/login';
 import { RegisterPage } from '@/pages/auth/register';
@@ -46,10 +45,6 @@ export function AppRouter() {
             <Route
               path='home/:id'
               element={<HomePage />}
-            />
-            <Route
-              path='settings'
-              element={<SettingsPage />}
             />
             <Route
               path='reports'

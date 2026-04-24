@@ -1,1 +1,2 @@
 QUEUE_REPORT_TASK_INCOMING = "report_task_incoming_v1"
+QUEUE_REPORT_TEMPLATE_PLAN_REQUEST = "report_template_plan_request_v1"

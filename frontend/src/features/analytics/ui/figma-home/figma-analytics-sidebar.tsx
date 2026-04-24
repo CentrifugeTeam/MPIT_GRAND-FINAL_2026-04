@@ -9,6 +9,7 @@ import {
 } from './figma-tokens';
 import { FigmaConfirmDialog } from './figma-confirm-dialog';
 import { FigmaSearchModal } from './figma-search-modal';
+import { FigmaSettingsModal } from './figma-settings-modal';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 import { FigmaSidebarHistorySection } from './figma-sidebar-history-section';
 import { FigmaSidebarPrimaryNav } from './figma-sidebar-primary-nav';
@@ -44,6 +45,7 @@ export function FigmaAnalyticsSidebar({
   t,
 }: FigmaAnalyticsSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
@@ -166,6 +168,7 @@ export function FigmaAnalyticsSidebar({
               <FigmaSidebarProfileButton
                 isOpen={isOpen}
                 t={t}
+                onOpenSettings={() => setSettingsOpen(true)}
               />
             </div>
           </div>
@@ -222,6 +225,16 @@ export function FigmaAnalyticsSidebar({
             onClose={() => setSearchOpen(false)}
             onSelectEntry={onSelectEntry}
             onStartNewChat={onStartNewChat}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {settingsOpen && (
+          <FigmaSettingsModal
+            key='figma-settings-modal'
+            t={t}
+            onClose={() => setSettingsOpen(false)}
           />
         )}
       </AnimatePresence>

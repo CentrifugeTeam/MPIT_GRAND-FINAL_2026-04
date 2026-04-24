@@ -11,8 +11,10 @@ from app.core.config import get_settings
 from app.core.connection_manager import manager
 from app.services.analytics_schema_client import fetch_public_schema
 from app.services.chat_mq import chat_bus
+from app.services.analytics_service import AnalyticsProxy
 
 router = APIRouter()
+_analytics_proxy = AnalyticsProxy()
 websocket_service = WebSocketService()
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -270,6 +272,112 @@ async def websocket_endpoint(websocket: WebSocket):
                                     "conversation_id": str(conv),
                                 },
                             )
+                elif message_type == "delete_chat_messages":
+                    conv = data.get("conversation_id")
+                    anchor_raw = data.get("from_message_id")
+                    anchor = (
+                        str(anchor_raw).strip()
+                        if isinstance(anchor_raw, str) and str(anchor_raw).strip()
+                        else None
+                    )
+                    raw_ids = data.get("message_ids")
+                    if not conv:
+                        await _safe_send_json(
+                            websocket,
+                            {
+                                "type": "error",
+                                "message": "conversation_id required",
+                            },
+                        )
+                    elif anchor:
+                        try:
+                            result = await _analytics_proxy.delete_nl_chat_messages_tail(
+                                str(user_id),
+                                str(conv),
+                                anchor,
+                                user_role,
+                            )
+                        except HTTPException as e:
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "error",
+                                    "message": str(e.detail),
+                                },
+                            )
+                        else:
+                            deleted = result.get("deleted_message_ids") or []
+                            room = f"chat:{conv}"
+                            await manager.send_message_to_room(
+                                room,
+                                {
+                                    "type": "chat_messages_deleted",
+                                    "conversation_id": str(conv),
+                                    "message_ids": deleted,
+                                },
+                            )
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "delete_chat_messages_ack",
+                                    "conversation_id": str(conv),
+                                    "message_ids": deleted,
+                                    "from_message_id": anchor,
+                                },
+                            )
+                    elif isinstance(raw_ids, list) and raw_ids:
+                        mids = [str(x).strip() for x in raw_ids if str(x).strip()][:32]
+                        if not mids:
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "error",
+                                    "message": "message_ids required",
+                                },
+                            )
+                        else:
+                            try:
+                                result = await _analytics_proxy.delete_nl_chat_messages(
+                                    str(user_id),
+                                    str(conv),
+                                    mids,
+                                    user_role,
+                                )
+                            except HTTPException as e:
+                                await _safe_send_json(
+                                    websocket,
+                                    {
+                                        "type": "error",
+                                        "message": str(e.detail),
+                                    },
+                                )
+                            else:
+                                deleted = result.get("deleted_message_ids") or []
+                                room = f"chat:{conv}"
+                                await manager.send_message_to_room(
+                                    room,
+                                    {
+                                        "type": "chat_messages_deleted",
+                                        "conversation_id": str(conv),
+                                        "message_ids": deleted,
+                                    },
+                                )
+                                await _safe_send_json(
+                                    websocket,
+                                    {
+                                        "type": "delete_chat_messages_ack",
+                                        "conversation_id": str(conv),
+                                        "message_ids": deleted,
+                                    },
+                                )
+                    else:
+                        await _safe_send_json(
+                            websocket,
+                            {
+                                "type": "error",
+                                "message": "from_message_id or message_ids required",
+                            },
+                        )
                 else:
                     await _safe_send_json(
                         websocket,

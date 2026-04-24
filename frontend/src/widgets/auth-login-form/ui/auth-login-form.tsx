@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Icon } from '@iconify/react';
 import { Button, Checkbox, ErrorMessage, Input, Tabs } from '@heroui/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import z from 'zod';
 
 import { useLogin } from '@/entities/auth';
@@ -25,9 +25,12 @@ type LoginSchemaData = z.infer<typeof loginSchema>;
 const inputCn =
   'bg-zinc-900 border-transparent rounded-xl h-11 px-3 text-zinc-50 placeholder:text-zinc-400 text-sm w-full focus-visible:ring-1 focus-visible:ring-zinc-600 outline-none';
 
+type LoginLocationState = { registeredEmail?: string };
+
 export function AuthLoginForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { mutateAsync, isPending, isError } = useLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -37,6 +40,20 @@ export function AuthLoginForm() {
     mode: 'all',
     defaultValues: { email: '', password: '' },
   });
+
+  useEffect(() => {
+    const registeredEmail = (location.state as LoginLocationState | null)
+      ?.registeredEmail;
+    if (!registeredEmail?.trim()) return;
+    formMethod.setValue('email', registeredEmail.trim(), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: {},
+    });
+  }, [location.state, location.pathname, location.search, navigate, formMethod]);
 
   const handleClick = async (data: LoginSchemaData) => {
     try {
@@ -176,9 +193,7 @@ export function AuthLoginForm() {
 
             <Button
               onPress={() => formMethod.handleSubmit(handleClick)()}
-              isDisabled={
-                isPending || !rememberMe || !formMethod.formState.isValid
-              }
+              isDisabled={isPending || !formMethod.formState.isValid}
               className='bg-white text-black w-full h-[52px] rounded-2xl text-base font-medium'
               size='lg'
             >

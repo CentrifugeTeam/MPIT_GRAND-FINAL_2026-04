@@ -1,19 +1,44 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Icon } from "@iconify/react";
 import { Card } from "@heroui/react";
+import { motion } from "motion/react";
+
+import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
 
 import { ANALYTICS_TABLE_PREVIEW_MAX } from "../../config/constants";
 import {
   nlChatHasSeriesChart,
   nlChatHasTablePreview,
 } from "../../lib/nl-chat-viz";
-import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
 import { AnalyticsCharts } from "../analytics-charts";
+import { FigmaSimpleTooltip } from "../figma-home/figma-simple-tooltip";
 import { DataTablePreview } from "@/shared/ui/organisms/data-table-preview";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
 export type TranscriptVariant = "card" | "figma" | "grok";
+
+export type NlChatAssistantActionHandlers = {
+  onRetry: (payload: {
+    assistantLineId: string;
+    userMessage: string;
+    userLineId: string | null;
+  }) => void | Promise<void>;
+  onCreateReportTask: (userQuestion: string) => void | Promise<void>;
+};
+
+function precedingUserForRetry(
+  lines: NlChatLine[],
+  assistantIndex: number,
+): { text: string; lineId: string } | null {
+  for (let i = assistantIndex - 1; i >= 0; i--) {
+    if (lines[i]!.role === "user") {
+      return { text: lines[i]!.text, lineId: lines[i]!.id };
+    }
+  }
+  return null;
+}
 
 const bubbleCard = {
   user: "ml-4 rounded-xl border border-border/60 bg-primary/10 px-3 py-2.5 text-sm",
@@ -34,16 +59,152 @@ const bubbleGrok = {
   system: "mx-auto max-w-[min(560px,100%)] text-center font-sans text-xs leading-snug text-[#71717a]",
 };
 
+const iconMotionTransition = { type: "spring" as const, stiffness: 420, damping: 28 };
+
+function GrokAssistantToolbar({
+  t,
+  plain,
+  userCtx,
+  assistantLineId,
+  handlers,
+  actionsLocked,
+}: {
+  t: TFn;
+  plain: string;
+  userCtx: { text: string; lineId: string } | null;
+  assistantLineId: string;
+  handlers: NlChatAssistantActionHandlers;
+  actionsLocked: boolean;
+}) {
+  const [copyFlash, setCopyFlash] = useState(false);
+
+  useEffect(() => {
+    if (!copyFlash) return;
+    const id = window.setTimeout(() => setCopyFlash(false), 1800);
+    return () => window.clearTimeout(id);
+  }, [copyFlash]);
+
+  const handleCopy = useCallback(async () => {
+    if (actionsLocked || !plain) return;
+    try {
+      await navigator.clipboard.writeText(plain);
+      setCopyFlash(true);
+    } catch {
+      /* ignore */
+    }
+  }, [actionsLocked, plain]);
+
+  const lockHint = t("home.analytics.chatActionsLocked");
+  const copyTooltipLabel = actionsLocked
+    ? lockHint
+    : copyFlash
+      ? t("home.analytics.chatCopied")
+      : t("home.analytics.chatActionCopy");
+
+  const iconWrap =
+    "inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-[#71717a] transition-colors hover:bg-[#27272a]/80 hover:text-[#e4e4e7]";
+  const iconWrapDisabled = "pointer-events-none cursor-not-allowed opacity-40";
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-0.5">
+      {plain ? (
+        <FigmaSimpleTooltip label={copyTooltipLabel} side="top">
+          <motion.span
+            className="inline-flex"
+            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
+            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            transition={iconMotionTransition}
+          >
+            <button
+              type="button"
+              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ""}`}
+              aria-label={copyTooltipLabel}
+              aria-disabled={actionsLocked}
+              disabled={actionsLocked}
+              onClick={() => void handleCopy()}
+            >
+              <Icon icon="mdi:content-copy" width={18} />
+            </button>
+          </motion.span>
+        </FigmaSimpleTooltip>
+      ) : null}
+      {userCtx?.text?.trim() ? (
+        <FigmaSimpleTooltip
+          label={actionsLocked ? lockHint : t("home.analytics.chatActionRetry")}
+          side="top"
+        >
+          <motion.span
+            className="inline-flex"
+            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
+            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            transition={iconMotionTransition}
+          >
+            <button
+              type="button"
+              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ""}`}
+              aria-label={t("home.analytics.chatActionRetry")}
+              aria-disabled={actionsLocked}
+              disabled={actionsLocked}
+              onClick={() =>
+                void handlers.onRetry({
+                  assistantLineId,
+                  userMessage: userCtx.text.trim(),
+                  userLineId: userCtx.lineId,
+                })
+              }
+            >
+              <Icon icon="mdi:refresh" width={20} />
+            </button>
+          </motion.span>
+        </FigmaSimpleTooltip>
+      ) : null}
+      {userCtx?.text?.trim() ? (
+        <FigmaSimpleTooltip
+          label={
+            actionsLocked ? lockHint : t("home.analytics.chatActionCreateTask")
+          }
+          side="top"
+        >
+          <motion.span
+            className="inline-flex"
+            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
+            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            transition={iconMotionTransition}
+          >
+            <button
+              type="button"
+              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ""}`}
+              aria-label={t("home.analytics.chatActionCreateTask")}
+              aria-disabled={actionsLocked}
+              disabled={actionsLocked}
+              onClick={() =>
+                void handlers.onCreateReportTask(userCtx.text.trim())
+              }
+            >
+              <Icon icon="mdi:clipboard-text-outline" width={20} />
+            </button>
+          </motion.span>
+        </FigmaSimpleTooltip>
+      ) : null}
+    </div>
+  );
+}
+
 export function NlChatTranscriptBlock({
   t,
   nlChatLines,
   variant,
   emptyLabel,
+  assistantActionHandlers,
+  assistantActionsLocked = false,
 }: {
   t: TFn;
   nlChatLines: NlChatLine[];
   variant: TranscriptVariant;
   emptyLabel: string;
+  assistantActionHandlers?: NlChatAssistantActionHandlers | null;
+  /** Блокировать копирование / retry / задача, пока идёт запрос к модели. */
+  assistantActionsLocked?: boolean;
 }) {
   const b =
     variant === "grok" ? bubbleGrok : variant === "figma" ? bubbleFigma : bubbleCard;
@@ -97,6 +258,8 @@ export function NlChatTranscriptBlock({
   }, [nlChatLines]);
 
   const showRoleLabels = variant !== "grok";
+  const showAssistantToolbar =
+    variant === "grok" && assistantActionHandlers != null;
 
   const reasoningBox =
     variant === "grok" || variant === "figma"
@@ -124,7 +287,7 @@ export function NlChatTranscriptBlock({
           {emptyLabel}
         </p>
       )}
-      {nlChatLines.map((l) => (
+      {nlChatLines.map((l, lineIndex) => (
         <div
           key={l.id}
           className={
@@ -192,6 +355,19 @@ export function NlChatTranscriptBlock({
                   })}
                 </p>
               </Card>
+            )}
+          {showAssistantToolbar &&
+            l.role === "assistant" &&
+            !l.answerPending &&
+            assistantActionHandlers && (
+              <GrokAssistantToolbar
+                t={t}
+                plain={l.text.trim()}
+                userCtx={precedingUserForRetry(nlChatLines, lineIndex)}
+                assistantLineId={l.id}
+                handlers={assistantActionHandlers}
+                actionsLocked={assistantActionsLocked}
+              />
             )}
         </div>
       ))}

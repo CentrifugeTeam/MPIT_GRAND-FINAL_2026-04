@@ -11,9 +11,11 @@ from app.api.templates import router as templates_router
 async def lifespan(app: FastAPI):
     from app.db.session import init_tables
     from app.services.scheduler import start_scheduler, stop_scheduler
+    from app.services.template_seed_jobs import start_background_template_seed
 
     init_tables()
     start_scheduler()
+    start_background_template_seed()
     yield
     stop_scheduler()
 
@@ -31,7 +33,10 @@ app = FastAPI(
             "name": "report-task-templates",
             "description": "Шаблоны отчётных задач (пресеты расписания и текста); X-User-Id обязателен.",
         },
-        {"name": "internal", "description": "Вызовы от nl-orchestrator / воркеров с internal token."},
+        {
+            "name": "internal",
+            "description": "Внутренние вызовы (X-Report-Internal-Token): результат прогона, bulk шаблоны.",
+        },
     ],
 )
 

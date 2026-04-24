@@ -43,6 +43,7 @@ export const nlChatMessageSchema = z.object({
   role: z.string(),
   payload: z.record(z.string(), z.unknown()),
   created_at: z.string(),
+  client_message_id: z.string().nullable().optional(),
 });
 
 export const nlChatMessagesResponseSchema = z.object({
