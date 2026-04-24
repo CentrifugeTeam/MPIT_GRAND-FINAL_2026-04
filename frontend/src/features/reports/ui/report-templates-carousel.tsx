@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Spinner } from '@heroui/react';
+import { ScrollShadow, Spinner } from '@heroui/react';
 
 import type { ReportTaskTemplate } from '@/features/analytics/api/analytics-api';
 import { ReportTemplateCard } from './report-template-card';
@@ -42,12 +42,16 @@ export function ReportTemplatesCarousel({
   }
 
   return (
-    <div className='w-full min-w-0'>
+    <ScrollShadow
+      orientation='horizontal'
+      hideScrollBar
+      className='w-full min-w-0 pb-1'
+      role='list'
+      aria-label={t('reports.templatesCarouselAria')}
+    >
       <div
-        className='flex w-full min-w-0 gap-3 overflow-x-auto overflow-y-visible pb-1 [scrollbar-width:thin]'
+        className='flex gap-3'
         style={{ scrollSnapType: 'x mandatory' }}
-        role='list'
-        aria-label={t('reports.templatesCarouselAria')}
       >
         {items.map(template => (
           <div
@@ -67,6 +71,6 @@ export function ReportTemplatesCarousel({
           </div>
         ))}
       </div>
-    </div>
+    </ScrollShadow>
   );
 }
