@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 
-import { Icon } from '@iconify/react';
 import { Button, Card, Disclosure } from '@heroui/react';
 import { motion } from 'motion/react';
 import { Virtuoso } from 'react-virtuoso';
@@ -28,7 +27,6 @@ import {
   ArrowDownToSquare,
   ArrowRotateRight,
   CopyIcon,
-  DotsVertical,
 } from '@/shared/ui/assets/icons';
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
