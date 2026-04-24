@@ -1,11 +1,11 @@
-import { Card } from '@heroui/react';
-import { Icon } from '@iconify/react';
+import { Card } from "@heroui/react";
+import { Icon } from "@iconify/react";
 
 export type ReportTemplateCardProps = {
   title: string;
   description: string;
   onPress: () => void;
-  'aria-label'?: string;
+  "aria-label"?: string;
 };
 
 /**
@@ -15,35 +15,39 @@ export function ReportTemplateCard({
   title,
   description,
   onPress,
-  'aria-label': ariaLabel,
+  "aria-label": ariaLabel,
 }: ReportTemplateCardProps) {
   return (
     <Card
-      role='button'
+      role="button"
       tabIndex={0}
       aria-label={ariaLabel ?? title}
       onClick={onPress}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onPress();
         }
       }}
-      className='h-[144px] w-[261px] max-w-[261px] shrink-0 cursor-pointer rounded-3xl border border-zinc-700/90 bg-[#a3a3a3] p-4 shadow-none transition-[transform,box-shadow] hover:brightness-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40 active:scale-[0.99]'
+      className="h-[144px] w-[251px] max-w-[261px] shrink-0 cursor-pointer rounded-3xl border border-[#28282C] bg-[#18181B]/40 p-4 transition-[transform,box-shadow] hover:brightness-[1.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600/50 active:scale-[0.99]"
+      style={{
+        boxShadow:
+          "0px 0px 1px 0px rgba(0,0,0,0.06), 0px 1px 2px 0px rgba(0,0,0,0.06), 0px 2px 4px 0px rgba(0,0,0,0.06), 0px 4px 8px 0px rgba(0,0,0,0.06)",
+      }}
     >
-      <div className='flex h-full min-h-0 flex-col items-stretch gap-1.5 overflow-hidden text-left'>
+      <div className="flex h-full min-h-0 flex-col items-stretch gap-1.5 overflow-hidden text-left">
         <Icon
-          icon='mdi:file-document-outline'
+          icon="mdi:file-document-outline"
           width={28}
           height={28}
-          className='shrink-0 text-white'
+          className="shrink-0 text-white"
           aria-hidden
         />
-        <h3 className='line-clamp-2 text-sm font-semibold leading-snug text-white'>
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white">
           {title}
         </h3>
         {description ? (
-          <p className='line-clamp-2 text-xs leading-snug text-zinc-800/90'>
+          <p className="line-clamp-2 text-xs leading-snug text-zinc-400">
             {description}
           </p>
         ) : null}
@@ -51,3 +55,4 @@ export function ReportTemplateCard({
     </Card>
   );
 }
+
