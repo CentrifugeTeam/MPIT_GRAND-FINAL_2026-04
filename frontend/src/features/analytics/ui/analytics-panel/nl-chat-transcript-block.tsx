@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -606,13 +607,22 @@ export function NlChatTranscriptBlock({
 
   const itemGap = variant === 'grok' ? 'pb-8' : 'pb-3';
 
-  // Ref для nlChatLines — itemContent читает его вместо захвата через closure.
+  /** В grok-чате системные строки (очередь SQL, ошибки транспорта) не показываем. */
+  const virtuosoLines = useMemo(
+    () =>
+      variant === 'grok'
+        ? nlChatLines.filter((l) => l.role !== 'system')
+        : nlChatLines,
+    [variant, nlChatLines],
+  );
+
+  // Ref для ленты Virtuoso — itemContent читает его вместо захвата через closure.
   // Обновляется синхронно ПОСЛЕ рендера (useLayoutEffect), до того, как Virtuoso
   // вызовет itemContent. Это позволяет убрать nlChatLines из dep-массива
   // useCallback и сохранить стабильную ссылку на функцию между стриминг-чанками.
-  const nlChatLinesRef = useRef<NlChatLine[]>(nlChatLines);
+  const nlChatLinesRef = useRef<NlChatLine[]>(virtuosoLines);
   useLayoutEffect(() => {
-    nlChatLinesRef.current = nlChatLines;
+    nlChatLinesRef.current = virtuosoLines;
   });
 
   // Для card/figma: захватываем обёртку div как scroll-контейнер
@@ -682,22 +692,23 @@ export function NlChatTranscriptBlock({
     ],
   );
 
-  const initialIndex = nlChatLines.length > 0 ? nlChatLines.length - 1 : 0;
+  const initialIndex =
+    virtuosoLines.length > 0 ? virtuosoLines.length - 1 : 0;
 
   if (variant === 'grok') {
     return (
       <div className={wrapClass}>
-        {nlChatLines.length === 0 && (
+        {virtuosoLines.length === 0 && (
           <p className='text-sm text-[#a1a1aa]'>{emptyLabel}</p>
         )}
-        {nlChatLines.length > 0 && (
+        {virtuosoLines.length > 0 && (
           <Virtuoso
             customScrollParent={customScrollParent}
-            data={nlChatLines}
-            followOutput='smooth'
+            data={virtuosoLines}
+            followOutput='auto'
             initialTopMostItemIndex={initialIndex}
             itemContent={itemContent}
-            overscan={400}
+            overscan={200}
           />
         )}
       </div>
@@ -724,10 +735,10 @@ export function NlChatTranscriptBlock({
         <Virtuoso
           customScrollParent={containerEl}
           data={nlChatLines}
-          followOutput='smooth'
+          followOutput='auto'
           initialTopMostItemIndex={initialIndex}
           itemContent={itemContent}
-          overscan={400}
+          overscan={200}
         />
       )}
     </div>

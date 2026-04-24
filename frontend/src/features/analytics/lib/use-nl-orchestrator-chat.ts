@@ -99,7 +99,9 @@ export function useNlOrchestratorChat(
             columns: line.columns ?? prevLine.columns,
             rows: line.rows ?? prevLine.rows,
           };
-          return [...prev.slice(0, idx), merged, ...prev.slice(idx + 1)];
+          const next = prev.slice();
+          next[idx] = merged;
+          return next;
         }
         // Старый воркер: тот же message_id у user и assistant — не затирать вопрос.
         const altId = `${line.id}-a`;
@@ -114,12 +116,14 @@ export function useNlOrchestratorChat(
             columns: line.columns ?? prevA.columns,
             rows: line.rows ?? prevA.rows,
           };
-          return [...prev.slice(0, j), merged, ...prev.slice(j + 1)];
+          const next = prev.slice();
+          next[j] = merged;
+          return next;
         }
-        return [...prev, { ...line, id: altId }];
+        return prev.concat({ ...line, id: altId });
       }
       if (idx >= 0) return prev;
-      return [...prev, line];
+      return prev.concat(line);
     });
   }, []);
 

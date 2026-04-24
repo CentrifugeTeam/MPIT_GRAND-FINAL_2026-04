@@ -1,6 +1,10 @@
 import { resolveNlAssistantVisibleText } from "./nl-chat-assistant-body";
 import type { NlChatLine } from "./nl-chat-line";
-import { pickChartPayload, pickRows, pickStringArray } from "./nl-chat-ws-payload";
+import {
+  pickChartPayload,
+  pickRows,
+  pickStringArray,
+} from "./nl-chat-ws-payload";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -13,7 +17,10 @@ export type NlChatMessageApiRow = {
 };
 
 /** Строка из GET /api/analytics/chats/:id/messages → лента UI. */
-export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine {
+export function apiNlMessageToLine(
+  row: NlChatMessageApiRow,
+  t: TFn,
+): NlChatLine {
   const pl = row.payload;
   const text = String(pl.text ?? "");
   const report = pl.report != null ? String(pl.report) : "";
@@ -24,8 +31,7 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
   const rowObjs = pickRows(pl.rows);
   const status = String(pl.status ?? "");
   const err = pl.error != null ? String(pl.error).trim() : "";
-  const reasoning =
-    pl.reasoning != null ? String(pl.reasoning).trim() : "";
+  const reasoning = pl.reasoning != null ? String(pl.reasoning).trim() : "";
   const rawRole = String(row.role ?? "").toLowerCase();
   const role: NlChatLine["role"] =
     rawRole === "assistant"
@@ -62,3 +68,4 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
     rowCount: rcNum,
   };
 }
+

@@ -82,7 +82,7 @@ export function FigmaSidebarHistorySection({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-[8px] pt-1 pb-[16px]">
+    <div className="flex min-h-0 flex-1 flex-col gap-[8px] pt-1">
       <div className="flex shrink-0 items-center gap-[4px] pl-[12px]">
         <button
           type="button"

@@ -41,6 +41,7 @@ export function AnalyticsWorkspace() {
     requestDeleteChatTailFrom,
     setQuestion,
     sendComposerMessage,
+    startNewChat,
   } = p;
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [cloneSharedBusy, setCloneSharedBusy] = useState(false);
@@ -187,9 +188,14 @@ export function AnalyticsWorkspace() {
     [navigate],
   );
 
+  const onNewChat = useCallback(() => {
+    startNewChat();
+    void navigate("/home");
+  }, [startNewChat, navigate]);
+
   const nlAssistantActionHandlers = useMemo(
-    () => ({ onRetry, onCreateReportTask }),
-    [onRetry, onCreateReportTask],
+    () => ({ onRetry, onCreateReportTask, onNewChat }),
+    [onRetry, onCreateReportTask, onNewChat],
   );
 
   return (

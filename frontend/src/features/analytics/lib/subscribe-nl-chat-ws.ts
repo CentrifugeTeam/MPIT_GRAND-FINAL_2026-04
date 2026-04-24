@@ -9,7 +9,9 @@ import {
 import type { NlChatLine } from "./nl-chat-line";
 import { wsClient } from "@/shared/api/ws-client";
 
-type TRef = MutableRefObject<(key: string, opts?: Record<string, unknown>) => string>;
+type TRef = MutableRefObject<
+  (key: string, opts?: Record<string, unknown>) => string
+>;
 
 /** Подписка на события чата; отписка в возвращаемой функции. */
 export function subscribeNlChatWs(
@@ -19,10 +21,48 @@ export function subscribeNlChatWs(
   setNlChatBusy: (v: boolean) => void,
   removeLinesByIds: (ids: string[]) => void,
 ): () => void {
+  /** Сообщения reasoning при стриме — сливаем в один кадр, чтобы не дергать setState на каждый чанк. */
+  let thinkingRaf: number | null = null;
+  const pendingThinking = new Map<string, string>();
+
+  function flushPendingThinking() {
+    thinkingRaf = null;
+    if (pendingThinking.size === 0) return;
+    const entries = [...pendingThinking.entries()];
+    pendingThinking.clear();
+    for (const [messageId, rs] of entries) {
+      appendLine({
+        id: messageId,
+        role: "assistant",
+        text: "",
+        reasoning: rs,
+        answerPending: true,
+      });
+    }
+  }
+
+  function scheduleThinking(messageId: string, reasoning: string) {
+    pendingThinking.set(messageId, reasoning);
+    if (thinkingRaf == null) {
+      thinkingRaf = requestAnimationFrame(flushPendingThinking);
+    }
+  }
+
+  function flushThinkingImmediate() {
+    if (thinkingRaf != null) {
+      cancelAnimationFrame(thinkingRaf);
+      thinkingRaf = null;
+    }
+    flushPendingThinking();
+  }
+
   const unsubs: Array<() => void> = [];
   unsubs.push(
     wsClient.on("chat_user", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const text = String(payload.text ?? "").trim();
       if (!text) return;
@@ -35,21 +75,25 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_thinking", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? "")) return;
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
+        return;
       const rs = String(payload.reasoning ?? "").trim();
-      appendLine({
-        id: String(payload.message_id ?? crypto.randomUUID()),
-        role: "assistant",
-        text: "",
-        reasoning: rs,
-        answerPending: true,
-      });
+      const mid =
+        String(payload.message_id ?? "").trim() || crypto.randomUUID();
+      scheduleThinking(mid, rs);
     }),
   );
   unsubs.push(
     wsClient.on("chat_assistant", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
+      flushThinkingImmediate();
       const text = String(payload.text ?? "");
       const rep = payload.report ? String(payload.report) : "";
       const reasoningRaw = String(payload.reasoning ?? "").trim();
@@ -88,7 +132,10 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_messages_deleted", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const raw = payload.message_ids;
       if (!Array.isArray(raw) || raw.length === 0) return;
@@ -97,7 +144,10 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_sql_queued", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const pre = String(payload.preface ?? "").trim();
       const qReasoning = String(payload.reasoning ?? "").trim();
@@ -110,6 +160,12 @@ export function subscribeNlChatWs(
     }),
   );
   return () => {
+    if (thinkingRaf != null) {
+      cancelAnimationFrame(thinkingRaf);
+      thinkingRaf = null;
+    }
+    flushPendingThinking();
     unsubs.forEach((u) => u());
   };
 }
+

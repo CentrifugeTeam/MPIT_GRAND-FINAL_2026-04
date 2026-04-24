@@ -1,4 +1,10 @@
-import { useCallback, useState } from "react";
+import {
+  Profiler,
+  useCallback,
+  useState,
+  type ProfilerOnRenderCallback,
+  type ReactNode,
+} from "react";
 import { AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
 import { ScrollShadow } from "@heroui/react";
@@ -23,6 +29,31 @@ import { FigmaSuggestionBlock } from "./figma-suggestion-block";
 import { FigmaSimpleTooltip } from "./figma-simple-tooltip";
 import { FIGMA_CHAT_COLUMN_MAX_PX } from "./figma-tokens";
 import { FigmaVoiceStubPanel } from "./figma-voice-stub-panel";
+
+const nlChatProfilerOnRender: ProfilerOnRenderCallback = (
+  id,
+  phase,
+  actualDuration,
+) => {
+  if (actualDuration > 12) {
+    console.debug(`[Profiler ${id}] ${phase} ${actualDuration.toFixed(1)}ms`);
+  }
+};
+
+function wrapNlChatProfiler(children: ReactNode) {
+  if (!import.meta.env.DEV) return children;
+  if (
+    typeof window === "undefined" ||
+    window.localStorage.getItem("nlChatProfiler") !== "1"
+  ) {
+    return children;
+  }
+  return (
+    <Profiler id="NlChatTranscript" onRender={nlChatProfilerOnRender}>
+      {children}
+    </Profiler>
+  );
+}
 
 export type FigmaAnalyticsMainProps = {
   t: FigmaTranslateFn;
@@ -193,18 +224,20 @@ export function FigmaAnalyticsMain({
                   hideScrollBar
                 >
                   <div className={chatColClass} style={chatColStyle}>
-                    <NlChatTranscriptBlock
-                      t={t}
-                      nlChatLines={nlChatLines}
-                      variant="grok"
-                      emptyLabel={t("home.analytics.chatEmpty")}
-                      assistantActionHandlers={
-                        nlAssistantActionHandlers ?? null
-                      }
-                      assistantActionsLocked={composerBusy || isNlViewer}
-                      scrollerEl={scrollerEl}
-                      nlConversationId={nlConversationId}
-                    />
+                    {wrapNlChatProfiler(
+                      <NlChatTranscriptBlock
+                        t={t}
+                        nlChatLines={nlChatLines}
+                        variant="grok"
+                        emptyLabel={t("home.analytics.chatEmpty")}
+                        assistantActionHandlers={
+                          nlAssistantActionHandlers ?? null
+                        }
+                        assistantActionsLocked={composerBusy || isNlViewer}
+                        scrollerEl={scrollerEl}
+                        nlConversationId={nlConversationId}
+                      />,
+                    )}
                   </div>
                 </ScrollShadow>
               </div>
