@@ -85,9 +85,9 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         ))}
       </div>
 
-      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[260px]' : 'h-[360px]'} w-full min-w-0`}>
+      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[260px]' : 'h-[360px]'} w-full min-w-0 [&_svg]:outline-none`}>
         {mode === "bar" && (
-          <BarChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }}>
+          <BarChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -111,7 +111,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "line" && (
-          <LineChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }}>
+          <LineChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -137,7 +137,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "area" && (
-          <AreaChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -164,7 +164,7 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "pie" && (
-          <PieChart>
+          <PieChart style={{ outline: "none" }}>
             <Pie
               data={data}
               dataKey="value"
@@ -173,15 +173,22 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
               outerRadius={100}
               paddingAngle={data.length > 1 ? 2 : 0}
               strokeWidth={0}
+              style={{ outline: "none" }}
             >
               {data.map((_, i) => (
-                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                <Cell
+                  key={i}
+                  fill={PALETTE[i % PALETTE.length]}
+                  stroke="none"
+                  style={{ outline: "none" }}
+                />
               ))}
             </Pie>
             <ChartTooltip
               cursor={false}
-              content={({ payload }) => {
-                if (!payload?.length) return null;
+              isAnimationActive={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
                 const item = payload[0];
                 if (!item) return null;
                 const pct = total ? Math.round((Number(item.value) / total) * 100) : 0;
