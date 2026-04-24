@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Icon } from "@iconify/react";
 import { Card } from "@heroui/react";
 import { motion } from "motion/react";
+import { Virtuoso } from "react-virtuoso";
 
 import type { NlChatLine } from "../../lib/use-nl-orchestrator-chat";
 
@@ -190,6 +191,154 @@ function GrokAssistantToolbar({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Мемоизированный компонент одного сообщения.
+//
+// React.memo гарантирует, что при стриминге перерисовывается ТОЛЬКО последний
+// элемент (у него изменился объект `line`), а не все видимые сообщения.
+//
+// userCtxText / userCtxLineId передаются как примитивы (строки), чтобы
+// React.memo мог корректно сравнить их (объект { text, lineId } был бы новым
+// при каждом вызове itemContent, ломая мемоизацию).
+// ---------------------------------------------------------------------------
+type BubbleStyles = typeof bubbleCard;
+
+type ChatMessageBubbleProps = {
+  line: NlChatLine;
+  variant: TranscriptVariant;
+  b: BubbleStyles;
+  labelMuted: string;
+  preClass: string;
+  sqlBox: string;
+  innerCard: string;
+  itemGap: string;
+  reasoningBox: string;
+  reasoningPre: string;
+  reasoningLabel: string;
+  showRoleLabels: boolean;
+  showAssistantToolbar: boolean;
+  assistantActionHandlers: NlChatAssistantActionHandlers | null | undefined;
+  assistantActionsLocked: boolean;
+  t: TFn;
+  /** Примитивы для toolbar: стабильны для завершённых сообщений → memo работает */
+  userCtxText: string | null;
+  userCtxLineId: string | null;
+};
+
+const ChatMessageBubble = memo(function ChatMessageBubble({
+  line: l,
+  variant,
+  b,
+  labelMuted,
+  preClass,
+  sqlBox,
+  innerCard,
+  itemGap,
+  reasoningBox,
+  reasoningPre,
+  reasoningLabel,
+  showRoleLabels,
+  showAssistantToolbar,
+  assistantActionHandlers,
+  assistantActionsLocked,
+  t,
+  userCtxText,
+  userCtxLineId,
+}: ChatMessageBubbleProps) {
+  const userCtx =
+    userCtxText && userCtxLineId
+      ? { text: userCtxText, lineId: userCtxLineId }
+      : null;
+
+  return (
+    <div className={itemGap}>
+      <div
+        className={
+          l.role === "user" ? b.user : l.role === "assistant" ? b.assistant : b.system
+        }
+      >
+        {showRoleLabels && l.role !== "system" && (
+          <span className={`mb-1 block ${labelMuted}`}>
+            {l.role === "user"
+              ? t("home.analytics.chatRoleUser")
+              : t("home.analytics.chatRoleAssistant")}
+          </span>
+        )}
+        {((l.role === "assistant" || l.role === "system") &&
+          (l.reasoning || l.answerPending)) && (
+          <div className={reasoningBox}>
+            <span className={reasoningLabel}>
+              {t("home.analytics.chatReasoningLabel")}
+            </span>
+            <pre className={reasoningPre}>
+              {l.reasoning ||
+                (l.answerPending
+                  ? t("home.analytics.chatReasoningLoading")
+                  : "")}
+            </pre>
+          </div>
+        )}
+        <pre className={preClass}>
+          {l.answerPending && !l.text.trim()
+            ? t("home.analytics.chatAnswerComposing")
+            : l.text}
+        </pre>
+        {l.sql && <pre className={sqlBox}>{l.sql}</pre>}
+        {l.role === "assistant" &&
+          l.chartPayload &&
+          nlChatHasSeriesChart(l.chartPayload) && (
+            <Card className={innerCard}>
+              <h4 className={labelMuted + " mb-3"}>{t("home.analytics.chartTitle")}</h4>
+              <AnalyticsCharts payload={l.chartPayload} />
+            </Card>
+          )}
+        {l.role === "assistant" &&
+          nlChatHasTablePreview(l.columns, l.rows) && (
+            <Card className={innerCard}>
+              <h4 className={labelMuted + " mb-3"}>{t("home.analytics.tableTitle")}</h4>
+              <DataTablePreview
+                columns={l.columns ?? []}
+                rows={l.rows ?? []}
+                emptyLabel={t("home.analytics.tableEmpty")}
+                truncatedHint={t("home.analytics.tableTruncated", {
+                  max: ANALYTICS_TABLE_PREVIEW_MAX,
+                  total: l.rows?.length ?? 0,
+                })}
+                maxPreviewRows={ANALYTICS_TABLE_PREVIEW_MAX}
+              />
+              <p
+                className={
+                  variant === "figma" || variant === "grok"
+                    ? "mt-2 text-xs text-[#a1a1aa]"
+                    : "text-muted mt-2 text-xs"
+                }
+              >
+                {t("home.analytics.rowCount", {
+                  count: l.rowCount ?? l.rows?.length ?? 0,
+                })}
+              </p>
+            </Card>
+          )}
+        {showAssistantToolbar &&
+          l.role === "assistant" &&
+          !l.answerPending &&
+          assistantActionHandlers && (
+            <GrokAssistantToolbar
+              t={t}
+              plain={l.text.trim()}
+              userCtx={userCtx}
+              assistantLineId={l.id}
+              handlers={assistantActionHandlers}
+              actionsLocked={assistantActionsLocked}
+            />
+          )}
+      </div>
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
+
 export function NlChatTranscriptBlock({
   t,
   nlChatLines,
@@ -197,14 +346,16 @@ export function NlChatTranscriptBlock({
   emptyLabel,
   assistantActionHandlers,
   assistantActionsLocked = false,
+  scrollerEl,
 }: {
   t: TFn;
   nlChatLines: NlChatLine[];
   variant: TranscriptVariant;
   emptyLabel: string;
   assistantActionHandlers?: NlChatAssistantActionHandlers | null;
-  /** Блокировать копирование / retry / задача, пока идёт запрос к модели. */
   assistantActionsLocked?: boolean;
+  /** Внешний scroll-контейнер — передаётся для варианта grok из родителя. */
+  scrollerEl?: HTMLElement | null;
 }) {
   const b =
     variant === "grok" ? bubbleGrok : variant === "figma" ? bubbleFigma : bubbleCard;
@@ -227,39 +378,10 @@ export function NlChatTranscriptBlock({
 
   const wrapClass =
     variant === "grok"
-      ? "w-full space-y-8 px-1 py-1"
+      ? "w-full px-1 py-1"
       : variant === "figma"
-        ? "max-h-[min(420px,45vh)] space-y-3 overflow-y-auto rounded-xl border border-[#28282c] bg-[#060607]/40 p-3"
-        : "max-h-72 space-y-3 overflow-y-auto rounded-xl border border-border bg-default/25 p-3";
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
-
-  useEffect(() => {
-    const sentinel = bottomRef.current;
-    if (!sentinel) return;
-
-    const root = variant !== "grok" ? containerRef.current : null;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isAtBottomRef.current = entry.isIntersecting;
-      },
-      { root, threshold: 0 },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [variant]);
-
-  useEffect(() => {
-    if (isAtBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [nlChatLines]);
-
-  const showRoleLabels = variant !== "grok";
-  const showAssistantToolbar =
-    variant === "grok" && assistantActionHandlers != null;
+        ? "max-h-[min(420px,45vh)] overflow-y-auto rounded-xl border border-[#28282c] bg-[#060607]/40 p-3"
+        : "max-h-72 overflow-y-auto rounded-xl border border-border bg-default/25 p-3";
 
   const reasoningBox =
     variant === "grok" || variant === "figma"
@@ -274,12 +396,116 @@ export function NlChatTranscriptBlock({
       ? "mb-1 block text-[10px] font-medium uppercase tracking-wide text-[#71717a]"
       : "text-muted mb-1 block text-[10px] font-medium uppercase tracking-wide";
 
+  const showRoleLabels = variant !== "grok";
+  const showAssistantToolbar =
+    variant === "grok" && assistantActionHandlers != null;
+
+  const itemGap = variant === "grok" ? "pb-8" : "pb-3";
+
+  // Ref для nlChatLines — itemContent читает его вместо захвата через closure.
+  // Обновляется синхронно ПОСЛЕ рендера (useLayoutEffect), до того, как Virtuoso
+  // вызовет itemContent. Это позволяет убрать nlChatLines из dep-массива
+  // useCallback и сохранить стабильную ссылку на функцию между стриминг-чанками.
+  const nlChatLinesRef = useRef<NlChatLine[]>(nlChatLines);
+  useLayoutEffect(() => {
+    nlChatLinesRef.current = nlChatLines;
+  });
+
+  // Для card/figma: захватываем обёртку div как scroll-контейнер
+  const [containerEl, setContainerEl] = useState<HTMLElement | null>(null);
+  const captureRef = useCallback((el: HTMLElement | null) => {
+    setContainerEl(el);
+  }, []);
+
+  const customScrollParent =
+    variant === "grok"
+      ? (scrollerEl ?? undefined)
+      : (containerEl ?? undefined);
+
+  // itemContent стабилен между стриминг-обновлениями: nlChatLines читается
+  // через ref, а не через closure. Virtuoso вызывает itemContent вне
+  // render-фазы — к этому моменту useLayoutEffect уже обновил ref.
+  const itemContent = useCallback(
+    (index: number) => {
+      const lines = nlChatLinesRef.current;
+      const l = lines[index]!;
+      // Вычисляем userCtx здесь (не в render ChatMessageBubble), передаём
+      // как примитивы, чтобы React.memo корректно сравнивал пропсы.
+      const rawUserCtx =
+        showAssistantToolbar && l.role === "assistant" && !l.answerPending
+          ? precedingUserForRetry(lines, index)
+          : null;
+      return (
+        <ChatMessageBubble
+          key={l.id}
+          line={l}
+          variant={variant}
+          b={b}
+          labelMuted={labelMuted}
+          preClass={preClass}
+          sqlBox={sqlBox}
+          innerCard={innerCard}
+          itemGap={itemGap}
+          reasoningBox={reasoningBox}
+          reasoningPre={reasoningPre}
+          reasoningLabel={reasoningLabel}
+          showRoleLabels={showRoleLabels}
+          showAssistantToolbar={showAssistantToolbar}
+          assistantActionHandlers={assistantActionHandlers}
+          assistantActionsLocked={assistantActionsLocked}
+          t={t}
+          userCtxText={rawUserCtx?.text ?? null}
+          userCtxLineId={rawUserCtx?.lineId ?? null}
+        />
+      );
+    },
+    [
+      variant,
+      b,
+      labelMuted,
+      preClass,
+      sqlBox,
+      innerCard,
+      itemGap,
+      showRoleLabels,
+      showAssistantToolbar,
+      reasoningBox,
+      reasoningPre,
+      reasoningLabel,
+      assistantActionHandlers,
+      assistantActionsLocked,
+      t,
+    ],
+  );
+
+  const initialIndex = nlChatLines.length > 0 ? nlChatLines.length - 1 : 0;
+
+  if (variant === "grok") {
+    return (
+      <div className={wrapClass}>
+        {nlChatLines.length === 0 && (
+          <p className="text-sm text-[#a1a1aa]">{emptyLabel}</p>
+        )}
+        {nlChatLines.length > 0 && (
+          <Virtuoso
+            customScrollParent={customScrollParent}
+            data={nlChatLines}
+            followOutput="smooth"
+            initialTopMostItemIndex={initialIndex}
+            itemContent={itemContent}
+            overscan={400}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={wrapClass} ref={containerRef}>
+    <div ref={captureRef} className={wrapClass}>
       {nlChatLines.length === 0 && (
         <p
           className={
-            variant === "figma" || variant === "grok"
+            variant === "figma"
               ? "text-sm text-[#a1a1aa]"
               : "text-muted text-sm"
           }
@@ -287,91 +513,16 @@ export function NlChatTranscriptBlock({
           {emptyLabel}
         </p>
       )}
-      {nlChatLines.map((l, lineIndex) => (
-        <div
-          key={l.id}
-          className={
-            l.role === "user" ? b.user : l.role === "assistant" ? b.assistant : b.system
-          }
-        >
-          {showRoleLabels && l.role !== "system" && (
-            <span className={`mb-1 block ${labelMuted}`}>
-              {l.role === "user"
-                ? t("home.analytics.chatRoleUser")
-                : t("home.analytics.chatRoleAssistant")}
-            </span>
-          )}
-          {((l.role === "assistant" || l.role === "system") &&
-            (l.reasoning || l.answerPending)) && (
-            <div className={reasoningBox}>
-              <span className={reasoningLabel}>
-                {t("home.analytics.chatReasoningLabel")}
-              </span>
-              <pre className={reasoningPre}>
-                {l.reasoning ||
-                  (l.answerPending
-                    ? t("home.analytics.chatReasoningLoading")
-                    : "")}
-              </pre>
-            </div>
-          )}
-          <pre className={preClass}>
-            {l.answerPending && !l.text.trim()
-              ? t("home.analytics.chatAnswerComposing")
-              : l.text}
-          </pre>
-          {l.sql && <pre className={sqlBox}>{l.sql}</pre>}
-          {l.role === "assistant" &&
-            l.chartPayload &&
-            nlChatHasSeriesChart(l.chartPayload) && (
-              <Card className={innerCard}>
-                <h4 className={labelMuted + " mb-3"}>{t("home.analytics.chartTitle")}</h4>
-                <AnalyticsCharts payload={l.chartPayload} />
-              </Card>
-            )}
-          {l.role === "assistant" &&
-            nlChatHasTablePreview(l.columns, l.rows) && (
-              <Card className={innerCard}>
-                <h4 className={labelMuted + " mb-3"}>{t("home.analytics.tableTitle")}</h4>
-                <DataTablePreview
-                  columns={l.columns ?? []}
-                  rows={l.rows ?? []}
-                  emptyLabel={t("home.analytics.tableEmpty")}
-                  truncatedHint={t("home.analytics.tableTruncated", {
-                    max: ANALYTICS_TABLE_PREVIEW_MAX,
-                    total: l.rows?.length ?? 0,
-                  })}
-                  maxPreviewRows={ANALYTICS_TABLE_PREVIEW_MAX}
-                />
-                <p
-                  className={
-                    variant === "figma" || variant === "grok"
-                      ? "mt-2 text-xs text-[#a1a1aa]"
-                      : "text-muted mt-2 text-xs"
-                  }
-                >
-                  {t("home.analytics.rowCount", {
-                    count: l.rowCount ?? l.rows?.length ?? 0,
-                  })}
-                </p>
-              </Card>
-            )}
-          {showAssistantToolbar &&
-            l.role === "assistant" &&
-            !l.answerPending &&
-            assistantActionHandlers && (
-              <GrokAssistantToolbar
-                t={t}
-                plain={l.text.trim()}
-                userCtx={precedingUserForRetry(nlChatLines, lineIndex)}
-                assistantLineId={l.id}
-                handlers={assistantActionHandlers}
-                actionsLocked={assistantActionsLocked}
-              />
-            )}
-        </div>
-      ))}
-      <div ref={bottomRef} />
+      {nlChatLines.length > 0 && containerEl && (
+        <Virtuoso
+          customScrollParent={containerEl}
+          data={nlChatLines}
+          followOutput="smooth"
+          initialTopMostItemIndex={initialIndex}
+          itemContent={itemContent}
+          overscan={400}
+        />
+      )}
     </div>
   );
 }

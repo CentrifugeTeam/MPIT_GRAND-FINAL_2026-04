@@ -79,6 +79,7 @@ export function FigmaAnalyticsMain({
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<FigmaFaqId | null>(null);
+  const [scrollerEl, setScrollerEl] = useState<HTMLElement | null>(null);
   const hasChat = nlChatLines.length > 0;
   const showHero = !hasChat;
   const sourceButtonLabel =
@@ -151,6 +152,7 @@ export function FigmaAnalyticsMain({
             <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
               {/* Плашка «ясность формулировки» — временно скрыта */}
               <ScrollShadow
+                ref={(el) => setScrollerEl(el as HTMLElement | null)}
                 className='min-h-0 flex-1 max-h-[calc(100vh-240px)] overscroll-y-contain px-3 sm:px-5'
                 hideScrollBar
               >
@@ -165,6 +167,7 @@ export function FigmaAnalyticsMain({
                     emptyLabel={t('home.analytics.chatEmpty')}
                     assistantActionHandlers={nlAssistantActionHandlers ?? null}
                     assistantActionsLocked={composerBusy}
+                    scrollerEl={scrollerEl}
                   />
                 </div>
               </ScrollShadow>
