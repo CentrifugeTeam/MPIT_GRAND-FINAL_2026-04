@@ -5,7 +5,7 @@ import { Button, ScrollShadow, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
 
 import {
-  deleteAnalyticsTask,
+  deleteReportTask,
   dispatchReportTask,
   fetchReportById,
   fetchReportTaskById,
@@ -182,7 +182,7 @@ export function TaskDetailPanel({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteAnalyticsTask(task.id),
+    mutationFn: () => deleteReportTask(task.id),
     onSuccess: () => {
       setIsDeleteOpen(false);
       onClose();
