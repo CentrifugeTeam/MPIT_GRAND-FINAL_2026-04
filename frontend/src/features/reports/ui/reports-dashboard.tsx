@@ -20,6 +20,14 @@ import { useDataSources } from "../model/use-data-sources";
 
 const WEEK_DAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
+function formatWeeklyDay(weeklyDay: number | null): string | null {
+  if (weeklyDay == null) return null;
+  // API stores ISO weekday numbers (1..7), while some legacy data may be 0..6.
+  if (weeklyDay >= 1 && weeklyDay <= 7) return WEEK_DAYS[weeklyDay - 1] ?? null;
+  if (weeklyDay >= 0 && weeklyDay <= 6) return WEEK_DAYS[weeklyDay] ?? null;
+  return null;
+}
+
 type ReportsLocationState = {
   createReportFromChat?: { instruction: string };
 };
@@ -44,7 +52,7 @@ function formatSchedule(task: ReportTask): string {
         ? `Ежедневно в ${trimTime(task.daily_time)}`
         : "Ежедневно";
     case "weekly": {
-      const day = task.weekly_day != null ? WEEK_DAYS[task.weekly_day] : null;
+      const day = formatWeeklyDay(task.weekly_day);
       const time = task.weekly_time ? trimTime(task.weekly_time) : null;
       if (day && time) return `Раз в неделю, ${day} в ${time}`;
       if (time) return `Раз в неделю в ${time}`;
@@ -52,12 +60,12 @@ function formatSchedule(task: ReportTask): string {
       return "Раз в неделю";
     }
     case "monthly":
-      return task.monthly_time
-        ? `Ежемесячно в ${trimTime(task.monthly_time)}`
+      return task.monthly_day != null
+        ? `Ежемесячно ${task.monthly_day} числа`
         : "Ежемесячно";
     case "yearly":
-      return task.yearly_time
-        ? `Ежегодно в ${trimTime(task.yearly_time)}`
+      return task.yearly_date_ddmm
+        ? `Ежегодно ${task.yearly_date_ddmm.replace(":", ".")}`
         : "Ежегодно";
     default:
       return task.schedule_type;
