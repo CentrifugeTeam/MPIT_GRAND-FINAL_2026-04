@@ -13,3 +13,7 @@
 ## Переменные окружения
 
 См. `app/core/config.py`: `ANALYTICS_DATABASE_URL` / платформа, RabbitMQ (опционально для будущих сценариев), лимиты запросов, `INTERNAL_NL_CHAT_SYNC_TOKEN`.
+
+## Документация
+
+Архитектура, модули, хранение чатов: [docs/analytics-service/README.md](../docs/analytics-service/README.md).

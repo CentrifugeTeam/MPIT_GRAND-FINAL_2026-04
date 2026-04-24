@@ -15,6 +15,6 @@
 
 ## Исходники
 
-[`../../sql-generator-worker/`](../../sql-generator-worker/).
+Код: [`../../sql-generator-worker/`](../../sql-generator-worker/) · краткий [`README.md`](../../sql-generator-worker/README.md) в каталоге воркера.
 
 Детали: [architecture.md](architecture.md), [modules.md](modules.md), [files.md](files.md).

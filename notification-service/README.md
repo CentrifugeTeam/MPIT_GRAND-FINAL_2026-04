@@ -72,3 +72,7 @@ SMTP_FROM=noreply@yourapp.com
 - **Auth Service** → получение email адресов пользователей
 - **RabbitMQ** → получение задач из очереди для асинхронной обработки
 
+## Документация
+
+Архитектура, модули, контракты: [docs/notification-service/README.md](../docs/notification-service/README.md).
+

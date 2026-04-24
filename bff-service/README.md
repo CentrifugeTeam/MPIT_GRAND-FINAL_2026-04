@@ -71,3 +71,7 @@ ALGORITHM=HS256
 - **Rate limiting:** при заданном `REDIS_URL` лимит запросов к `/api/*` в минуту на пользователя (JWT `uuid`) или по IP для запросов без валидного Bearer. Переменные: `REDIS_URL`, `RATE_LIMIT_PER_MINUTE` (см. `.example.env`).
 - **Аудит HTTP:** в stdout пишется одна JSON-строка на запрос (`request_audit`: `request_id`, `path`, `status_code`, `duration_ms`, `outcome`).
 
+## Документация
+
+Детальное описание, модули, WebSocket, очереди: [docs/bff-service/README.md](../docs/bff-service/README.md) (от корня репозитория).
+

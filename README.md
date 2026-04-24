@@ -12,7 +12,7 @@
 | [docs/requirements/case-drivee.md](docs/requirements/case-drivee.md) | Место под текст кейса из ТЗ |
 | [docs/operations/local-run.md](docs/operations/local-run.md) | Локальный запуск через Docker Compose |
 
-Структура **по сервисам**: каталоги `docs/auth-service/`, `docs/bff-service/`, … — в каждом `README.md`, `architecture.md`, `modules.md`, `files.md`.
+Структура **по сервисам**: каталоги `docs/auth-service/`, `docs/bff-service/`, … — в каждом `README.md`, `architecture.md`, `modules.md`, `files.md`. У каждого сервиса в дереве кода (`bff-service/`, `nl-orchestrator-worker/` и т.д.) — краткий **`README.md`** у корня каталога со ссылкой в `docs/`.
 
 ## Быстрый старт
 

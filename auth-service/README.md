@@ -58,3 +58,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 - **BFF Service** → проверка токенов, получение информации о пользователе
 - **Files Service** → получение информации о загрузчиках файлов
 - **Notification Service** → получение email пользователей для уведомлений
+
+## Документация
+
+Архитектура, модули, контракты: [docs/auth-service/README.md](../docs/auth-service/README.md).

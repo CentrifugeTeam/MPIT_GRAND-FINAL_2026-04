@@ -15,6 +15,6 @@
 
 ## Исходники
 
-[`../../nl-orchestrator-worker/`](../../nl-orchestrator-worker/).
+Код: [`../../nl-orchestrator-worker/`](../../nl-orchestrator-worker/) · краткий [`README.md`](../../nl-orchestrator-worker/README.md) в каталоге воркера.
 
 Детали: [architecture.md](architecture.md), [modules.md](modules.md), [files.md](files.md).

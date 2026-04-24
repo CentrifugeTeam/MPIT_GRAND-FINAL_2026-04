@@ -1,6 +1,6 @@
 # Документация проекта
 
-Корень репозитория с приложением: каталог с `docker-compose.yml`. Здесь собрана **сквозная** документация; у части сервисов дополнительно есть краткий `README.md` внутри каталога кода (например [`../auth-service/README.md`](../auth-service/README.md)). Обзор всего репозитория: [`../README.md`](../README.md).
+Корень репозитория с приложением: каталог с `docker-compose.yml`. Здесь — **вся** подробная документация (архитектура, контракты, сценарии). В каталогах **сервисов и приложения** в дереве кода — только **краткий `README.md`**: роль сервиса, порт, отсылка сюда. Длинные `*.md` в `bff-service/`, `frontend/` и т.п. не ведём — чтобы не плодить копии. Пример: [`../auth-service/README.md`](../auth-service/README.md). Обзор репозитория: [`../README.md`](../README.md).
 
 ## С чего начать
 
@@ -11,6 +11,8 @@
 | [glossary.md](glossary.md) | Термины домена и инфраструктуры |
 | [requirements/case-drivee.md](requirements/case-drivee.md) | Резюме кейса Drivee (после переноса из DOCX) |
 | [operations/local-run.md](operations/local-run.md) | Локальный запуск через Docker Compose |
+| [frontend/nl-chat-and-reports.md](frontend/nl-chat-and-reports.md) | NL-чат: WS BFF, удаление хвоста, id user/assistant, лента, модалка отчёта, тулбар |
+| [frontend/websocket-client.md](frontend/websocket-client.md) | Клиент: WsClient, `useWsStore` / `useWsEvent`, жизненный цикл, формат `{ type, payload }` |
 
 ## Сервисы и приложения
 

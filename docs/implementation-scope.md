@@ -12,6 +12,8 @@
 | Асинхронная генерация SQL воркером | [sql-generator-worker](../sql-generator-worker/) — очередь `nl_sql_generate_request` (публикует nl-orchestrator-worker) |
 | NL-чат с оркестрацией и LLM | [nl-orchestrator-worker](../nl-orchestrator-worker/), очереди `nl_chat_*` |
 | WebSocket от UI через BFF | [bff-service/app/api/websocket.py](../bff-service/app/api/websocket.py), [frontend](frontend/modules.md) |
+| NL-чат: удаление хвоста/сообщений по WS, retry синхрон с БД | [docs/frontend/nl-chat-and-reports.md](frontend/nl-chat-and-reports.md), [analytics-service `chat_store`](../analytics-service/app/services/chat_store.py) |
+| Модалка «Отчёт»: фокус в диалог при открытии из чата | [create-report-modal.tsx](../frontend/src/features/reports/ui/create-report-modal.tsx), [nl-chat-and-reports.md](frontend/nl-chat-and-reports.md) |
 | Источники данных и политики доступа | [analytics-service/app/api/data_sources.py](../analytics-service/app/api/data_sources.py), `access_policies` |
 | Отчётные задачи и расписание | [report-task-service](../report-task-service/), очередь `report_task_incoming_v1` |
 | Уведомления по email через очередь | [notification-service](../notification-service/), `email_queue` и worker |

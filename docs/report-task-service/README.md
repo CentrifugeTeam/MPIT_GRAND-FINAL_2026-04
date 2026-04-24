@@ -15,6 +15,6 @@
 
 ## Исходники
 
-[`../../report-task-service/`](../../report-task-service/).
+Код: [`../../report-task-service/`](../../report-task-service/) · краткий [`README.md`](../../report-task-service/README.md) в каталоге сервиса.
 
 Детали: [architecture.md](architecture.md), [modules.md](modules.md), [files.md](files.md).
