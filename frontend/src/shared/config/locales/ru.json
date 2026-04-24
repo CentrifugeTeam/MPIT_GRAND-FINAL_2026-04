@@ -145,6 +145,17 @@
       "sourceModalApply": "Применить",
       "sourceModalCancel": "Отмена",
       "sourceModalClose": "Закрыть",
+      "shareAccessModalTitle": "Поделиться чатом",
+      "shareAccessModalHint": "Выберите уровень доступа и email получателя.",
+      "shareAccessModalClose": "Закрыть окно шаринга",
+      "shareAccessModalTabsAria": "Режим доступа к чату",
+      "shareAccessReadOnly": "Только для чтения",
+      "shareAccessEditable": "С редактированием",
+      "shareAccessEmailLabel": "Email получателя",
+      "shareAccessEmailPlaceholder": "Выберите email",
+      "shareAccessSearchPlaceholder": "Поиск email…",
+      "shareAccessModalCancel": "Отмена",
+      "shareAccessModalConfirm": "Подтвердить",
       "maxRowsShort": "Лимит строк",
       "profileAria": "Профиль",
       "profileSettings": "Настройки",
@@ -365,3 +376,4 @@
     }
   }
 }
+
