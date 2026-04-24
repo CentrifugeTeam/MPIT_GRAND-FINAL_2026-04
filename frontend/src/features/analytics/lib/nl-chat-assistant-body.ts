@@ -42,3 +42,4 @@ export function resolveNlAssistantVisibleText(
   }
   return t("home.analytics.chatEmptyAssistant");
 }
+
