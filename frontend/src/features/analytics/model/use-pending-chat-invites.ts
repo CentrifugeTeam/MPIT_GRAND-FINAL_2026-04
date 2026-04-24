@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-import { fetchChatInvites } from '@/features/analytics/api/analytics-api';
+import {
+  type ChatInviteItem,
+  fetchChatInvites,
+} from "@/features/analytics/api/analytics-api";
 
 export function usePendingChatInvites() {
   const [invites, setInvites] = useState<ChatInviteItem[]>([]);
@@ -10,7 +13,7 @@ export function usePendingChatInvites() {
     setBusy(true);
     try {
       const rows = await fetchChatInvites();
-      setInvites(rows);
+      setInvites(rows.filter((i) => i.status === "pending"));
     } catch {
       setInvites([]);
     } finally {

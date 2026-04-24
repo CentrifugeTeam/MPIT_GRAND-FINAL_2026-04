@@ -180,7 +180,7 @@ export type ChatInviteItem = {
   owner_email?: string | null;
   invitee_email: string;
   chat_title?: string | null;
-  status: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'revoked' | string;
   created_at: string;
 };
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 
+import { useAcceptedChatInvites } from '../../model/use-accepted-chat-invites';
 import type { AnalyticsSidebarProps } from '../analytics-panel/analytics-sidebar';
 import type { AppNotification } from '@/shared/api/notifications-api';
 import {
@@ -55,6 +56,8 @@ export function FigmaAnalyticsSidebar({
   const [historyOpen, setHistoryOpen] = useState(true);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const { acceptedEntries, isLoading: sharedChatsLoading } =
+    useAcceptedChatInvites();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -133,6 +136,8 @@ export function FigmaAnalyticsSidebar({
                 onRequestDeleteAll={() => setDeleteAllOpen(true)}
                 onStartEditingRow={onStartEditingRow}
                 onRequestDeleteRow={id => setPendingDeleteId(id)}
+                sharedEntries={acceptedEntries}
+                sharedChatsLoading={sharedChatsLoading}
                 t={t}
               />
             )}

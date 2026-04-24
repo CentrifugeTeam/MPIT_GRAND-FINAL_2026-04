@@ -1,4 +1,4 @@
-import type { AnalyticsHistoryItem } from "../api/analytics-api";
+import type { AnalyticsHistoryItem, ChatInviteItem } from "../api/analytics-api";
 import type { AnalyticsChatEntry } from "../model/analytics-chat-store";
 import type { NlSqlWsPayload } from "@/entities/analytics";
 
@@ -63,5 +63,23 @@ export function historyItemToChatEntry(item: AnalyticsHistoryItem): AnalyticsCha
     maxRows: item.max_rows ?? null,
     createdAt: new Date(item.created_at).getTime(),
     result: jobHistoryToNlPayload(item),
+  };
+}
+
+/** Принятый chat-invite → запись для сайдбара (роль просмотра). */
+export function chatInviteToViewerEntry(
+  invite: ChatInviteItem,
+): AnalyticsChatEntry {
+  const label =
+    (invite.chat_title && invite.chat_title.trim()) || "—";
+  return {
+    id: invite.conversation_id,
+    kind: "nl_chat",
+    conversationId: invite.conversation_id,
+    question: label,
+    maxRows: null,
+    createdAt: new Date(invite.created_at).getTime(),
+    accessRole: "viewer",
+    result: null,
   };
 }

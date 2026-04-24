@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
-import { useNavigate, useParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "motion/react";
+import { useNavigate, useParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   AnalyticsResults,
@@ -11,8 +12,9 @@ import {
   FigmaAnalyticsSidebar,
   FigmaChatInviteNotificationModal,
   FigmaShareAccessModal,
+  CHAT_INVITES_QUERY_KEY,
   useAnalyticsPanel,
-} from '@/features/analytics';
+} from "@/features/analytics";
 import {
   deleteNotification,
   type AppNotification,
@@ -25,6 +27,7 @@ export function AnalyticsWorkspace() {
   const p = useAnalyticsPanel({ initialConversationId: routeChatId ?? null });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const userUuid = useAuthStore(s => s.userUuid);
 
   const {
@@ -54,12 +57,13 @@ export function AnalyticsWorkspace() {
         }
       }
       forceReconnectNotificationSse();
+      await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
       await loadHistory();
       if (res.conversation_id) {
         void navigate(`/home/${res.conversation_id}`);
       }
     },
-    [navigate, loadHistory, userUuid],
+    [navigate, loadHistory, queryClient, userUuid],
   );
 
   const handleInviteModalReject = useCallback(
@@ -73,8 +77,9 @@ export function AnalyticsWorkspace() {
         }
       }
       forceReconnectNotificationSse();
+      await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
     },
-    [userUuid],
+    [queryClient, userUuid],
   );
 
   const handleShareEmailsSubmit = useCallback(
