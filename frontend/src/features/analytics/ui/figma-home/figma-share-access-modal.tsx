@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import {
   Autocomplete,
@@ -8,57 +8,134 @@ import {
   SearchField,
   Tag,
   TagGroup,
-  useFilter,
 } from "@heroui/react";
 import type { Key } from "@heroui/react";
+import { isCancel } from "axios";
+
+import {
+  searchUsersByEmail,
+  type UserSearchItem,
+} from "@/shared/api/auth-api";
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
-const SHARE_EMAIL_OPTIONS = [
-  "owner@company.com",
-  "analyst@company.com",
-  "manager@company.com",
-];
+type ShareListItem = {
+  id: string;
+  email: string;
+  uuid: string;
+  role: string;
+};
+
+function toShareListItems(users: UserSearchItem[]): ShareListItem[] {
+  return users.map((u) => ({
+    id: u.email,
+    email: u.email,
+    uuid: u.uuid,
+    role: u.role,
+  }));
+}
 
 export type FigmaShareAccessModalProps = {
   t: TFn;
   open: boolean;
   onClose: () => void;
-  onConfirm?: (payload: { emails: string[] }) => void;
+  onConfirm?: (payload: { emails: string[] }) => void | Promise<void>;
 };
 
 type BodyProps = Omit<FigmaShareAccessModalProps, "open">;
 
 function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
-  const { contains } = useFilter({ sensitivity: "base" });
   const [selectedEmails, setSelectedEmails] = useState<Key[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [filterText, setFilterText] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  const [shareListItems, setShareListItems] = useState<ShareListItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setDebouncedQuery(filterText.trim());
+    }, 200);
+    return () => clearTimeout(id);
+  }, [filterText]);
+
+  useEffect(() => {
+    if (debouncedQuery.length < 1) {
+      setShareListItems([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    setSearchLoading(true);
+    setSearchError(null);
+
+    void (async () => {
+      try {
+        const users = await searchUsersByEmail({
+          query: debouncedQuery,
+          limit: 20,
+          signal: ac.signal,
+        });
+        if (ac.signal.aborted) return;
+        setShareListItems(toShareListItems(users));
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        if (isCancel(e)) return;
+        setShareListItems([]);
+        setSearchError(t("home.figma.shareAccessSearchFailed"));
+      } finally {
+        if (!ac.signal.aborted) setSearchLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [debouncedQuery, t]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !busy) onClose();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, busy]);
 
   const canConfirm = selectedEmails.length > 0;
 
-  function handleEmailChange(value: Key | Key[] | null) {
-    if (Array.isArray(value)) {
-      setSelectedEmails(value);
-      return;
-    }
-    setSelectedEmails(value == null ? [] : [value]);
-  }
+  const handleEmailChange = useCallback(
+    (value: Key | Key[] | null) => {
+      if (Array.isArray(value)) {
+        setSelectedEmails(value);
+        return;
+      }
+      setSelectedEmails(value == null ? [] : [value]);
+    },
+    [],
+  );
 
-  function handleRemoveEmails(keys: Set<Key>) {
+  const handleRemoveEmails = (keys: Set<Key>) => {
     setSelectedEmails((prev) => prev.filter((key) => !keys.has(key)));
-  }
+  };
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (selectedEmails.length === 0) return;
-    onConfirm?.({ emails: selectedEmails.map(String) });
-    onClose();
+    setSubmitError(null);
+    setBusy(true);
+    try {
+      await Promise.resolve(
+        onConfirm?.({ emails: selectedEmails.map(String) }),
+      );
+      onClose();
+    } catch {
+      setSubmitError(t("home.figma.shareModalErrorSend"));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -74,7 +151,7 @@ function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
         style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        onClick={onClose}
+        onClick={() => !busy && onClose()}
       />
 
       <motion.div
@@ -89,7 +166,8 @@ function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex size-8 cursor-pointer items-center justify-center rounded-3xl bg-surface transition-colors hover:bg-surface-secondary active:scale-[0.97]"
+          disabled={busy}
+          className="absolute right-4 top-4 z-10 flex size-8 cursor-pointer items-center justify-center rounded-3xl bg-surface transition-colors hover:bg-surface-secondary active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
           aria-label={t("common.close")}
         >
           <svg
@@ -122,16 +200,19 @@ function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
           </p>
 
           <Autocomplete
+            allowsEmptyCollection
             placeholder={t("home.figma.shareAccessEmailPlaceholder")}
             selectionMode="multiple"
             value={selectedEmails}
             onChange={handleEmailChange}
+            isDisabled={busy}
             className="w-full"
+            items={shareListItems as Iterable<ShareListItem>}
           >
             <Label className="text-sm text-white">
               {t("home.figma.shareAccessEmailLabel")}
             </Label>
-            <Autocomplete.Trigger className="rounded-xl border-0 bg-[#1A1A1A] min-h-10">
+            <Autocomplete.Trigger className="min-h-10 rounded-xl border-0 bg-[#1A1A1A]">
               <Autocomplete.Value className="text-sm text-[#fcfcfc]">
                 {({
                   defaultChildren,
@@ -167,7 +248,11 @@ function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
               <Autocomplete.Indicator className="text-white/60" />
             </Autocomplete.Trigger>
             <Autocomplete.Popover>
-              <Autocomplete.Filter filter={contains}>
+              <Autocomplete.Filter
+                filter={() => true}
+                inputValue={filterText}
+                onInputChange={setFilterText}
+              >
                 <SearchField variant="secondary">
                   <SearchField.Group>
                     <SearchField.SearchIcon />
@@ -177,26 +262,50 @@ function FigmaShareAccessModalBody({ t, onClose, onConfirm }: BodyProps) {
                     <SearchField.ClearButton />
                   </SearchField.Group>
                 </SearchField>
-                <ListBox>
-                  {SHARE_EMAIL_OPTIONS.map((email) => (
-                    <ListBox.Item key={email} id={email} textValue={email}>
-                      {email}
+                {searchLoading ? (
+                  <p className="px-3 py-2 text-xs text-[#9B9B9B]">…</p>
+                ) : null}
+                {searchError ? (
+                  <p className="px-3 py-1.5 text-xs text-danger">
+                    {searchError}
+                  </p>
+                ) : null}
+                <ListBox
+                  items={shareListItems as Iterable<ShareListItem>}
+                  dependencies={[
+                    debouncedQuery,
+                    shareListItems,
+                    searchLoading,
+                    searchError,
+                  ]}
+                >
+                  {(item: ShareListItem) => (
+                    <ListBox.Item
+                      id={item.id}
+                      key={item.id}
+                      textValue={item.email}
+                    >
+                      {item.email}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
-                  ))}
+                  )}
                 </ListBox>
               </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
 
+        {submitError ? (
+          <p className="mt-2 text-xs text-danger shrink-0">{submitError}</p>
+        ) : null}
+
         <div className="mt-6 shrink-0">
           <Button
             className="h-10 w-full rounded-full bg-white text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-40"
-            isDisabled={!canConfirm}
-            onPress={handleConfirm}
+            isDisabled={!canConfirm || busy}
+            onPress={() => void handleConfirm()}
           >
-            {t("home.figma.shareAccessModalConfirm")}
+            {busy ? "…" : t("home.figma.shareAccessModalConfirm")}
           </Button>
         </div>
       </motion.div>

@@ -10,7 +10,7 @@ import {
   FigmaAnalyticsMain,
   FigmaAnalyticsSidebar,
   FigmaChatInviteNotificationModal,
-  FigmaShareChatEmailsModal,
+  FigmaShareAccessModal,
   useAnalyticsPanel,
 } from '@/features/analytics';
 import {
@@ -256,11 +256,12 @@ export function AnalyticsWorkspace() {
 
       <AnimatePresence>
         {shareModalOpen && nlConversationId ? (
-          <FigmaShareChatEmailsModal
-            key='share-emails'
+          <FigmaShareAccessModal
+            key='share-access'
             t={p.t}
+            open
             onClose={() => setShareModalOpen(false)}
-            onSubmit={handleShareEmailsSubmit}
+            onConfirm={({ emails }) => handleShareEmailsSubmit(emails)}
           />
         ) : null}
       </AnimatePresence>

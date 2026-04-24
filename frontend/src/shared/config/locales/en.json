@@ -167,6 +167,7 @@
       "shareAccessEmailLabel": "Recipient email",
       "shareAccessEmailPlaceholder": "Select an email",
       "shareAccessSearchPlaceholder": "Search email…",
+      "shareAccessSearchFailed": "Could not load user list",
       "shareAccessModalConfirm": "Invite",
       "maxRowsShort": "Row limit",
       "profileAria": "Profile",

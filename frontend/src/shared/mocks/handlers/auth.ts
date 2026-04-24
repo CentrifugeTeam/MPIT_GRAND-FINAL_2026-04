@@ -23,4 +23,31 @@ export const authHandlers = [
       uuid: "550e8400-e29b-41d4-a716-446655440000",
     });
   }),
+
+  http.get("/api/auth/users/search", ({ request }) => {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get("query") ?? "").trim().toLowerCase();
+    const all = [
+      {
+        uuid: "a1000000-0000-4000-8000-000000000001",
+        email: "owner@company.com",
+        role: "USER",
+      },
+      {
+        uuid: "a1000000-0000-4000-8000-000000000002",
+        email: "analyst@company.com",
+        role: "ANALYST",
+      },
+      {
+        uuid: "a1000000-0000-4000-8000-000000000003",
+        email: "manager@company.com",
+        role: "USER",
+      },
+    ];
+    const users =
+      q.length < 1
+        ? []
+        : all.filter((u) => u.email.toLowerCase().includes(q));
+    return HttpResponse.json({ users });
+  }),
 ];

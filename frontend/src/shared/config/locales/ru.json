@@ -167,6 +167,7 @@
       "shareAccessEmailLabel": "Email получателя",
       "shareAccessEmailPlaceholder": "Выберите email",
       "shareAccessSearchPlaceholder": "Поиск email…",
+      "shareAccessSearchFailed": "Не удалось загрузить список пользователей",
       "shareAccessModalConfirm": "Пригласить",
       "maxRowsShort": "Лимит строк",
       "profileAria": "Профиль",
