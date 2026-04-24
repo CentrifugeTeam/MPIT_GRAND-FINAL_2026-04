@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
 import {
@@ -40,9 +40,8 @@ export function AnalyticsWorkspace() {
     if (matched) selectEntry(matched.id);
   }, [entries, historyBusy, routeChatId, selectEntry]);
 
-  const nlAssistantActionHandlers = {
-    /** Локально обрезает ленту; при перезагрузке чата сообщения снова придут с сервера. */
-    onRetry: ({
+  const onRetry = useCallback(
+    ({
       assistantLineId,
       userMessage,
     }: {
@@ -59,12 +58,22 @@ export function AnalyticsWorkspace() {
         void p.sendComposerMessage();
       });
     },
-    onCreateReportTask: (userQuestion: string) => {
+    [p.getRetryTailAnchorId, p.trimForRetry, p.requestDeleteChatTailFrom, p.setQuestion, p.sendComposerMessage],
+  );
+
+  const onCreateReportTask = useCallback(
+    (userQuestion: string) => {
       void navigate('/reports', {
         state: { createReportFromChat: { instruction: userQuestion } },
       });
     },
-  } as const;
+    [navigate],
+  );
+
+  const nlAssistantActionHandlers = useMemo(
+    () => ({ onRetry, onCreateReportTask }),
+    [onRetry, onCreateReportTask],
+  );
 
   const handleShareChat = useCallback(async () => {
     if (!p.nlConversationId) return;
