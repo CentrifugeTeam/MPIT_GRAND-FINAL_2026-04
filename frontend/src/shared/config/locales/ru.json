@@ -177,6 +177,7 @@
       "profileAria": "Профиль",
       "notifications": "Уведомления",
       "notificationsEmpty": "Уведомлений пока нет",
+      "chatInviteListSubtitle": "Пригласил вас в чат",
       "chatInviteAccept": "Принять",
       "chatInviteReject": "Отклонить",
       "pendingInvitesTitle": "Приглашения в чаты",
@@ -402,3 +403,4 @@
     }
   }
 }
+

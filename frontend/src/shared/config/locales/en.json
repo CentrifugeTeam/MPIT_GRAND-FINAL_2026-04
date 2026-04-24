@@ -177,6 +177,7 @@
       "profileAria": "Profile",
       "notifications": "Notifications",
       "notificationsEmpty": "No notifications yet",
+      "chatInviteListSubtitle": "Invited you to a chat",
       "chatInviteAccept": "Accept",
       "chatInviteReject": "Decline",
       "pendingInvitesTitle": "Pending chat invites",
@@ -402,3 +403,4 @@
     }
   }
 }
+

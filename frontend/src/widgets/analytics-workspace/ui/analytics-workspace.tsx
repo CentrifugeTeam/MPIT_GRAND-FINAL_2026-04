@@ -11,17 +11,15 @@ import {
   createShareChatInvites,
   FigmaAnalyticsMain,
   FigmaAnalyticsSidebar,
-  FigmaChatInviteNotificationModal,
   FigmaShareAccessModal,
   CHAT_INVITES_QUERY_KEY,
   useAnalyticsPanel,
 } from "@/features/analytics";
-import {
-  deleteNotification,
-  type AppNotification,
-} from '@/shared/api/notifications-api';
-import { readUuidFromAccessToken, useAuthStore } from '@/shared/lib/auth-store';
-import { forceReconnectNotificationSse } from '@/shared/lib/notification-sse-broadcast';
+import { FigmaNotificationsPanelModal } from "@/features/analytics";
+import { deleteNotification } from "@/shared/api/notifications-api";
+import { readUuidFromAccessToken, useAuthStore } from "@/shared/lib/auth-store";
+import { forceReconnectNotificationSse } from "@/shared/lib/notification-sse-broadcast";
+import { useNotificationsSse } from "@/shared/lib/use-notifications-sse";
 
 export function AnalyticsWorkspace() {
   const { id: routeChatId } = useParams<{ id?: string }>();
@@ -29,8 +27,9 @@ export function AnalyticsWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const userUuid = useAuthStore(s => s.userUuid);
-  const accessToken = useAuthStore(s => s.accessToken);
+  const userUuid = useAuthStore((s) => s.userUuid);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { notifications } = useNotificationsSse(accessToken);
 
   const {
     entries,
@@ -45,12 +44,12 @@ export function AnalyticsWorkspace() {
     sendComposerMessage,
   } = p;
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [inviteNotif, setInviteNotif] = useState<AppNotification | null>(null);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   const [cloneSharedBusy, setCloneSharedBusy] = useState(false);
 
   const handleInviteModalAccept = useCallback(
     async (inviteId: string, notificationId: string) => {
-      const res = await answerChatInvite(inviteId, 'accept');
+      const res = await answerChatInvite(inviteId, "accept");
       const uid = userUuid ?? readUuidFromAccessToken(accessToken);
       if (uid) {
         try {
@@ -59,11 +58,16 @@ export function AnalyticsWorkspace() {
           if (isAxiosError(e) && e.response?.status === 404) {
             /* уже удалено на BFF при answer */
           } else {
-            console.warn('deleteNotification failed after chat invite accept', e);
+            console.warn(
+              "deleteNotification failed after chat invite accept",
+              e,
+            );
           }
         }
       } else {
-        console.warn('deleteNotification skipped: no user id for notification path');
+        console.warn(
+          "deleteNotification skipped: no user id for notification path",
+        );
       }
       forceReconnectNotificationSse();
       await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
@@ -77,7 +81,7 @@ export function AnalyticsWorkspace() {
 
   const handleInviteModalReject = useCallback(
     async (inviteId: string, notificationId: string) => {
-      await answerChatInvite(inviteId, 'reject');
+      await answerChatInvite(inviteId, "reject");
       const uid = userUuid ?? readUuidFromAccessToken(accessToken);
       if (uid) {
         try {
@@ -86,11 +90,16 @@ export function AnalyticsWorkspace() {
           if (isAxiosError(e) && e.response?.status === 404) {
             /* уже удалено на BFF при answer */
           } else {
-            console.warn('deleteNotification failed after chat invite reject', e);
+            console.warn(
+              "deleteNotification failed after chat invite reject",
+              e,
+            );
           }
         }
       } else {
-        console.warn('deleteNotification skipped: no user id for notification path');
+        console.warn(
+          "deleteNotification skipped: no user id for notification path",
+        );
       }
       forceReconnectNotificationSse();
       await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
@@ -141,7 +150,7 @@ export function AnalyticsWorkspace() {
     if (historyBusy) return;
     const cid = routeChatId?.trim();
     if (!cid) return;
-    const matched = entries.find(e => (e.conversationId ?? e.id) === cid);
+    const matched = entries.find((e) => (e.conversationId ?? e.id) === cid);
     if (matched) selectEntry(matched.id);
   }, [entries, historyBusy, routeChatId, selectEntry]);
 
@@ -154,8 +163,7 @@ export function AnalyticsWorkspace() {
       userMessage: string;
       userLineId: string | null;
     }) => {
-      const anchor =
-        getRetryTailAnchorId(assistantLineId) ?? assistantLineId;
+      const anchor = getRetryTailAnchorId(assistantLineId) ?? assistantLineId;
       trimForRetry(assistantLineId);
       void requestDeleteChatTailFrom(anchor);
       setQuestion(userMessage);
@@ -174,7 +182,7 @@ export function AnalyticsWorkspace() {
 
   const onCreateReportTask = useCallback(
     (userQuestion: string) => {
-      void navigate('/reports', {
+      void navigate("/reports", {
         state: { createReportFromChat: { instruction: userQuestion } },
       });
     },
@@ -187,11 +195,11 @@ export function AnalyticsWorkspace() {
   );
 
   return (
-    <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0'>
-      <div className='flex min-h-0 shrink-0 self-stretch'>
+    <div className="flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0">
+      <div className="flex min-h-0 shrink-0 self-stretch">
         <FigmaAnalyticsSidebar
           isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(v => !v)}
+          onToggle={() => setSidebarOpen((v) => !v)}
           entries={p.entries}
           titles={p.titles}
           activeId={p.activeId}
@@ -204,8 +212,8 @@ export function AnalyticsWorkspace() {
           onRenameFocus={p.setRenameFieldFocused}
           onCommitRename={p.commitRename}
           onCancelRename={p.cancelRename}
-          onSelectEntry={entryId => {
-            const entry = p.entries.find(e => e.id === entryId);
+          onSelectEntry={(entryId) => {
+            const entry = p.entries.find((e) => e.id === entryId);
             const chatId = entry?.conversationId;
             if (chatId) {
               void navigate(`/home/${chatId}`);
@@ -215,18 +223,19 @@ export function AnalyticsWorkspace() {
           }}
           onStartNewChat={() => {
             p.startNewChat();
-            void navigate('/home');
+            void navigate("/home");
           }}
           onLoadHistory={() => void p.loadHistory()}
           onClearAllHistory={() => void p.clearAllHistoryEntries()}
           onStartEditingRow={p.startEditingRow}
-          onDeleteHistoryEntry={id => void p.deleteHistoryEntry(id)}
+          onDeleteHistoryEntry={(id) => void p.deleteHistoryEntry(id)}
           t={p.t}
-          onChatInviteNotification={n => setInviteNotif(n)}
+          onOpenNotifications={() => setNotificationsPanelOpen(true)}
+          hasNotificationBadge={notifications.length > 0}
         />
       </div>
 
-      <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <FigmaAnalyticsMain
           t={p.t}
           sidebarOpen={sidebarOpen}
@@ -255,14 +264,14 @@ export function AnalyticsWorkspace() {
           onSend={() => void p.sendComposerMessage()}
           onStartNewChat={() => {
             p.startNewChat();
-            void navigate('/home');
+            void navigate("/home");
           }}
           nlAssistantActionHandlers={nlAssistantActionHandlers}
         />
 
         {p.result && (
-          <div className='shrink-0 border-t border-border'>
-            <div className='max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4'>
+          <div className="shrink-0 border-t border-border">
+            <div className="max-h-[min(45vh,520px)] w-full overflow-y-auto px-5 py-4">
               <AnalyticsResults
                 t={p.t}
                 result={p.result}
@@ -278,7 +287,7 @@ export function AnalyticsWorkspace() {
       <AnimatePresence>
         {shareModalOpen && nlConversationId ? (
           <FigmaShareAccessModal
-            key='share-access'
+            key="share-access"
             t={p.t}
             open
             onClose={() => setShareModalOpen(false)}
@@ -288,12 +297,12 @@ export function AnalyticsWorkspace() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {inviteNotif ? (
-          <FigmaChatInviteNotificationModal
-            key={inviteNotif.id}
+        {notificationsPanelOpen ? (
+          <FigmaNotificationsPanelModal
+            key="figma-notifications-panel"
             t={p.t}
-            notification={inviteNotif}
-            onClose={() => setInviteNotif(null)}
+            notifications={notifications}
+            onClose={() => setNotificationsPanelOpen(false)}
             onAccept={handleInviteModalAccept}
             onReject={handleInviteModalReject}
           />
@@ -302,3 +311,4 @@ export function AnalyticsWorkspace() {
     </div>
   );
 }
+

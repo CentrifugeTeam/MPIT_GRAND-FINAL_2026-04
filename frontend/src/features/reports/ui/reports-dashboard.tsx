@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router";
 import { ScrollShadow, Spinner } from "@heroui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 
-import { FigmaAnalyticsSidebar, useAnalyticsPanel } from "@/features/analytics";
+import {
+  answerChatInvite,
+  CHAT_INVITES_QUERY_KEY,
+  FigmaAnalyticsSidebar,
+  FigmaNotificationsPanelModal,
+  useAnalyticsPanel,
+} from "@/features/analytics";
+import { deleteNotification } from "@/shared/api/notifications-api";
+import { readUuidFromAccessToken, useAuthStore } from "@/shared/lib/auth-store";
+import { forceReconnectNotificationSse } from "@/shared/lib/notification-sse-broadcast";
+import { useNotificationsSse } from "@/shared/lib/use-notifications-sse";
 import type {
   ReportTask,
   ReportTaskTemplate,
@@ -77,7 +89,11 @@ export function ReportsDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const userUuid = useAuthStore((s) => s.userUuid);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { notifications } = useNotificationsSse(accessToken);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<ReportTask | null>(null);
   const [templatePrefill, setTemplatePrefill] =
@@ -85,6 +101,56 @@ export function ReportsDashboard() {
   const [chatInstructionPrefill, setChatInstructionPrefill] = useState<
     string | null
   >(null);
+  const handleInviteModalAccept = useCallback(
+    async (inviteId: string, notificationId: string) => {
+      const res = await answerChatInvite(inviteId, "accept");
+      const uid = userUuid ?? readUuidFromAccessToken(accessToken);
+      if (uid) {
+        try {
+          await deleteNotification(uid, notificationId);
+        } catch (e) {
+          if (isAxiosError(e) && e.response?.status === 404) {
+            /* same as analytics workspace */
+          } else {
+            console.warn("deleteNotification failed after chat invite accept", e);
+          }
+        }
+      } else {
+        console.warn("deleteNotification skipped: no user id for notification path");
+      }
+      forceReconnectNotificationSse();
+      await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
+      await p.loadHistory();
+      if (res.conversation_id) {
+        void navigate(`/home/${res.conversation_id}`);
+      }
+    },
+    [navigate, p.loadHistory, queryClient, userUuid, accessToken],
+  );
+
+  const handleInviteModalReject = useCallback(
+    async (inviteId: string, notificationId: string) => {
+      await answerChatInvite(inviteId, "reject");
+      const uid = userUuid ?? readUuidFromAccessToken(accessToken);
+      if (uid) {
+        try {
+          await deleteNotification(uid, notificationId);
+        } catch (e) {
+          if (isAxiosError(e) && e.response?.status === 404) {
+            /* */
+          } else {
+            console.warn("deleteNotification failed after chat invite reject", e);
+          }
+        }
+      } else {
+        console.warn("deleteNotification skipped: no user id for notification path");
+      }
+      forceReconnectNotificationSse();
+      await queryClient.invalidateQueries({ queryKey: CHAT_INVITES_QUERY_KEY });
+    },
+    [queryClient, userUuid, accessToken],
+  );
+
   const { data, isLoading, isError, refetch } = useReportTasks();
   const {
     data: templatesData,
@@ -159,6 +225,8 @@ export function ReportsDashboard() {
           onStartEditingRow={p.startEditingRow}
           onDeleteHistoryEntry={(id) => void p.deleteHistoryEntry(id)}
           t={p.t}
+          onOpenNotifications={() => setNotificationsPanelOpen(true)}
+          hasNotificationBadge={notifications.length > 0}
         />
       </div>
 
@@ -293,6 +361,19 @@ export function ReportsDashboard() {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {notificationsPanelOpen ? (
+          <FigmaNotificationsPanelModal
+            key="figma-notifications-panel"
+            t={p.t}
+            notifications={notifications}
+            onClose={() => setNotificationsPanelOpen(false)}
+            onAccept={handleInviteModalAccept}
+            onReject={handleInviteModalReject}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,6 +2,33 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AuthSessionPayload } from "@/shared/types/auth-session";
 
+function decodeJwtPayloadB64u(segment: string): string {
+  const pad = segment.length % 4;
+  const padded = segment + (pad ? "=".repeat(4 - pad) : "");
+  return atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
+/**
+ * Сохраняет `userUuid` в сторе; при старых/частичных сессиях без `userUuid` — читаем `uuid` из access JWT (auth-service).
+ */
+export function readUuidFromAccessToken(
+  accessToken: string | null | undefined
+): string | null {
+  if (!accessToken) return null;
+  const parts = accessToken.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const raw = JSON.parse(decodeJwtPayloadB64u(parts[1])) as {
+      uuid?: string;
+      sub?: string;
+    };
+    const u = raw.uuid ?? raw.sub;
+    return typeof u === "string" && u.length > 0 ? u : null;
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
