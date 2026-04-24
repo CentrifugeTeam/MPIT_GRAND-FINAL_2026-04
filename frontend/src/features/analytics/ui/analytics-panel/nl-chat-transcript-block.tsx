@@ -12,6 +12,8 @@ import { Button, Card, Disclosure } from '@heroui/react';
 import { motion } from 'motion/react';
 import { Virtuoso } from 'react-virtuoso';
 
+import { downloadQueue } from '@/shared/lib/download-queue';
+
 import { Logo } from '@/shared/ui/atoms/logo';
 
 import type { NlChatLine } from '../../lib/use-nl-orchestrator-chat';
@@ -27,6 +29,7 @@ import { DataTablePreview } from '@/shared/ui/organisms/data-table-preview';
 import {
   ArrowDownToSquare,
   ArrowRotateRight,
+  ClockArrowRotateLeftIcon,
   CopyIcon,
   DotsVertical,
 } from '@/shared/ui/assets/icons';
@@ -42,6 +45,7 @@ export type NlChatAssistantActionHandlers = {
     userLineId: string | null;
   }) => void | Promise<void>;
   onCreateReportTask: (userQuestion: string) => void | Promise<void>;
+  onNewChat: () => void;
 };
 
 function precedingUserForRetry(
@@ -271,6 +275,46 @@ function GrokAssistantToolbar({
             <button
               type='button'
               className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ''}`}
+              aria-label={t('home.analytics.download')}
+              aria-disabled={actionsLocked}
+              disabled={actionsLocked}
+              onClick={async () => {
+                downloadQueue.add(
+                  {
+                    title: t('home.analytics.downloadToastLoading'),
+                    indicator: (
+                      <ArrowDownToSquare
+                        height={16}
+                        width={16}
+                      />
+                    ),
+                  },
+                  { timeout: 2000 },
+                );
+              }}
+            >
+              <ArrowDownToSquare
+                width={16}
+                height={16}
+              />
+            </button>
+          </motion.span>
+        </FigmaSimpleTooltip>
+      ) : null}
+      {userCtx?.text?.trim() ? (
+        <FigmaSimpleTooltip
+          label={t('home.analytics.chatActionCreateTask')}
+          side='top'
+        >
+          <motion.span
+            className='inline-flex'
+            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
+            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            transition={iconMotionTransition}
+          >
+            <button
+              type='button'
+              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ''}`}
               aria-label={t('home.analytics.chatActionCreateTask')}
               aria-disabled={actionsLocked}
               disabled={actionsLocked}
@@ -278,9 +322,9 @@ function GrokAssistantToolbar({
                 void handlers.onCreateReportTask(userCtx.text.trim())
               }
             >
-              <ArrowDownToSquare
-                width={18}
-                height={18}
+              <ClockArrowRotateLeftIcon
+                width={16}
+                height={16}
               />
             </button>
           </motion.span>

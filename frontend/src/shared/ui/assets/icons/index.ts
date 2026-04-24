@@ -28,3 +28,4 @@ export { default as RocketIcon } from './rocket.svg';
 export { default as CopyIcon } from './copy.svg';
 export { default as ArrowRotateRight } from './arrow-rotate-right.svg';
 export { default as ArrowDownToSquare } from './arrow-down-to-square.svg';
+export { default as ClockArrowRotateLeftIcon } from './clock-arrow-rotate-left.svg';
