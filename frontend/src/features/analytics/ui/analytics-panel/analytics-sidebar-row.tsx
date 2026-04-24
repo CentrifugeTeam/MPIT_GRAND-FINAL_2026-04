@@ -99,11 +99,13 @@ export function AnalyticsSidebarRow({
       )}
       {!isEditing && (
         <Dropdown.Root>
-          <Dropdown.Trigger
-            aria-label={t("home.analytics.chatRowMenuAria")}
-            className="mr-0.5 my-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-70 transition-opacity hover:bg-default hover:opacity-100 group-hover:opacity-100"
-          >
-            <Icon icon="mdi:dots-vertical" width={16} />
+          <Dropdown.Trigger aria-label={t("home.analytics.chatRowMenuAria")}>
+            <button
+              type="button"
+              className="mr-0.5 my-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-70 transition-opacity hover:bg-default hover:opacity-100 group-hover:opacity-100"
+            >
+              <Icon icon="mdi:dots-vertical" width={16} />
+            </button>
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end">
             <Dropdown.Menu>

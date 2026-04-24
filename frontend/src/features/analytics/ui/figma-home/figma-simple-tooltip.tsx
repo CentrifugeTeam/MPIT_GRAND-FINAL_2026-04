@@ -93,6 +93,7 @@ export function FigmaSimpleTooltip({ label, children, side = "bottom" }: Props) 
   useLayoutEffect(() => {
     const tip = tooltipRef.current;
     if (!tip || !coords) return;
+    if (coords.transform === "none") return;
     const tipRect = tip.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
