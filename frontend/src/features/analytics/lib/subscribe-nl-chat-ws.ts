@@ -9,7 +9,9 @@ import {
 import type { NlChatLine } from "./nl-chat-line";
 import { wsClient } from "@/shared/api/ws-client";
 
-type TRef = MutableRefObject<(key: string, opts?: Record<string, unknown>) => string>;
+type TRef = MutableRefObject<
+  (key: string, opts?: Record<string, unknown>) => string
+>;
 
 /** Подписка на события чата; отписка в возвращаемой функции. */
 export function subscribeNlChatWs(
@@ -57,7 +59,10 @@ export function subscribeNlChatWs(
   const unsubs: Array<() => void> = [];
   unsubs.push(
     wsClient.on("chat_user", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const text = String(payload.text ?? "").trim();
       if (!text) return;
@@ -70,15 +75,23 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_thinking", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? "")) return;
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
+        return;
       const rs = String(payload.reasoning ?? "").trim();
-      const mid = String(payload.message_id ?? "").trim() || crypto.randomUUID();
+      const mid =
+        String(payload.message_id ?? "").trim() || crypto.randomUUID();
       scheduleThinking(mid, rs);
     }),
   );
   unsubs.push(
     wsClient.on("chat_assistant", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       flushThinkingImmediate();
       const text = String(payload.text ?? "");
@@ -119,7 +132,10 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_messages_deleted", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const raw = payload.message_ids;
       if (!Array.isArray(raw) || raw.length === 0) return;
@@ -128,7 +144,10 @@ export function subscribeNlChatWs(
   );
   unsubs.push(
     wsClient.on("chat_sql_queued", (payload: Record<string, unknown>) => {
-      if (String(payload.conversation_id ?? "") !== String(routingCidRef.current ?? ""))
+      if (
+        String(payload.conversation_id ?? "") !==
+        String(routingCidRef.current ?? "")
+      )
         return;
       const pre = String(payload.preface ?? "").trim();
       const qReasoning = String(payload.reasoning ?? "").trim();
@@ -149,3 +168,4 @@ export function subscribeNlChatWs(
     unsubs.forEach((u) => u());
   };
 }
+
