@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router";
@@ -10,7 +10,7 @@ import {
   answerChatInvite,
   CHAT_INVITES_QUERY_KEY,
   FigmaAnalyticsSidebar,
-  FigmaNotificationsPanelModal,
+  FigmaNotificationsPanelTooltip,
   useAnalyticsPanel,
 } from "@/features/analytics";
 import { deleteNotification } from "@/shared/api/notifications-api";
@@ -94,6 +94,7 @@ export function ReportsDashboard() {
   const { notifications } = useNotificationsSse(accessToken);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
+  const notificationsAnchorRef = useRef<HTMLElement | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<ReportTask | null>(null);
   const [templatePrefill, setTemplatePrefill] =
@@ -227,6 +228,7 @@ export function ReportsDashboard() {
           t={p.t}
           onOpenNotifications={() => setNotificationsPanelOpen(true)}
           hasNotificationBadge={notifications.length > 0}
+          notificationsAnchorRef={notificationsAnchorRef}
         />
       </div>
 
@@ -364,10 +366,11 @@ export function ReportsDashboard() {
 
       <AnimatePresence>
         {notificationsPanelOpen ? (
-          <FigmaNotificationsPanelModal
+          <FigmaNotificationsPanelTooltip
             key="figma-notifications-panel"
             t={p.t}
             notifications={notifications}
+            anchorRef={notificationsAnchorRef}
             onClose={() => setNotificationsPanelOpen(false)}
             onAccept={handleInviteModalAccept}
             onReject={handleInviteModalReject}

@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 
@@ -26,6 +27,8 @@ export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   onToggle: () => void;
   onOpenNotifications: () => void;
   hasNotificationBadge?: boolean;
+  /** Ref на обёртку кнопки уведомлений — для позиции панели-тултипа. */
+  notificationsAnchorRef?: RefObject<HTMLElement | null>;
 };
 
 export function FigmaAnalyticsSidebar({
@@ -52,6 +55,7 @@ export function FigmaAnalyticsSidebar({
   t,
   onOpenNotifications,
   hasNotificationBadge,
+  notificationsAnchorRef,
 }: FigmaAnalyticsSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -164,30 +168,11 @@ export function FigmaAnalyticsSidebar({
                 </FigmaSimpleTooltip>
               )}
               <div className="flex flex-col gap-3">
-                {isOpen ? (
-                  <button
-                    type="button"
-                    onClick={onOpenNotifications}
-                    className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all duration-200 hover:bg-[#27272a]/60 active:scale-[0.97]"
-                    aria-label={t("home.figma.notifications")}
-                  >
-                    {hasNotificationBadge ? (
-                      <span
-                        className="absolute -right-0.5 -top-0.5 z-[1] inline-flex h-2.5 w-2.5 rounded-full bg-danger"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <BellDotIcon
-                      className="shrink-0"
-                      width={16}
-                      height={16}
-                    />
-                  </button>
-                ) : (
-                  <FigmaSimpleTooltip
-                    label={t("home.figma.notifications")}
-                    side="right"
-                  >
+                <span
+                  ref={notificationsAnchorRef}
+                  className="inline-flex shrink-0"
+                >
+                  {isOpen ? (
                     <button
                       type="button"
                       onClick={onOpenNotifications}
@@ -206,8 +191,32 @@ export function FigmaAnalyticsSidebar({
                         height={16}
                       />
                     </button>
-                  </FigmaSimpleTooltip>
-                )}
+                  ) : (
+                    <FigmaSimpleTooltip
+                      label={t("home.figma.notifications")}
+                      side="right"
+                    >
+                      <button
+                        type="button"
+                        onClick={onOpenNotifications}
+                        className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all duration-200 hover:bg-[#27272a]/60 active:scale-[0.97]"
+                        aria-label={t("home.figma.notifications")}
+                      >
+                        {hasNotificationBadge ? (
+                          <span
+                            className="absolute -right-0.5 -top-0.5 z-[1] inline-flex h-2.5 w-2.5 rounded-full bg-danger"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <BellDotIcon
+                          className="shrink-0"
+                          width={16}
+                          height={16}
+                        />
+                      </button>
+                    </FigmaSimpleTooltip>
+                  )}
+                </span>
                 <FigmaSidebarProfileButton
                   isOpen={isOpen}
                   t={t}
