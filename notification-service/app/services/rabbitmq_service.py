@@ -105,6 +105,10 @@ class RabbitMQService:
             message_text = message.get("message")
             email = message.get("email")
 
+            # Только in-app: запись уже в БД, email не шлём
+            if notification_type == "chat_invite":
+                return
+
             # Получаем настройки пользователя
             settings = notification_settings_crud.get_user_settings(db, user_id)
 

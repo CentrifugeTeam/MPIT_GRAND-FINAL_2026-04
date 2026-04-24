@@ -44,6 +44,7 @@ def _chat_to_item(row: dict[str, Any]) -> dict[str, Any]:
         "created_at": row["created_at"],
         "updated_at": row.get("updated_at"),
         "chat_type": "chat",
+        "access_role": row.get("access_role") or "owner",
         "job_id": None,
         "max_rows": None,
         "template_key": None,

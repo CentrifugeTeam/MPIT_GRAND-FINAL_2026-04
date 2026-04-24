@@ -24,11 +24,19 @@ class AnalyticsProxy:
             return response.text or response.reason_phrase
 
     @staticmethod
-    def _user_headers(user_id: str, user_role: str | None = None) -> dict[str, str]:
-        return {
+    def _user_headers(
+        user_id: str,
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, str]:
+        headers = {
             "X-User-Id": user_id,
             "X-User-Role": (user_role or "USER").strip(),
         }
+        email = (user_email or "").strip()
+        if email:
+            headers["X-User-Email"] = email
+        return headers
 
     async def interpret_question(
         self,
@@ -208,6 +216,31 @@ class AnalyticsProxy:
                 r = await client.get(
                     f"{self.base_url}/api/analytics/chats/{conversation_id}/messages",
                     headers=self._user_headers(user_id, user_role),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(
+                status_code=r.status_code,
+                detail=self._detail(r),
+            )
+        return r.json()
+
+    async def get_nl_chat_meta(
+        self,
+        user_id: str,
+        conversation_id: str,
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.base_url}/api/analytics/chats/{conversation_id}/meta",
+                    headers=self._user_headers(user_id, user_role, user_email),
                 )
         except httpx.RequestError as e:
             raise HTTPException(
@@ -777,4 +810,95 @@ class AnalyticsProxy:
                 status_code=r.status_code,
                 detail=self._detail(r),
             )
+        return r.json()
+
+    async def create_chat_invites(
+        self,
+        user_id: str,
+        conversation_id: str,
+        emails: list[str],
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.base_url}/api/analytics/chats/{conversation_id}/share-invites",
+                    json={"emails": emails},
+                    headers=self._user_headers(user_id, user_role, user_email),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def clone_shared_chat(
+        self,
+        user_id: str,
+        conversation_id: str,
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.base_url}/api/analytics/chats/{conversation_id}/clone-for-me",
+                    headers=self._user_headers(user_id, user_role, user_email),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def list_chat_invites(
+        self,
+        user_id: str,
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.get(
+                    f"{self.base_url}/api/analytics/chat-invites",
+                    headers=self._user_headers(user_id, user_role, user_email),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
+        return r.json()
+
+    async def answer_chat_invite(
+        self,
+        user_id: str,
+        invite_id: str,
+        decision: str,
+        user_role: str | None = None,
+        user_email: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                r = await client.post(
+                    f"{self.base_url}/api/analytics/chat-invites/{invite_id}/answer",
+                    json={"decision": decision},
+                    headers=self._user_headers(user_id, user_role, user_email),
+                )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Analytics service unavailable: {e}",
+            ) from e
+        if r.is_error:
+            raise HTTPException(status_code=r.status_code, detail=self._detail(r))
         return r.json()

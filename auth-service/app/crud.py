@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -42,6 +42,20 @@ class UserCRUD:
     def get_all_users(self, db: Session, skip: int = 0, limit: int = 100) -> List[User]:
         """Получить всех пользователей"""
         return db.query(User).offset(skip).limit(limit).all()
+
+    def search_users_by_email(self, db: Session, query: str, limit: int = 20) -> List[User]:
+        """Поиск пользователей по части email (case-insensitive)."""
+        q = (query or "").strip()
+        if not q:
+            return []
+        pattern = f"%{q.lower()}%"
+        return (
+            db.query(User)
+            .filter(func.lower(User.email).like(pattern))
+            .order_by(User.email.asc())
+            .limit(limit)
+            .all()
+        )
 
     def update_user(self, db: Session, user_uuid: UUID, user_update: UserUpdate) -> Optional[User]:
         """Обновить пользователя"""

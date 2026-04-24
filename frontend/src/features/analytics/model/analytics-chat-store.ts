@@ -15,6 +15,8 @@ export interface AnalyticsChatEntry {
   createdAt: number;
   jobId?: string;
   conversationId?: string;
+  /** nl_chat: owner — свой чат; viewer — совместный просмотр */
+  accessRole?: 'owner' | 'viewer' | null;
   result: NlSqlWsPayload | null;
 }
 
@@ -22,6 +24,8 @@ interface AnalyticsChatState {
   entries: AnalyticsChatEntry[];
   activeId: string | null;
   upsertEntry: (entry: AnalyticsChatEntry) => void;
+  /** Добавить или заменить по id, без смены activeId (для клика по совместным до selectEntry) */
+  mergeEntry: (entry: AnalyticsChatEntry) => void;
   updateEntry: (id: string, patch: Partial<AnalyticsChatEntry>) => void;
   setActive: (id: string | null) => void;
   removeEntry: (id: string) => void;
@@ -40,6 +44,14 @@ export const useAnalyticsChatStore = create<AnalyticsChatState>()((set) => ({
         activeId: entry.id,
       };
     }),
+
+  mergeEntry: (entry) =>
+    set((s) => ({
+      entries: [entry, ...s.entries.filter((e) => e.id !== entry.id)].slice(
+        0,
+        MAX_CHAT_ENTRIES,
+      ),
+    })),
 
   updateEntry: (id, patch) =>
     set((s) => ({

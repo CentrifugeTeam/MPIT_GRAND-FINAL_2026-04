@@ -26,7 +26,6 @@ export function useAnalyticsDataSources() {
       .catch(() => {
         if (!cancelled) {
           setDataSources([]);
-          setDefaultSourceKey(null);
           setSelectedSourceKey(null);
         }
       })

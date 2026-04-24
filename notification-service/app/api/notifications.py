@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -57,11 +58,27 @@ async def get_user_notifications(
         return NotificationListResponse(
             notifications=[NotificationResponse.model_validate(n) for n in notifications],
         )
-    except Exception:
+    except Exception as e:
+        logger.exception("get_user_notifications failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get notifications",
         )
+
+
+@router.delete(
+    "/{user_id}/notification/{notification_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить уведомление пользователя",
+)
+async def delete_user_notification(
+    user_id: str,
+    notification_id: UUID,
+    db: Session = Depends(get_db),
+):
+    ok = notification_crud.delete_notification_for_user(db, user_id, notification_id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
 
 @router.get(
@@ -131,7 +148,7 @@ async def send_notification_to_queue(
             message = {
                 "notification_id": str(db_notification.id),
                 "user_id": user_id,
-                "type": notification.type,
+                "type": notification.type.value,
                 "title": notification.title,
                 "message": notification.message,
                 "email": notification.email,

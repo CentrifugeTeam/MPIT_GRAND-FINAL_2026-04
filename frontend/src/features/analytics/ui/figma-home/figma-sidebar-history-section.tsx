@@ -1,8 +1,11 @@
-import { useMemo, useState, type RefObject } from "react";
-import { Dropdown } from "@heroui/react";
+import { useCallback, useState, type RefObject } from "react";
+import { Dropdown, ScrollShadow } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-import type { AnalyticsChatEntry } from "../../model/analytics-chat-store";
+import {
+  useAnalyticsChatStore,
+  type AnalyticsChatEntry,
+} from "../../model/analytics-chat-store";
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_ITEM_DANGER,
@@ -10,6 +13,7 @@ import {
   FIGMA_DROPDOWN_POPOVER,
 } from "./figma-heroui-dropdown-classes";
 import { FigmaSidebarHistoryRows } from "./figma-sidebar-history-rows";
+import { DotsVertical } from "@/shared/ui/assets/icons";
 
 export type FigmaSidebarHistorySectionProps = {
   historyOpen: boolean;
@@ -32,6 +36,9 @@ export type FigmaSidebarHistorySectionProps = {
   onRequestDeleteAll: () => void;
   onStartEditingRow: (e: AnalyticsChatEntry) => void;
   onRequestDeleteRow: (id: string) => void;
+  /** Совместные чаты (принятые инвайты), с бэка: fetchChatInvites + filter accepted */
+  sharedEntries: AnalyticsChatEntry[];
+  sharedChatsLoading?: boolean;
   t: (key: string) => string;
 };
 
@@ -56,10 +63,29 @@ export function FigmaSidebarHistorySection({
   onRequestDeleteAll,
   onStartEditingRow,
   onRequestDeleteRow,
+  sharedEntries,
+  sharedChatsLoading = false,
   t,
 }: FigmaSidebarHistorySectionProps) {
   const [sharedChatsOpen, setSharedChatsOpen] = useState(true);
-  const sharedEntries = useMemo(() => entries.slice(0, 6), [entries]);
+  const mergeEntry = useAnalyticsChatStore((s) => s.mergeEntry);
+
+  const onSharedSelectEntry = useCallback(
+    (id: string) => {
+      const e = sharedEntries.find((x) => x.id === id);
+      if (e) mergeEntry(e);
+      onSelectEntry(id);
+    },
+    [sharedEntries, onSelectEntry, mergeEntry],
+  );
+  const onSharedStartEditingRow = useCallback(
+    (e: AnalyticsChatEntry) => onStartEditingRow(e),
+    [onStartEditingRow],
+  );
+  const onSharedRequestDeleteRow = useCallback(
+    (id: string) => onRequestDeleteRow(id),
+    [onRequestDeleteRow],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-[8px] pt-1 pb-[16px]">
@@ -78,6 +104,12 @@ export function FigmaSidebarHistorySection({
         </button>
         <div className="ml-auto">
           <Dropdown.Root>
+            <Dropdown.Trigger
+              aria-label={t("home.analytics.sidebarMenuAria")}
+              className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#fcfcfc] opacity-80 transition-opacity hover:bg-[#323236] hover:opacity-100"
+            >
+              <DotsVertical width={14} height={14} />
+            </Dropdown.Trigger>
             <Dropdown.Popover
               placement="bottom end"
               className={FIGMA_DROPDOWN_POPOVER}
@@ -129,58 +161,24 @@ export function FigmaSidebarHistorySection({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-[4px] overflow-y-auto">
-        {historyOpen && (
-          <>
-            {entries.length === 0 && (
-              <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
-                {t("home.analytics.sidebarEmpty")}
-              </p>
-            )}
-            <FigmaSidebarHistoryRows
-              entries={entries}
-              titles={titles}
-              activeId={activeId}
-              editingRowId={editingRowId}
-              renameDraft={renameDraft}
-              renameFieldFocused={renameFieldFocused}
-              renameInputRef={renameInputRef}
-              onRenameDraft={onRenameDraft}
-              onRenameFocus={onRenameFocus}
-              onCommitRename={onCommitRename}
-              onCancelRename={onCancelRename}
-              onSelectEntry={onSelectEntry}
-              onStartEditingRow={onStartEditingRow}
-              onRequestDeleteRow={onRequestDeleteRow}
-              t={t}
-            />
-          </>
-        )}
-
-        <div className="mt-8 flex shrink-0 items-center gap-[4px] pl-[12px] pb-2">
-          <button
-            type="button"
-            onClick={() => setSharedChatsOpen((v) => !v)}
-            className="flex cursor-pointer items-center gap-[4px] font-sans text-[14px] font-medium leading-[16px] tracking-[-0.14px] text-[#fcfcfc] transition-opacity duration-150 hover:opacity-70"
-          >
-            {t("home.figma.sharedChats")}
-            <Icon
-              icon="mdi:chevron-down"
-              width={16}
-              className={`text-[#fcfcfc] transition-transform ${sharedChatsOpen ? "" : "-rotate-90"}`}
-            />
-          </button>
-        </div>
-
-        {sharedChatsOpen && (
-          <>
-            {sharedEntries.length === 0 ? (
-              <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
-                {t("home.analytics.sidebarEmpty")}
-              </p>
-            ) : (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ScrollShadow
+          className={
+            historyOpen
+              ? "min-h-0 flex-1 flex flex-col gap-[4px] overscroll-y-contain"
+              : "h-0 min-h-0 flex-none flex flex-col gap-[4px] overflow-hidden overscroll-y-contain"
+          }
+          hideScrollBar
+        >
+          {historyOpen && (
+            <>
+              {entries.length === 0 && (
+                <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
+                  {t("home.analytics.sidebarEmpty")}
+                </p>
+              )}
               <FigmaSidebarHistoryRows
-                entries={sharedEntries}
+                entries={entries}
                 titles={titles}
                 activeId={activeId}
                 editingRowId={editingRowId}
@@ -196,11 +194,74 @@ export function FigmaSidebarHistorySection({
                 onRequestDeleteRow={onRequestDeleteRow}
                 t={t}
               />
-            )}
-          </>
-        )}
+            </>
+          )}
+        </ScrollShadow>
+
+        <div
+          className={
+            historyOpen
+              ? "flex min-h-0 shrink-0 flex-col border-t border-[#28282c] pt-3"
+              : "flex min-h-0 flex-1 flex-col border-t border-[#28282c] pt-3"
+          }
+        >
+          <div className="flex shrink-0 items-center gap-[4px] pl-[12px] pb-2">
+            <button
+              type="button"
+              onClick={() => setSharedChatsOpen((v) => !v)}
+              className="flex cursor-pointer items-center gap-[4px] font-sans text-[14px] font-medium leading-[16px] tracking-[-0.14px] text-[#fcfcfc] transition-opacity duration-150 hover:opacity-70"
+            >
+              {t("home.figma.sharedChats")}
+              <Icon
+                icon="mdi:chevron-down"
+                width={16}
+                className={`text-[#fcfcfc] transition-transform ${sharedChatsOpen ? "" : "-rotate-90"}`}
+              />
+            </button>
+          </div>
+
+          {sharedChatsOpen && (
+            <>
+              {sharedChatsLoading && sharedEntries.length === 0 ? (
+                <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
+                  {t("home.analytics.historyLoading")}
+                </p>
+              ) : sharedEntries.length === 0 ? (
+                <p className="px-[12px] py-3 font-sans text-xs text-[#71717a]">
+                  {t("home.analytics.sidebarEmpty")}
+                </p>
+              ) : (
+                <ScrollShadow
+                  className={
+                    historyOpen
+                      ? "max-h-[min(9.5rem,20vh)] min-h-0 w-full min-w-0 overscroll-y-contain"
+                      : "min-h-0 flex-1 w-full min-w-0 overscroll-y-contain"
+                  }
+                  hideScrollBar
+                >
+                  <FigmaSidebarHistoryRows
+                    entries={sharedEntries}
+                    titles={titles}
+                    activeId={activeId}
+                    editingRowId={editingRowId}
+                    renameDraft={renameDraft}
+                    renameFieldFocused={renameFieldFocused}
+                    renameInputRef={renameInputRef}
+                    onRenameDraft={onRenameDraft}
+                    onRenameFocus={onRenameFocus}
+                    onCommitRename={onCommitRename}
+                    onCancelRename={onCancelRename}
+                    onSelectEntry={onSharedSelectEntry}
+                    onStartEditingRow={onSharedStartEditingRow}
+                    onRequestDeleteRow={onSharedRequestDeleteRow}
+                    t={t}
+                  />
+                </ScrollShadow>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

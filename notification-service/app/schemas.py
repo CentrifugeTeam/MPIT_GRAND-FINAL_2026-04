@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr, field_validator
 
 from app.models import NotificationType, NotificationStatus
 
@@ -22,6 +22,7 @@ class NotificationCreate(BaseModel):
     title: str = Field(..., min_length=1, description="Заголовок")
     message: str = Field(..., min_length=1, description="Текст")
     email: Optional[EmailStr] = Field(default=None, description="Почта получателя (опционально)")
+    payload: Optional[dict] = Field(default=None, description="Дополнительные данные уведомления")
 
 
 class NotificationResponse(BaseModel):
@@ -30,8 +31,14 @@ class NotificationResponse(BaseModel):
     id: UUID
     user_id: str
     type: NotificationType
+
+    @field_validator("user_id", mode="before")
+    @classmethod
+    def _user_id_to_str(cls, v):
+        return str(v) if v is not None else v
     title: str
     message: str
+    payload: Optional[dict] = None
     status: NotificationStatus
     email: Optional[str]
     created_at: datetime

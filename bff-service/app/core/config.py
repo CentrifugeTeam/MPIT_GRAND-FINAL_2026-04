@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     RABBITMQ_PASSWORD: str = "admin123"
     RABBITMQ_PORT: int = 5672
 
-    # Redis (rate limiting). Пусто — лимит отключён.
+    # Redis: rate limit + pub/sub push для SSE уведомлений. Пусто — лимит отключён, стрим на редком poll.
+    # В Docker укажите redis://redis:6379/0, не localhost из контейнера.
     REDIS_URL: str = ""
     RATE_LIMIT_PER_MINUTE: int = 120
 

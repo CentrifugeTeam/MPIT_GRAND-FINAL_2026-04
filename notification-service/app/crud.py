@@ -19,7 +19,8 @@ class NotificationCRUD:
             type=notification.type,
             title=notification.title,
             message=notification.message,
-            email=notification.email
+            email=notification.email,
+            payload=notification.payload,
         )
         db.add(db_notification)
         db.commit()
@@ -36,6 +37,21 @@ class NotificationCRUD:
     def get_notification_by_id(self, db: Session, notification_id: UUID) -> Optional[Notification]:
         """Получить уведомление по ID"""
         return db.query(Notification).filter(Notification.id == notification_id).first()
+
+    def delete_notification_for_user(
+        self, db: Session, user_id: str, notification_id: UUID
+    ) -> bool:
+        uid = _as_user_uuid(user_id)
+        row = (
+            db.query(Notification)
+            .filter(Notification.id == notification_id, Notification.user_id == uid)
+            .first()
+        )
+        if row is None:
+            return False
+        db.delete(row)
+        db.commit()
+        return True
 
     def update_notification_status(self, db: Session, notification_id: UUID, status: NotificationStatus, error_message: Optional[str] = None) -> Optional[Notification]:
         """Обновить статус уведомления"""

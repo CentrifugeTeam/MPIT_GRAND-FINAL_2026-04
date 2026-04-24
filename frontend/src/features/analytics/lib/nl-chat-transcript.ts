@@ -26,7 +26,13 @@ export function apiNlMessageToLine(row: NlChatMessageApiRow, t: TFn): NlChatLine
   const err = pl.error != null ? String(pl.error).trim() : "";
   const reasoning =
     pl.reasoning != null ? String(pl.reasoning).trim() : "";
-  const role = row.role as NlChatLine["role"];
+  const rawRole = String(row.role ?? "").toLowerCase();
+  const role: NlChatLine["role"] =
+    rawRole === "assistant"
+      ? "assistant"
+      : rawRole === "system"
+        ? "system"
+        : "user";
 
   const body =
     role === "assistant"

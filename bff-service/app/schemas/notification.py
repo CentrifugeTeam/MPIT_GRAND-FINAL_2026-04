@@ -8,6 +8,7 @@ class NotificationType(str, Enum):
     SYSTEM = "system"
     EMAIL = "email"
     REPORT = "report"
+    CHAT_INVITE = "chat_invite"
 
 class NotificationStatus(str, Enum):
     PENDING = "pending"
@@ -39,6 +40,7 @@ class NotificationCreate(BaseModel):
     type: NotificationType = Field(..., description="Тип уведомления")
     title: str = Field(..., min_length=1, description="Заголовок")
     message: str = Field(..., min_length=1, description="Текст уведомления")
+    payload: Optional[dict] = Field(default=None, description="Дополнительные данные уведомления")
 
 class NotificationResponse(BaseModel):
     id: str
@@ -46,6 +48,7 @@ class NotificationResponse(BaseModel):
     type: NotificationType
     title: str
     message: str
+    payload: Optional[dict] = None
     status: NotificationStatus
     created_at: datetime
     sent_at: Optional[datetime] = None

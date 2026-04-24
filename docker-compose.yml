@@ -293,7 +293,8 @@ services:
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USERNAME=${SMTP_USERNAME:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      # Внутри Docker-сети всегда хост «redis», не localhost из .env хоста.
+      - REDIS_URL=redis://redis:6379/0
       - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-0}
     depends_on:
       auth-service:

@@ -77,6 +77,7 @@ export const nlChatHistoryRowSchema = z.object({
   message_count: z.number(),
   created_at: z.string(),
   updated_at: z.string().nullable(),
+  access_role: z.enum(["owner", "viewer"]).optional(),
 });
 
 export const analyticsHistoryItemSchema = z.discriminatedUnion("entry_kind", [

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 
+import { useAcceptedChatInvites } from '../../model/use-accepted-chat-invites';
 import type { AnalyticsSidebarProps } from '../analytics-panel/analytics-sidebar';
+import type { AppNotification } from '@/shared/api/notifications-api';
 import {
   FIGMA_SIDEBAR_COLLAPSED_PX,
   FIGMA_SIDEBAR_EXPANDED_PX,
@@ -22,6 +24,7 @@ import {
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
   onToggle: () => void;
+  onChatInviteNotification?: (notification: AppNotification) => void;
 };
 
 export function FigmaAnalyticsSidebar({
@@ -46,12 +49,15 @@ export function FigmaAnalyticsSidebar({
   onStartEditingRow,
   onDeleteHistoryEntry,
   t,
+  onChatInviteNotification,
 }: FigmaAnalyticsSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const { acceptedEntries, isLoading: sharedChatsLoading } =
+    useAcceptedChatInvites();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -130,6 +136,8 @@ export function FigmaAnalyticsSidebar({
                 onRequestDeleteAll={() => setDeleteAllOpen(true)}
                 onStartEditingRow={onStartEditingRow}
                 onRequestDeleteRow={id => setPendingDeleteId(id)}
+                sharedEntries={acceptedEntries}
+                sharedChatsLoading={sharedChatsLoading}
                 t={t}
               />
             )}
@@ -163,6 +171,7 @@ export function FigmaAnalyticsSidebar({
                 isOpen={isOpen}
                 t={t}
                 onOpenSettings={() => setSettingsOpen(true)}
+                onChatInviteNotification={onChatInviteNotification}
               />
             </div>
           </div>

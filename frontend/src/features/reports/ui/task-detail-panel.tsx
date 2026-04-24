@@ -16,7 +16,6 @@ import { FigmaConfirmDialog } from '@/features/analytics/ui/figma-home/figma-con
 import type { ChartPayloadShape } from '@/entities/analytics';
 import { AnalyticsCharts } from '@/features/analytics';
 import {
-  Archive,
   ArrowsRotateLeft,
   CloseIcon,
   PauseIcon,
