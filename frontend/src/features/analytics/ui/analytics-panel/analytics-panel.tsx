@@ -53,6 +53,7 @@ export function AnalyticsPanel() {
           composerBusy={p.composerBusy}
           nlChatLines={p.nlChatLines}
           nlChatReady={p.nlChatReady}
+          nlConversationId={p.nlConversationId}
           onQuestionChange={p.setQuestion}
           onMaxRowsChange={p.setMaxRowsStr}
           onSend={() => void p.sendComposerMessage()}

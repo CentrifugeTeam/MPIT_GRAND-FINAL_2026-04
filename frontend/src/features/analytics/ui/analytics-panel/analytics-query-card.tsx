@@ -16,6 +16,7 @@ export type AnalyticsQueryCardProps = {
   composerBusy: boolean;
   nlChatLines: NlChatLine[];
   nlChatReady: boolean;
+  nlConversationId: string | null;
   onQuestionChange: (v: string) => void;
   onMaxRowsChange: (v: string) => void;
   onSend: () => void;
@@ -30,6 +31,7 @@ export function AnalyticsQueryCard({
   composerBusy,
   nlChatLines,
   nlChatReady,
+  nlConversationId,
   onQuestionChange,
   onMaxRowsChange,
   onSend,
@@ -56,6 +58,7 @@ export function AnalyticsQueryCard({
           nlChatLines={nlChatLines}
           variant="card"
           emptyLabel={t("home.analytics.chatEmpty")}
+          nlConversationId={nlConversationId}
         />
 
         <textarea

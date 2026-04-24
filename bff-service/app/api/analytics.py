@@ -24,6 +24,7 @@ from app.schemas.openapi_analytics import (
     QueryQualityResponse,
 )
 from app.services.analytics_service import AnalyticsProxy
+from app.services.nl_chat_pdf import build_single_assistant_message_pdf_bytes
 from app.services.auth_service import AuthService
 from app.services.notification_service import NotificationService
 from app.services.notification_realtime import publish_notification_touch
@@ -414,6 +415,53 @@ async def get_nl_chat_messages(
     role = str(current_user.get("role") or "USER")
     raw = await _proxy.get_nl_chat_messages(uid, conversation_id, user_role=role)
     return NlChatTranscriptResponse.model_validate(raw)
+
+
+@router.get(
+    "/chats/{conversation_id}/export/pdf",
+    summary="Экспорт одного ответа ассистента в PDF",
+    description=(
+        "Параметр message_id — id сообщения assistant из GET .../messages. "
+        "В PDF: вопрос пользователя (предыдущее user-сообщение) как заголовок, ответ без reasoning, "
+        "при наличии — график и таблица. Имя файла — по тексту вопроса (filename* UTF-8). "
+        + _AUTH_DESC
+    ),
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/pdf": {}},
+            "description": "PDF-файл",
+        },
+        400: {"description": "message_id не указывает на assistant"},
+        401: {"description": "Нет или просрочен JWT"},
+        404: {"description": "Чат или сообщение не найдены"},
+    },
+)
+async def export_nl_chat_pdf(
+    conversation_id: str,
+    message_id: str = Query(..., min_length=1, description="UUID сообщения assistant"),
+    current_user: dict = Depends(get_current_user),
+) -> Response:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    raw = await _proxy.get_nl_chat_messages(uid, conversation_id, user_role=role)
+    try:
+        pdf_bytes, disposition = build_single_assistant_message_pdf_bytes(raw, message_id)
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Сообщение не найдено в этом чате",
+        ) from None
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e) or "message_id должен указывать на сообщение ассистента",
+        ) from e
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": disposition},
+    )
 
 
 @router.patch(

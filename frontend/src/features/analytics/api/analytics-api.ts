@@ -257,6 +257,93 @@ export async function fetchNlChatMessages(conversationId: string) {
   return nlChatMessagesResponseSchema.parse(data);
 }
 
+export function parseFilenameFromContentDisposition(
+  header: string | undefined,
+): string | null {
+  if (!header) return null;
+  const utf8Key = "filename*=UTF-8''";
+  const idx = header.indexOf(utf8Key);
+  if (idx !== -1) {
+    const raw = header.slice(idx + utf8Key.length).split(';')[0]!.trim();
+    try {
+      return decodeURIComponent(raw.replace(/^"(.*)"$/, '$1'));
+    } catch {
+      /* ignore */
+    }
+  }
+  const quoted = header.match(/filename="([^"]+)"/i);
+  if (quoted?.[1]) return quoted[1];
+  const plain = header.match(/filename=([^;\s]+)/i);
+  if (plain?.[1]) {
+    try {
+      return decodeURIComponent(plain[1].replace(/^"(.*)"$/, '$1'));
+    } catch {
+      return plain[1];
+    }
+  }
+  return null;
+}
+
+/** Локальное имя файла из вопроса, если заголовок с сервера не распарсился. */
+export function sanitizeLocalPdfFilename(question: string): string {
+  const t = question
+    .trim()
+    .slice(0, 80)
+    .replace(/[<>:"/\\|?*\n\r\t]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!t) return 'answer.pdf';
+  return t.toLowerCase().endsWith('.pdf') ? t : `${t}.pdf`;
+}
+
+/** PDF одного ответа assistant; имя файла — из Content-Disposition (вопрос пользователя). */
+export async function fetchNlChatPdfBlob(
+  conversationId: string,
+  messageId: string,
+): Promise<{ blob: Blob; suggestedFilename: string | null }> {
+  const res = await api.get<Blob>(
+    `/api/analytics/chats/${conversationId}/export/pdf`,
+    {
+      params: { message_id: messageId },
+      responseType: 'blob',
+      timeout: 120_000,
+    },
+  );
+  const ctype = String(res.headers['content-type'] ?? '');
+  if (!ctype.includes('pdf')) {
+    let detail = res.statusText || 'Export failed';
+    try {
+      const text = await (res.data as Blob).text();
+      const parsed = JSON.parse(text) as { detail?: unknown };
+      if (parsed?.detail != null) {
+        detail =
+          typeof parsed.detail === 'string'
+            ? parsed.detail
+            : JSON.stringify(parsed.detail);
+      }
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  const suggestedFilename = parseFilenameFromContentDisposition(
+    res.headers['content-disposition'],
+  );
+  return { blob: res.data as Blob, suggestedFilename };
+}
+
+export function triggerBrowserDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function deleteNlChat(conversationId: string) {
   await api.delete(`/api/analytics/chats/${conversationId}`);
 }

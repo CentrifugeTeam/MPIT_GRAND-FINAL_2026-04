@@ -203,6 +203,7 @@ export function FigmaAnalyticsMain({
                       }
                       assistantActionsLocked={composerBusy || isNlViewer}
                       scrollerEl={scrollerEl}
+                      nlConversationId={nlConversationId}
                     />
                   </div>
                 </ScrollShadow>

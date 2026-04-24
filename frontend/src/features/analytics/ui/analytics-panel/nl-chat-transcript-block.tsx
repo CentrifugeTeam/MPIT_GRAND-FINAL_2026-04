@@ -11,6 +11,11 @@ import { Button, Card, Disclosure } from '@heroui/react';
 import { motion } from 'motion/react';
 import { Virtuoso } from 'react-virtuoso';
 
+import {
+  fetchNlChatPdfBlob,
+  sanitizeLocalPdfFilename,
+  triggerBrowserDownload,
+} from '@/features/analytics/api/analytics-api';
 import { downloadQueue } from '@/shared/lib/download-queue';
 
 import { Logo } from '@/shared/ui/atoms/logo';
@@ -160,6 +165,7 @@ function GrokAssistantToolbar({
   assistantLineId,
   handlers,
   actionsLocked,
+  nlConversationId,
 }: {
   t: TFn;
   plain: string;
@@ -167,6 +173,7 @@ function GrokAssistantToolbar({
   assistantLineId: string;
   handlers: NlChatAssistantActionHandlers;
   actionsLocked: boolean;
+  nlConversationId: string | null;
 }) {
   const [copyFlash, setCopyFlash] = useState(false);
 
@@ -259,9 +266,13 @@ function GrokAssistantToolbar({
           </motion.span>
         </FigmaSimpleTooltip>
       ) : null}
-      {userCtx?.text?.trim() ? (
+      {userCtx?.text?.trim() && nlConversationId ? (
         <FigmaSimpleTooltip
-          label={actionsLocked ? lockHint : t('home.analytics.download')}
+          label={
+            actionsLocked
+              ? lockHint
+              : t('home.analytics.download')
+          }
           side='top'
         >
           <motion.span
@@ -277,7 +288,7 @@ function GrokAssistantToolbar({
               aria-disabled={actionsLocked}
               disabled={actionsLocked}
               onClick={async () => {
-                downloadQueue.add(
+                const toastKey = downloadQueue.add(
                   {
                     title: t('home.analytics.downloadToastLoading'),
                     indicator: (
@@ -286,9 +297,37 @@ function GrokAssistantToolbar({
                         width={16}
                       />
                     ),
+                    isLoading: true,
                   },
-                  { timeout: 2000 },
+                  { timeout: 0 },
                 );
+                try {
+                  const { blob, suggestedFilename } = await fetchNlChatPdfBlob(
+                    nlConversationId,
+                    assistantLineId,
+                  );
+                  const name =
+                    suggestedFilename?.trim() ||
+                    sanitizeLocalPdfFilename(userCtx.text.trim());
+                  triggerBrowserDownload(blob, name);
+                  downloadQueue.close(toastKey);
+                  downloadQueue.add(
+                    {
+                      title: t('home.analytics.downloadToastSuccess'),
+                      variant: 'success',
+                    },
+                    { timeout: 4000 },
+                  );
+                } catch {
+                  downloadQueue.close(toastKey);
+                  downloadQueue.add(
+                    {
+                      title: t('home.analytics.downloadToastError'),
+                      variant: 'danger',
+                    },
+                    { timeout: 5000 },
+                  );
+                }
               }}
             >
               <ArrowDownToSquare
@@ -364,6 +403,7 @@ type ChatMessageBubbleProps = {
   /** Примитивы для toolbar: стабильны для завершённых сообщений → memo работает */
   userCtxText: string | null;
   userCtxLineId: string | null;
+  nlConversationId: string | null;
 };
 
 const ChatMessageBubble = memo(function ChatMessageBubble({
@@ -385,6 +425,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   t,
   userCtxText,
   userCtxLineId,
+  nlConversationId,
 }: ChatMessageBubbleProps) {
   const userCtx =
     userCtxText && userCtxLineId
@@ -485,6 +526,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
               assistantLineId={l.id}
               handlers={assistantActionHandlers}
               actionsLocked={assistantActionsLocked}
+              nlConversationId={nlConversationId}
             />
           )}
       </div>
@@ -502,6 +544,7 @@ export function NlChatTranscriptBlock({
   assistantActionHandlers,
   assistantActionsLocked = false,
   scrollerEl,
+  nlConversationId = null,
 }: {
   t: TFn;
   nlChatLines: NlChatLine[];
@@ -511,6 +554,8 @@ export function NlChatTranscriptBlock({
   assistantActionsLocked?: boolean;
   /** Внешний scroll-контейнер — передаётся для варианта grok из родителя. */
   scrollerEl?: HTMLElement | null;
+  /** ID чата для экспорта PDF на BFF. */
+  nlConversationId?: string | null;
 }) {
   const b =
     variant === 'grok'
@@ -613,6 +658,7 @@ export function NlChatTranscriptBlock({
           t={t}
           userCtxText={rawUserCtx?.text ?? null}
           userCtxLineId={rawUserCtx?.lineId ?? null}
+          nlConversationId={nlConversationId ?? null}
         />
       );
     },
@@ -632,6 +678,7 @@ export function NlChatTranscriptBlock({
       assistantActionHandlers,
       assistantActionsLocked,
       t,
+      nlConversationId,
     ],
   );
 
