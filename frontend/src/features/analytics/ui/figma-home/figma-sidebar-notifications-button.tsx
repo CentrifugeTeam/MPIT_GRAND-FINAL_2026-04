@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type SyntheticEvent } from "react";
 import { ListBox, Popover } from "@heroui/react";
 
 import type { AppNotification } from "@/shared/api/notifications-api";
-import { CheckIcon, CloseIcon, BellDotIcon } from "@/shared/ui/assets/icons";
+import { CheckIcon, CloseIcon, BellIcon } from "@/shared/ui/assets/icons";
 import { FigmaSimpleTooltip } from "./figma-simple-tooltip";
 import {
   getInitialsFromText,
@@ -44,6 +44,7 @@ export function FigmaSidebarNotificationsButton({
   hasNotificationBadge,
 }: FigmaSidebarNotificationsButtonProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const showBadge = hasNotificationBadge ?? notifications.length > 0;
 
   const sorted = useMemo(
@@ -68,6 +69,7 @@ export function FigmaSidebarNotificationsButton({
         } else {
           await onReject(pl.invite_id, n.id);
         }
+        setNotificationsOpen(false);
       } finally {
         setBusyId(null);
       }
@@ -83,18 +85,23 @@ export function FigmaSidebarNotificationsButton({
       aria-label={t("home.figma.notifications")}
       className={triggerClassName}
     >
-      {showBadge ? (
-        <span
-          className="absolute -right-0.5 -top-0.5 z-[1] inline-flex h-2.5 w-2.5 rounded-full bg-danger"
-          aria-hidden
-        />
-      ) : null}
-      <BellDotIcon className="shrink-0" width={16} height={16} />
+      <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
+        {showBadge ? (
+          <span
+            className="absolute right-[1px] top-[1px] z-1 size-[5px] rounded-full bg-danger"
+            aria-hidden
+          />
+        ) : null}
+        <BellIcon className="shrink-0" width={16} height={16} />
+      </span>
     </Popover.Trigger>
   );
 
   return (
-    <Popover.Root>
+    <Popover.Root
+      isOpen={notificationsOpen}
+      onOpenChange={setNotificationsOpen}
+    >
       {isSidebarOpen ? (
         trigger
       ) : (
@@ -110,15 +117,12 @@ export function FigmaSidebarNotificationsButton({
         className={NOTIFICATIONS_POPOVER_CONTENT_CLASS}
       >
         <Popover.Dialog className={NOTIFICATIONS_POPOVER_DIALOG_CLASS}>
-          <div
-            className="flex w-[294px] flex-col overflow-hidden rounded-2xl border border-[#28282c] bg-[#0c0c0d] shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
-            style={{ height: 312 }}
-          >
-            <h2 className="shrink-0 px-4 pt-3 font-sans text-sm font-medium text-[#a1a1aa]">
+          <div className="flex w-[310px] max-h-[312px] flex-col overflow-hidden rounded-[26px] bg-[#121212] shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
+            <h2 className="shrink-0 px-[16px] pt-5 font-sans text-sm font-medium text-[#999999]">
               {t("home.figma.notifications")}
             </h2>
             {sorted.length === 0 ? (
-              <p className="mt-2 px-4 pb-3 font-sans text-xs text-[#a1a1aa]">
+              <p className="mt-2 px-[12px] pb-4 font-sans text-xs text-[#999999]">
                 {t("home.figma.notificationsEmpty")}
               </p>
             ) : (
@@ -126,7 +130,7 @@ export function FigmaSidebarNotificationsButton({
                 aria-label={t("home.figma.notifications")}
                 selectionMode="none"
                 items={sorted}
-                className="mt-2 min-h-0 flex-1 overflow-y-auto px-2 pb-3 outline-none"
+                className="mt-2 min-h-0 flex-1 overflow-y-auto px-[12px] pb-4 outline-none"
               >
                 {(n) => {
                   if (n.type === "chat_invite") {
@@ -143,29 +147,29 @@ export function FigmaSidebarNotificationsButton({
                         key={n.id}
                         id={n.id}
                         textValue={textValue}
-                        className="cursor-default rounded-none border-0 border-b border-[#28282c] bg-transparent px-0 py-2.5 shadow-none outline-none last:border-b-0 data-[focused]:bg-transparent data-[hovered]:bg-[#121214]"
+                        className="w-full cursor-default rounded-none border-0 border-b border-[#2a2a2a] bg-transparent px-0 py-2 shadow-none outline-none last:border-b-0 data-[focused]:bg-transparent data-[hovered]:bg-[#1a1a1a]"
                       >
                         <div
-                          className="flex items-center gap-2"
+                          className="flex w-full min-w-0 items-center gap-3"
                           onClick={stopListClickClose}
                           onPointerDown={stopListClickClose}
                           role="presentation"
                         >
                           <div
-                            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#0f2e1f] text-[11px] font-medium text-[#4ade80]"
+                            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#1b2b22] font-sans text-xs font-medium text-[#4caf50]"
                             aria-hidden
                           >
                             {initials}
                           </div>
-                          <div className="min-w-0 flex-1 pr-1">
-                            <p className="truncate font-sans text-sm font-medium text-[#fcfcfc]">
+                          <div className="min-w-0 flex-1 pr-2">
+                            <p className="truncate font-sans text-sm font-semibold text-white">
                               {from}
                             </p>
-                            <p className="font-sans text-[11px] text-[#a1a1aa]">
+                            <p className="truncate whitespace-nowrap font-sans text-xs text-[#888888]">
                               {t("home.figma.chatInviteListSubtitle")}
                             </p>
                           </div>
-                          <div className="flex shrink-0 items-stretch">
+                          <div className="ml-auto flex shrink-0 items-stretch">
                             <button
                               type="button"
                               disabled={busy || !pl.invite_id}
@@ -174,17 +178,17 @@ export function FigmaSidebarNotificationsButton({
                                 void runAction(n, "accept", pl);
                               }}
                               onPointerDown={stopListClickClose}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-l-lg text-[#fcfcfc] transition-colors hover:bg-[#27272a]/60 disabled:opacity-40"
+                              className="flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-md text-white transition-colors hover:bg-white/10 disabled:opacity-40"
                               aria-label={t("home.figma.chatInviteAccept")}
                             >
                               <CheckIcon
                                 className="shrink-0"
-                                width={16}
-                                height={16}
+                                width={20}
+                                height={20}
                               />
                             </button>
                             <div
-                              className="my-1 w-px self-stretch bg-[#3f3f46]"
+                              className="my-1.5 w-px self-stretch bg-[#333333]"
                               aria-hidden
                             />
                             <button
@@ -195,13 +199,13 @@ export function FigmaSidebarNotificationsButton({
                                 void runAction(n, "reject", pl);
                               }}
                               onPointerDown={stopListClickClose}
-                              className="flex size-8 cursor-pointer items-center justify-center rounded-r-lg text-[#fcfcfc] transition-colors hover:bg-[#27272a]/60 disabled:opacity-40"
+                              className="flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-md text-white transition-colors hover:bg-white/10 disabled:opacity-40"
                               aria-label={t("home.figma.chatInviteReject")}
                             >
                               <CloseIcon
                                 className="shrink-0"
-                                width={16}
-                                height={16}
+                                width={20}
+                                height={20}
                               />
                             </button>
                           </div>
@@ -215,10 +219,12 @@ export function FigmaSidebarNotificationsButton({
                       key={n.id}
                       id={n.id}
                       textValue={textValue}
-                      className="cursor-default rounded-none border-0 border-b border-[#28282c] bg-transparent px-0 py-2.5 shadow-none outline-none last:border-b-0 data-[focused]:bg-transparent data-[hovered]:bg-[#121214]"
+                      className="cursor-default rounded-none border-0 border-b border-[#2a2a2a] bg-transparent px-0 py-4 shadow-none outline-none last:border-b-0 data-[focused]:bg-transparent data-[hovered]:bg-[#1a1a1a]"
                     >
-                      <p className="font-sans text-xs text-foreground">{n.title}</p>
-                      <p className="line-clamp-2 font-sans text-[11px] text-[#a1a1aa]">
+                      <p className="font-sans text-xs text-foreground">
+                        {n.title}
+                      </p>
+                      <p className="line-clamp-2 font-sans text-xs text-[#888888]">
                         {n.message}
                       </p>
                     </ListBox.Item>
@@ -232,3 +238,4 @@ export function FigmaSidebarNotificationsButton({
     </Popover.Root>
   );
 }
+

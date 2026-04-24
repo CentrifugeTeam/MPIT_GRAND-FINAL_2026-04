@@ -130,7 +130,7 @@ export function FigmaAnalyticsMain({
           type="button"
           disabled={!nlConversationId || cloneSharedBusy}
           onClick={() => void onCloneSharedChat()}
-          className="inline-flex h-10 min-h-10 min-w-0 max-w-full items-center justify-center gap-2 rounded-full bg-white px-6 font-sans text-[15px] font-medium text-black hover:enabled:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40 disabled:cursor-not-allowed"
+          className="inline-flex h-10 min-h-10 min-w-0 max-w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-6 font-sans text-[15px] font-medium text-black shadow-md shadow-black/30 transition-all duration-200 ease-in-out hover:enabled:bg-zinc-100 hover:enabled:shadow-lg active:enabled:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40 disabled:cursor-not-allowed disabled:opacity-50 с"
         >
           {cloneSharedBusy && (
             <Icon
@@ -151,99 +151,103 @@ export function FigmaAnalyticsMain({
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden py-4 bg-[#060607] bg-[url(/mpit.png)] bg-cover bg-no-repeat">
-        <div className="w-full h-full opacity-30 absolute inset-0 bg-black pointer-events-none" />
+        <div className="pointer-events-none absolute inset-0 h-full w-full bg-black opacity-30" />
 
-        {/* Бургер-кнопка при свёрнутом сайдбаре — абсолютно позиционирована в левом верхнем углу */}
-        {!sidebarOpen && (
-          <div className="absolute top-5 left-5 z-10">
-            <FigmaSimpleTooltip
-              label={t("home.figma.openSidebar")}
-              side="bottom"
-            >
-              <button
-                type="button"
-                onClick={onOpenSidebar}
-                className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/60 active:scale-[0.97]"
+        <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
+          {/* Бургер-кнопка при свёрнутом сайдбаре — абсолютно позиционирована в левом верхнем углу */}
+          {!sidebarOpen && (
+            <div className="absolute top-5 left-5 z-10">
+              <FigmaSimpleTooltip
+                label={t("home.figma.openSidebar")}
+                side="bottom"
               >
-                <Icon icon="mdi:menu" className="text-[#fcfcfc]" width={22} />
-              </button>
-            </FigmaSimpleTooltip>
-          </div>
-        )}
-
-        {hasChat ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="shrink-0 px-5 pt-5">
-              <FigmaChatHeaderRow
-                t={t}
-                nlConversationId={nlConversationId}
-                nlChatAccessRole={nlChatAccessRole}
-                onShareChat={onShareChat}
-                historyBusy={historyBusy}
-                onRefreshHistory={onRefreshHistory}
-                onStartNewChat={onStartNewChat}
-              />
-            </div>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              {/* Плашка «ясность формулировки» — временно скрыта */}
-              <ScrollShadow
-                ref={(el) => setScrollerEl(el as HTMLElement | null)}
-                className="min-h-0 flex-1 max-h-[calc(100vh-240px)] overscroll-y-contain px-3 sm:px-5"
-                hideScrollBar
-              >
-                <div className={chatColClass} style={chatColStyle}>
-                  <NlChatTranscriptBlock
-                    t={t}
-                    nlChatLines={nlChatLines}
-                    variant="grok"
-                    emptyLabel={t("home.analytics.chatEmpty")}
-                    assistantActionHandlers={nlAssistantActionHandlers ?? null}
-                    assistantActionsLocked={composerBusy || isNlViewer}
-                    scrollerEl={scrollerEl}
-                  />
-                </div>
-              </ScrollShadow>
-            </div>
-            <div className="shrink-0 px-5 pb-4 pt-3">
-              <div className="mx-auto w-full" style={chatColStyle}>
-                {bottomInput}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <div className="relative flex w-full h-full flex-col gap-10 p-5 pb-10 items-center justify-center">
-              <FigmaChatHeaderRow
-                t={t}
-                nlConversationId={nlConversationId}
-                nlChatAccessRole={nlChatAccessRole}
-                onShareChat={onShareChat}
-                historyBusy={historyBusy}
-                onRefreshHistory={onRefreshHistory}
-                onStartNewChat={onStartNewChat}
-              />
-              {showHero && <FigmaAnalyticsHero t={t} />}
-              <div className="flex w-full flex-col gap-4">
-                <div
-                  className="flex flex-col mx-auto w-full gap-6"
-                  style={chatColStyle}
+                <button
+                  type="button"
+                  onClick={onOpenSidebar}
+                  className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/60 active:scale-[0.97]"
                 >
-                  {bottomInput}
-                  {showHero && !isNlViewer && (
-                    <FigmaSuggestionBlock
+                  <Icon icon="mdi:menu" className="text-[#fcfcfc]" width={22} />
+                </button>
+              </FigmaSimpleTooltip>
+            </div>
+          )}
+
+          {hasChat ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="shrink-0 px-5 pt-5">
+                <FigmaChatHeaderRow
+                  t={t}
+                  nlConversationId={nlConversationId}
+                  nlChatAccessRole={nlChatAccessRole}
+                  onShareChat={onShareChat}
+                  historyBusy={historyBusy}
+                  onRefreshHistory={onRefreshHistory}
+                  onStartNewChat={onStartNewChat}
+                />
+              </div>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {/* Плашка «ясность формулировки» — временно скрыта */}
+                <ScrollShadow
+                  ref={(el) => setScrollerEl(el as HTMLElement | null)}
+                  className="min-h-0 flex-1 max-h-[calc(100vh-240px)] overscroll-y-contain px-3 sm:px-5"
+                  hideScrollBar
+                >
+                  <div className={chatColClass} style={chatColStyle}>
+                    <NlChatTranscriptBlock
                       t={t}
-                      activeFaq={activeFaq}
-                      setActiveFaq={setActiveFaq}
-                      apiTopics={chatSuggestions}
-                      apiLoaded={chatSuggestionsLoaded}
-                      onPick={handleFaqPick}
+                      nlChatLines={nlChatLines}
+                      variant="grok"
+                      emptyLabel={t("home.analytics.chatEmpty")}
+                      assistantActionHandlers={
+                        nlAssistantActionHandlers ?? null
+                      }
+                      assistantActionsLocked={composerBusy || isNlViewer}
+                      scrollerEl={scrollerEl}
                     />
-                  )}
+                  </div>
+                </ScrollShadow>
+              </div>
+              <div className="shrink-0 px-5 pb-4 pt-3">
+                <div className="mx-auto w-full" style={chatColStyle}>
+                  {bottomInput}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div className="relative flex w-full h-full flex-col gap-10 p-5 pb-10 items-center justify-center">
+                <FigmaChatHeaderRow
+                  t={t}
+                  nlConversationId={nlConversationId}
+                  nlChatAccessRole={nlChatAccessRole}
+                  onShareChat={onShareChat}
+                  historyBusy={historyBusy}
+                  onRefreshHistory={onRefreshHistory}
+                  onStartNewChat={onStartNewChat}
+                />
+                {showHero && <FigmaAnalyticsHero t={t} />}
+                <div className="flex w-full flex-col gap-4">
+                  <div
+                    className="flex flex-col mx-auto w-full gap-6"
+                    style={chatColStyle}
+                  >
+                    {bottomInput}
+                    {showHero && !isNlViewer && (
+                      <FigmaSuggestionBlock
+                        t={t}
+                        activeFaq={activeFaq}
+                        setActiveFaq={setActiveFaq}
+                        apiTopics={chatSuggestions}
+                        apiLoaded={chatSuggestionsLoaded}
+                        onPick={handleFaqPick}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <AnimatePresence>
         {sourceModalOpen && (

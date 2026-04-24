@@ -1,6 +1,7 @@
 export { default as ArrowsRotateLeft } from "./arrows-rotate-left.svg";
 export { default as Archive } from "./archive.svg";
 export { default as BellDotIcon } from "./bell-dot.svg";
+export { default as BellIcon } from "./bell.svg";
 export { default as Logo } from "./avatar.svg";
 export { default as SearchIcon } from "./search.svg";
 export { default as NewChatIcon } from "./new-chat.svg";

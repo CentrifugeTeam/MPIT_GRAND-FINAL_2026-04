@@ -6,6 +6,20 @@ const MAX_CHAT_ENTRIES = 80;
 
 export type AnalyticsEntryKind = "sql_job" | "nl_chat";
 
+/** First occurrence wins (preserves API order, e.g. newest-first). */
+export function dedupeAnalyticsChatEntriesById(
+  entries: AnalyticsChatEntry[],
+): AnalyticsChatEntry[] {
+  const seen = new Set<string>();
+  const out: AnalyticsChatEntry[] = [];
+  for (const e of entries) {
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    out.push(e);
+  }
+  return out;
+}
+
 export interface AnalyticsChatEntry {
   id: string;
   kind: AnalyticsEntryKind;
@@ -68,7 +82,10 @@ export const useAnalyticsChatStore = create<AnalyticsChatState>()((set) => ({
 
   setEntriesFromServer: (incoming) =>
     set((s) => {
-      const capped = incoming.slice(0, MAX_CHAT_ENTRIES);
+      const capped = dedupeAnalyticsChatEntriesById(incoming).slice(
+        0,
+        MAX_CHAT_ENTRIES,
+      );
       const nextActive =
         s.activeId && capped.some((e) => e.id === s.activeId)
           ? s.activeId
