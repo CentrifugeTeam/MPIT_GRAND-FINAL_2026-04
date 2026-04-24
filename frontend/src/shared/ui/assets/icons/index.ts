@@ -23,3 +23,5 @@ export { default as PersonIcon } from './person.svg';
 export { default as GearIcon } from './gear.svg';
 export { default as ArrowRightFromSquareIcon } from './arrow-right-from-square.svg';
 export { default as ArrowChevronRight } from './arrow-chevron-right.svg';
+export { default as EyeCloseIcon } from './eye-close.svg';
+export { default as RocketIcon } from './rocket.svg';

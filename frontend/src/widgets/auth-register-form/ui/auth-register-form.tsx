@@ -10,6 +10,7 @@ import { useRegister } from '@/entities/auth';
 import i18n from '@/shared/lib/i18n';
 import {
   ArrowRightToSquareIcon,
+  EyeCloseIcon,
   EyeIcon,
   PersonPlusIcon,
 } from '@/shared/ui/assets/icons';
@@ -162,10 +163,17 @@ export function AuthRegisterForm() {
                         onPress={() => setShowPassword(p => !p)}
                         className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400'
                       >
-                        <EyeIcon
-                          height={16}
-                          width={18}
-                        />
+                        {showPassword ? (
+                          <EyeCloseIcon
+                            width={16}
+                            height={16}
+                          />
+                        ) : (
+                          <EyeIcon
+                            height={16}
+                            width={16}
+                          />
+                        )}
                       </Button>
                     </div>
                     <ErrorMessage>{fieldState.error?.message}</ErrorMessage>
@@ -195,10 +203,17 @@ export function AuthRegisterForm() {
                         onPress={() => setShowConfirm(p => !p)}
                         className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400'
                       >
-                        <EyeIcon
-                          height={16}
-                          width={18}
-                        />
+                        {showConfirm ? (
+                          <EyeCloseIcon
+                            width={16}
+                            height={16}
+                          />
+                        ) : (
+                          <EyeIcon
+                            height={16}
+                            width={16}
+                          />
+                        )}
                       </Button>
                     </div>
                     <ErrorMessage>{fieldState.error?.message}</ErrorMessage>

@@ -1,5 +1,4 @@
 import { Dropdown } from '@heroui/react';
-import { Icon } from '@iconify/react';
 import { useNavigate } from 'react-router';
 
 import { useAuthStore } from '@/shared/lib/auth-store';

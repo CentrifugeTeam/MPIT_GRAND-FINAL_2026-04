@@ -1,8 +1,7 @@
 import { motion } from 'motion/react';
-import { Icon } from '@iconify/react';
 
 import type { FigmaTranslateFn } from '../../config/figma-analytics-faq';
-import { MicrophoneIcon, WrenchIcon } from '@/shared/ui/assets/icons';
+import { WrenchIcon } from '@/shared/ui/assets/icons';
 
 export function FigmaVoiceStubPanel({
   t,

@@ -4,8 +4,7 @@ import {
   PauseIcon,
   PlayIcon,
 } from '@/shared/ui/assets/icons';
-import { Surface, Separator, Button } from '@heroui/react';
-import { Icon } from '@iconify/react';
+import { Surface, Separator } from '@heroui/react';
 import { useState } from 'react';
 
 interface ReportTaskItemProps {

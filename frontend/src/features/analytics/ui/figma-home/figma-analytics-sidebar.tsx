@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Icon } from '@iconify/react';
 
 import type { AnalyticsSidebarProps } from '../analytics-panel/analytics-sidebar';
 import {
