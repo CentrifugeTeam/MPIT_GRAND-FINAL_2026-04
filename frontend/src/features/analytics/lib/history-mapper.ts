@@ -51,6 +51,7 @@ export function historyItemToChatEntry(item: AnalyticsHistoryItem): AnalyticsCha
       question: label,
       maxRows: null,
       createdAt: new Date(item.created_at).getTime(),
+      accessRole: item.access_role ?? "owner",
       result: null,
     };
   }

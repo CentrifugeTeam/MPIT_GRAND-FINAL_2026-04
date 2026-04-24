@@ -29,6 +29,8 @@ class NlChatSession(PlatformBase):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    created_by_user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    visibility = Column(String(32), nullable=False, default="private")
     title = Column(Text, nullable=True)
     preview_text = Column(Text, nullable=True)
     chat_type = Column(String(32), nullable=False, default="chat")
@@ -41,6 +43,7 @@ class NlChatSession(PlatformBase):
     is_active = Column(Boolean, nullable=False, default=True)
     notification_email = Column(String(255), nullable=True)
     message_count = Column(Integer, nullable=False, default=0)
+    team_space_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -88,6 +91,42 @@ class NlChatMessage(PlatformBase):
     role = Column(String(16), nullable=False)
     client_message_id = Column(String(128), nullable=True)
     payload = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class NlChatInvite(PlatformBase):
+    __tablename__ = "nl_chat_invites"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("nl_chat_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    owner_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    invitee_email = Column(String(255), nullable=False, index=True)
+    invitee_user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    owner_invite_email = Column(String(255), nullable=True)
+    access_mode = Column(String(32), nullable=False, default="view_only")
+    status = Column(String(32), nullable=False, default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    accepted_at = Column(DateTime, nullable=True)
+
+
+class NlChatAccess(PlatformBase):
+    __tablename__ = "nl_chat_access"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("nl_chat_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    owner_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    access_role = Column(String(32), nullable=False, default="viewer")
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -18,6 +18,13 @@ class NotificationService:
             response.raise_for_status()
             return response.json()
 
+    async def delete_notification(self, user_id: str, notification_id: str) -> None:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{self.notification_service_url}/notifications/{user_id}/notification/{notification_id}"
+            )
+            response.raise_for_status()
+
     async def get_user_notifications(self, user_id: str) -> List[Dict[str, Any]]:
         """Получить уведомления пользователя через notification-service"""
         async with httpx.AsyncClient() as client:

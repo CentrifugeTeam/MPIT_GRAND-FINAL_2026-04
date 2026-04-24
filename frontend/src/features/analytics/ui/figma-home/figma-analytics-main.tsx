@@ -42,7 +42,10 @@ export type FigmaAnalyticsMainProps = {
   chatSuggestions: ChatSuggestionTopic[];
   chatSuggestionsLoaded: boolean;
   nlConversationId: string | null;
+  nlChatAccessRole?: 'owner' | 'viewer' | null;
+  cloneSharedBusy?: boolean;
   onShareChat: () => void;
+  onCloneSharedChat?: () => void;
   historyBusy: boolean;
   onRefreshHistory: () => void;
   onQuestionChange: (v: string) => void;
@@ -72,7 +75,10 @@ export function FigmaAnalyticsMain({
   chatSuggestions,
   chatSuggestionsLoaded,
   nlConversationId,
+  nlChatAccessRole = 'owner',
+  cloneSharedBusy = false,
   onShareChat,
+  onCloneSharedChat,
   historyBusy,
   onRefreshHistory,
   onQuestionChange,
@@ -86,6 +92,9 @@ export function FigmaAnalyticsMain({
   const [scrollerEl, setScrollerEl] = useState<HTMLElement | null>(null);
   const hasChat = nlChatLines.length > 0;
   const showHero = !hasChat;
+  const isNlViewer = nlChatAccessRole === 'viewer';
+  const showViewerCloneBar =
+    isNlViewer && Boolean(nlConversationId) && Boolean(onCloneSharedChat);
   const sourceButtonLabel =
     selectedSourceLabel ||
     dataSources.find(s => s.key === selectedSourceKey)?.display_name ||
@@ -113,6 +122,39 @@ export function FigmaAnalyticsMain({
       onVoiceOpen={() => setVoiceOpen(true)}
     />
   );
+
+  const viewerBottomBar =
+    showViewerCloneBar && onCloneSharedChat ? (
+      <div className='rounded-2xl border border-[#28282c] bg-[#18181b] px-4 py-4'>
+        <p className='mb-4 text-center font-sans text-[13px] leading-snug text-[#a1a1aa]'>
+          {t('home.figma.viewerReadOnlyHint')}
+        </p>
+        <button
+          type='button'
+          disabled={!nlConversationId || cloneSharedBusy}
+          onClick={() => void onCloneSharedChat()}
+          className='flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-[#3b82f6] px-4 py-3 font-sans text-[15px] font-medium text-white transition-colors hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50'
+        >
+          {cloneSharedBusy ? (
+            <Icon
+              icon='mdi:loading'
+              className='animate-spin'
+              width={22}
+            />
+          ) : (
+            <Icon
+              icon='mdi:content-copy'
+              width={22}
+            />
+          )}
+          {cloneSharedBusy
+            ? t('home.figma.cloneSharedWorking')
+            : t('home.figma.cloneSharedCta')}
+        </button>
+      </div>
+    ) : null;
+
+  const bottomInput = showViewerCloneBar ? viewerBottomBar : composer;
 
   return (
     <div className='relative flex h-full min-h-0 w-full flex-1 flex-col'>
@@ -147,6 +189,7 @@ export function FigmaAnalyticsMain({
               <FigmaChatHeaderRow
                 t={t}
                 nlConversationId={nlConversationId}
+                nlChatAccessRole={nlChatAccessRole}
                 onShareChat={onShareChat}
                 historyBusy={historyBusy}
                 onRefreshHistory={onRefreshHistory}
@@ -170,7 +213,7 @@ export function FigmaAnalyticsMain({
                     variant='grok'
                     emptyLabel={t('home.analytics.chatEmpty')}
                     assistantActionHandlers={nlAssistantActionHandlers ?? null}
-                    assistantActionsLocked={composerBusy}
+                    assistantActionsLocked={composerBusy || isNlViewer}
                     scrollerEl={scrollerEl}
                   />
                 </div>
@@ -181,7 +224,7 @@ export function FigmaAnalyticsMain({
                 className='mx-auto w-full'
                 style={chatColStyle}
               >
-                {composer}
+                {bottomInput}
               </div>
             </div>
           </div>
@@ -191,6 +234,7 @@ export function FigmaAnalyticsMain({
               <FigmaChatHeaderRow
                 t={t}
                 nlConversationId={nlConversationId}
+                nlChatAccessRole={nlChatAccessRole}
                 onShareChat={onShareChat}
                 historyBusy={historyBusy}
                 onRefreshHistory={onRefreshHistory}
@@ -202,8 +246,8 @@ export function FigmaAnalyticsMain({
                   className='flex flex-col mx-auto w-full gap-6'
                   style={chatColStyle}
                 >
-                  {composer}
-                  {showHero && (
+                  {bottomInput}
+                  {showHero && !isNlViewer && (
                     <FigmaSuggestionBlock
                       t={t}
                       activeFaq={activeFaq}

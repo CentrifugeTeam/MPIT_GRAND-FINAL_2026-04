@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
@@ -18,9 +19,11 @@ from app.core.config import get_settings
 
 router = APIRouter()
 settings = get_settings()
+security = HTTPBearer()
 
-def get_current_user(token: str = Depends(verify_token)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Получить текущего пользователя из токена"""
+    token = verify_token(credentials.credentials)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,7 +58,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
             detail=str(e)
         )
 
-@router.get("/{user_uuid}", response_model=UserResponse, summary="Пользователь по UUID")
+@router.get("/{user_uuid:uuid}", response_model=UserResponse, summary="Пользователь по UUID")
 async def get_user(user_uuid: str, db: Session = Depends(get_db)):
     user = user_crud.get_user_by_uuid(db, user_uuid)
     if not user:
@@ -86,8 +89,27 @@ async def get_all_users(
         users=[UserResponse.model_validate(user, from_attributes=True) for user in users]
     )
 
+
+@router.get(
+    "/search",
+    response_model=UserListResponse,
+    summary="Поиск пользователей по email",
+    description="Доступно для любого залогиненного пользователя.",
+)
+async def search_users_by_email(
+    query: str = Query(..., min_length=1, max_length=255, description="Часть email для поиска"),
+    limit: int = Query(20, ge=1, le=100, description="Максимум записей"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    _ = current_user
+    users = user_crud.search_users_by_email(db, query=query, limit=limit)
+    return UserListResponse(
+        users=[UserResponse.model_validate(user, from_attributes=True) for user in users]
+    )
+
 @router.put(
-    "/{user_uuid}",
+    "/{user_uuid:uuid}",
     response_model=UserResponse,
     summary="Обновить пользователя по UUID",
     description="Только ADMIN.",
@@ -132,7 +154,7 @@ async def update_user_by_email(
         )
     return UserResponse.model_validate(user, from_attributes=True)
 
-@router.post("/{user_uuid}/verify", response_model=MessageResponse, summary="Подтвердить email пользователя")
+@router.post("/{user_uuid:uuid}/verify", response_model=MessageResponse, summary="Подтвердить email пользователя")
 async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
     user = user_crud.verify_user(db, user_uuid)
     if not user:
@@ -144,7 +166,7 @@ async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{user_uuid}/role",
+    "/{user_uuid:uuid}/role",
     response_model=TokenResponse,
     summary="Сменить роль",
     description="Новая пара access+refresh.",

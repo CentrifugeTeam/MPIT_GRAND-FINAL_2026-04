@@ -1,7 +1,10 @@
 import { Dropdown } from '@heroui/react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 
+import type { AppNotification } from '@/shared/api/notifications-api';
 import { useAuthStore } from '@/shared/lib/auth-store';
+import { useNotificationsSse } from '@/shared/lib/use-notifications-sse';
 import {
   FIGMA_DROPDOWN_ITEM,
   FIGMA_DROPDOWN_ITEM_DANGER,
@@ -19,26 +22,41 @@ type FigmaSidebarProfileButtonProps = {
   isOpen: boolean;
   t: (key: string) => string;
   onOpenSettings: () => void;
+  onChatInviteNotification?: (notification: AppNotification) => void;
 };
 
 export function FigmaSidebarProfileButton({
   isOpen,
   t,
   onOpenSettings,
+  onChatInviteNotification,
 }: FigmaSidebarProfileButtonProps) {
   const clearSession = useAuthStore(s => s.clearSession);
+  const accessToken = useAuthStore(s => s.accessToken);
   const navigate = useNavigate();
+  const { notifications } = useNotificationsSse(accessToken);
+
+  const latestNotifications = useMemo(
+    () =>
+      [...notifications]
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 5),
+    [notifications],
+  );
 
   const trigger = (
     <Dropdown.Trigger
       aria-label={t('home.figma.profileAria')}
-      className='flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#27272a] transition-all duration-200 hover:bg-[#3f3f46] active:scale-[0.97]'
+      className='relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#27272a] transition-all duration-200 hover:bg-[#3f3f46] active:scale-[0.97]'
     >
       <PersonIcon
         className='text-[#a1a1aa]'
         width={16}
         height={16}
       />
+      {notifications.length > 0 && (
+        <span className='absolute -right-0.5 -top-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-danger' />
+      )}
     </Dropdown.Trigger>
   );
 
@@ -59,6 +77,34 @@ export function FigmaSidebarProfileButton({
         className={`${FIGMA_DROPDOWN_POPOVER} !min-w-[232px] !rounded-[20px] !shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06),0px_-6px_12px_0px_rgba(0,0,0,0.03),0px_14px_28px_0px_rgba(0,0,0,0.08)]`}
       >
         <Dropdown.Menu className={`${FIGMA_DROPDOWN_MENU} min-w-[216px]`}>
+          <Dropdown.Section title={t('home.figma.notifications')}>
+            {latestNotifications.length > 0 ? (
+              latestNotifications.map(n => (
+                <Dropdown.Item
+                  key={n.id}
+                  textValue={n.title}
+                  onAction={() => {
+                    if (n.type === 'chat_invite' && onChatInviteNotification) {
+                      onChatInviteNotification(n);
+                    }
+                  }}
+                >
+                  <span className='flex flex-col gap-0.5'>
+                    <span className='text-xs text-foreground'>{n.title}</span>
+                    <span className='text-[11px] text-[#a1a1aa] line-clamp-2'>
+                      {n.message}
+                    </span>
+                  </span>
+                </Dropdown.Item>
+              ))
+            ) : (
+              <Dropdown.Item key='no-notifications' textValue='no-notifications'>
+                <span className='text-xs text-[#a1a1aa]'>
+                  {t('home.figma.notificationsEmpty')}
+                </span>
+              </Dropdown.Item>
+            )}
+          </Dropdown.Section>
           <Dropdown.Item
             className={FIGMA_DROPDOWN_ITEM}
             textValue={t('home.figma.profileSettings')}

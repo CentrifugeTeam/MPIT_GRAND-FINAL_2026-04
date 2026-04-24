@@ -1,36 +1,120 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { useNavigate, useParams } from 'react-router';
 
 import {
   AnalyticsResults,
+  answerChatInvite,
+  cloneSharedChat,
+  createShareChatInvites,
   FigmaAnalyticsMain,
   FigmaAnalyticsSidebar,
+  FigmaChatInviteNotificationModal,
+  FigmaShareChatEmailsModal,
   useAnalyticsPanel,
 } from '@/features/analytics';
+import {
+  deleteNotification,
+  type AppNotification,
+} from '@/shared/api/notifications-api';
+import { useAuthStore } from '@/shared/lib/auth-store';
+import { forceReconnectNotificationSse } from '@/shared/lib/notification-sse-broadcast';
 
 export function AnalyticsWorkspace() {
   const { id: routeChatId } = useParams<{ id?: string }>();
   const p = useAnalyticsPanel({ initialConversationId: routeChatId ?? null });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const userUuid = useAuthStore(s => s.userUuid);
 
-  const { entries, historyBusy, selectEntry } = p;
+  const {
+    entries,
+    historyBusy,
+    selectEntry,
+    loadHistory,
+    nlConversationId,
+    getRetryTailAnchorId,
+    trimForRetry,
+    requestDeleteChatTailFrom,
+    setQuestion,
+    sendComposerMessage,
+  } = p;
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [inviteNotif, setInviteNotif] = useState<AppNotification | null>(null);
+  const [cloneSharedBusy, setCloneSharedBusy] = useState(false);
+
+  const handleInviteModalAccept = useCallback(
+    async (inviteId: string, notificationId: string) => {
+      const res = await answerChatInvite(inviteId, 'accept');
+      if (userUuid) {
+        try {
+          await deleteNotification(userUuid, notificationId);
+        } catch {
+          /* ignore */
+        }
+      }
+      forceReconnectNotificationSse();
+      await loadHistory();
+      if (res.conversation_id) {
+        void navigate(`/home/${res.conversation_id}`);
+      }
+    },
+    [navigate, loadHistory, userUuid],
+  );
+
+  const handleInviteModalReject = useCallback(
+    async (inviteId: string, notificationId: string) => {
+      await answerChatInvite(inviteId, 'reject');
+      if (userUuid) {
+        try {
+          await deleteNotification(userUuid, notificationId);
+        } catch {
+          /* ignore */
+        }
+      }
+      forceReconnectNotificationSse();
+    },
+    [userUuid],
+  );
+
+  const handleShareEmailsSubmit = useCallback(
+    async (emails: string[]) => {
+      const cid = nlConversationId;
+      if (!cid) return;
+      await createShareChatInvites(cid, emails);
+      await loadHistory();
+    },
+    [nlConversationId, loadHistory],
+  );
+
+  const handleCloneSharedChat = useCallback(async () => {
+    const cid = nlConversationId;
+    if (!cid) return;
+    setCloneSharedBusy(true);
+    try {
+      const newId = await cloneSharedChat(cid);
+      await loadHistory();
+      void navigate(`/home/${newId}`);
+    } finally {
+      setCloneSharedBusy(false);
+    }
+  }, [nlConversationId, loadHistory, navigate]);
 
   // Navigate to /home/:id when a new conversation is first created
   const navigatedConvRef = useRef<string | null>(null);
   useEffect(() => {
     if (
-      p.nlConversationId &&
+      nlConversationId &&
       !routeChatId &&
-      navigatedConvRef.current !== p.nlConversationId
+      navigatedConvRef.current !== nlConversationId
     ) {
-      navigatedConvRef.current = p.nlConversationId;
-      void navigate(`/home/${p.nlConversationId}`, { replace: true });
+      navigatedConvRef.current = nlConversationId;
+      void navigate(`/home/${nlConversationId}`, { replace: true });
     }
-    if (!p.nlConversationId) {
+    if (!nlConversationId) {
       navigatedConvRef.current = null;
     }
-  }, [p.nlConversationId, routeChatId, navigate]);
+  }, [nlConversationId, routeChatId, navigate]);
 
   useEffect(() => {
     if (historyBusy) return;
@@ -50,15 +134,21 @@ export function AnalyticsWorkspace() {
       userLineId: string | null;
     }) => {
       const anchor =
-        p.getRetryTailAnchorId(assistantLineId) ?? assistantLineId;
-      p.trimForRetry(assistantLineId);
-      void p.requestDeleteChatTailFrom(anchor);
-      p.setQuestion(userMessage);
+        getRetryTailAnchorId(assistantLineId) ?? assistantLineId;
+      trimForRetry(assistantLineId);
+      void requestDeleteChatTailFrom(anchor);
+      setQuestion(userMessage);
       queueMicrotask(() => {
-        void p.sendComposerMessage();
+        void sendComposerMessage();
       });
     },
-    [p.getRetryTailAnchorId, p.trimForRetry, p.requestDeleteChatTailFrom, p.setQuestion, p.sendComposerMessage],
+    [
+      getRetryTailAnchorId,
+      trimForRetry,
+      requestDeleteChatTailFrom,
+      setQuestion,
+      sendComposerMessage,
+    ],
   );
 
   const onCreateReportTask = useCallback(
@@ -74,18 +164,6 @@ export function AnalyticsWorkspace() {
     () => ({ onRetry, onCreateReportTask }),
     [onRetry, onCreateReportTask],
   );
-
-  const handleShareChat = useCallback(async () => {
-    if (!p.nlConversationId) return;
-    const u = new URL(window.location.href);
-    u.pathname = `/home/${p.nlConversationId}`;
-    u.search = '';
-    try {
-      await navigator.clipboard.writeText(u.toString());
-    } catch {
-      /* ignore */
-    }
-  }, [p.nlConversationId]);
 
   return (
     <div className='flex min-h-0 w-full flex-1 items-stretch gap-4 overflow-hidden bg-background pl-0'>
@@ -123,6 +201,7 @@ export function AnalyticsWorkspace() {
           onStartEditingRow={p.startEditingRow}
           onDeleteHistoryEntry={id => void p.deleteHistoryEntry(id)}
           t={p.t}
+          onChatInviteNotification={n => setInviteNotif(n)}
         />
       </div>
 
@@ -144,8 +223,11 @@ export function AnalyticsWorkspace() {
           dataSourcesLoaded={p.dataSourcesLoaded}
           chatSuggestions={p.chatSuggestions}
           chatSuggestionsLoaded={p.chatSuggestionsLoaded}
-          nlConversationId={p.nlConversationId}
-          onShareChat={handleShareChat}
+          nlConversationId={nlConversationId}
+          nlChatAccessRole={p.nlChatAccessRole}
+          cloneSharedBusy={cloneSharedBusy}
+          onShareChat={() => setShareModalOpen(true)}
+          onCloneSharedChat={handleCloneSharedChat}
           historyBusy={p.historyBusy}
           onRefreshHistory={() => void p.loadHistory()}
           onQuestionChange={p.setQuestion}
@@ -171,6 +253,30 @@ export function AnalyticsWorkspace() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {shareModalOpen && nlConversationId ? (
+          <FigmaShareChatEmailsModal
+            key='share-emails'
+            t={p.t}
+            onClose={() => setShareModalOpen(false)}
+            onSubmit={handleShareEmailsSubmit}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {inviteNotif ? (
+          <FigmaChatInviteNotificationModal
+            key={inviteNotif.id}
+            t={p.t}
+            notification={inviteNotif}
+            onClose={() => setInviteNotif(null)}
+            onAccept={handleInviteModalAccept}
+            onReject={handleInviteModalReject}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

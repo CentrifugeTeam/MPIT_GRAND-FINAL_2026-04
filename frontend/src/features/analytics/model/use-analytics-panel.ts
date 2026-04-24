@@ -13,6 +13,7 @@ import {
   useAnalyticsSendMessage,
   useNlOrchestratorChat,
 } from '@/features/analytics-chat';
+import { fetchNlChatSessionMeta } from '@/features/analytics/api/analytics-api';
 import { useWsStore } from '@/shared/lib/ws-store';
 
 import type { InterpretationHint } from '../lib/interpretation-hint';
@@ -27,15 +28,6 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
   const { t } = useTranslation();
   const [nlConversationId, setNlConversationId] =
     useState<string | null>(initialConversationId);
-  const {
-    lines: nlChatLines,
-    nlChatBusy,
-    sendChat,
-    trimForRetry,
-    requestDeleteChatMessages,
-    getRetryTailAnchorId,
-    requestDeleteChatTailFrom,
-  } = useNlOrchestratorChat(t, nlConversationId);
   const entries = useAnalyticsChatStore(s => s.entries);
   const activeId = useAnalyticsChatStore(s => s.activeId);
   const setActive = useAnalyticsChatStore(s => s.setActive);
@@ -48,6 +40,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     useState<InterpretationHint | null>(null);
   const disconnectWs = useWsStore(s => s.disconnect);
   const [preferDraftNl, setPreferDraftNl] = useState(() => initialConversationId == null);
+  const [nlChatAccessRole, setNlChatAccessRole] = useState<'owner' | 'viewer'>('owner');
 
   useEffect(() => {
     if (initialConversationId == null) return;
@@ -59,6 +52,34 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     setResult(null);
     setInterpretationHint(null);
   }, [initialConversationId, setActive]);
+
+  useEffect(() => {
+    if (!nlConversationId) {
+      setNlChatAccessRole('owner');
+      return;
+    }
+    let cancelled = false;
+    void fetchNlChatSessionMeta(nlConversationId)
+      .then(meta => {
+        if (!cancelled) setNlChatAccessRole(meta.access_role);
+      })
+      .catch(() => {
+        if (!cancelled) setNlChatAccessRole('owner');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nlConversationId]);
+
+  const {
+    lines: nlChatLines,
+    nlChatBusy,
+    sendChat,
+    trimForRetry,
+    requestDeleteChatMessages,
+    getRetryTailAnchorId,
+    requestDeleteChatTailFrom,
+  } = useNlOrchestratorChat(t, nlConversationId, nlChatAccessRole === 'viewer');
 
   const {
     dataSources,
@@ -109,6 +130,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     setPreferDraftNl(true);
     setActive(null);
     setNlConversationId(null);
+    setNlChatAccessRole('owner');
     setQuestion('');
     setMaxRowsStr('');
     setResult(null);
@@ -132,6 +154,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
       sendChat,
       setInterpretationHint,
       maxRowsStr,
+      nlReadOnly: nlChatAccessRole === 'viewer',
     });
 
   const chartPayload = result?.chart_payload;
@@ -185,6 +208,7 @@ export function useAnalyticsPanel(options?: UseAnalyticsPanelOptions) {
     getRetryTailAnchorId,
     requestDeleteChatTailFrom,
     nlConversationId,
+    nlChatAccessRole,
     nlChatReady,
     dataSources,
     selectedSourceKey,

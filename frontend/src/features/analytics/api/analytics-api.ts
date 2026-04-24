@@ -53,6 +53,7 @@ export type NlChatHistoryRow = {
   message_count: number;
   created_at: string;
   updated_at: string | null;
+  access_role?: 'owner' | 'viewer';
 };
 
 export type AnalyticsHistoryItem = SqlJobHistoryRow | NlChatHistoryRow;
@@ -170,6 +171,73 @@ export type CreateNlChatResponse = {
 export async function createNlAnalyticsChat() {
   const { data } = await api.post<CreateNlChatResponse>('/api/analytics/chats');
   return createNlChatResponseSchema.parse(data);
+}
+
+export type ChatInviteItem = {
+  invite_id: string;
+  conversation_id: string;
+  owner_user_id: string;
+  owner_email?: string | null;
+  invitee_email: string;
+  chat_title?: string | null;
+  status: string;
+  created_at: string;
+};
+
+export async function fetchChatInvites(): Promise<ChatInviteItem[]> {
+  const { data } = await api.get<{ items: ChatInviteItem[] }>(
+    '/api/analytics/chat-invites',
+  );
+  return data.items ?? [];
+}
+
+export type ChatInviteAnswerApiResponse = {
+  invite_id: string;
+  status: 'accepted' | 'rejected';
+  conversation_id?: string | null;
+};
+
+export async function answerChatInvite(
+  inviteId: string,
+  decision: 'accept' | 'reject',
+) {
+  const { data } = await api.post<ChatInviteAnswerApiResponse>(
+    `/api/analytics/chat-invites/${inviteId}/answer`,
+    { decision },
+  );
+  return data;
+}
+
+export type NlChatSessionMeta = {
+  conversation_id: string;
+  title: string | null;
+  preview_text: string | null;
+  access_role: 'owner' | 'viewer';
+};
+
+export async function fetchNlChatSessionMeta(conversationId: string) {
+  const { data } = await api.get<NlChatSessionMeta>(
+    `/api/analytics/chats/${conversationId}/meta`,
+  );
+  return data;
+}
+
+export async function createShareChatInvites(
+  conversationId: string,
+  emails: string[],
+) {
+  const { data } = await api.post<{ items: ChatInviteItem[] }>(
+    `/api/analytics/chats/${conversationId}/share-invites`,
+    { emails },
+  );
+  return data.items ?? [];
+}
+
+export async function cloneSharedChat(conversationId: string) {
+  const { data } = await api.post<{ conversation_id: string }>(
+    `/api/analytics/chats/${conversationId}/clone-for-me`,
+  );
+  return data.conversation_id;
 }
 
 export type NlChatMessagesResponse = {

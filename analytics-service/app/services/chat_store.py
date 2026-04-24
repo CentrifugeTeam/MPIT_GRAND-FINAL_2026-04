@@ -4,9 +4,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from typing import Any, Optional
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, insert, or_
 
-from app.db.platform_models import NlChatMessage, NlChatSession
+from app.db.platform_models import NlChatAccess, NlChatInvite, NlChatMessage, NlChatSession
 from app.db.platform_session import PlatformSessionLocal
 
 
@@ -26,6 +26,8 @@ def create_empty_session(
             NlChatSession(
                 id=cid,
                 user_id=uid,
+                created_by_user_id=uid,
+                visibility="private",
                 title=None,
                 preview_text=None,
                 chat_type="chat",
@@ -50,6 +52,8 @@ def ensure_session(user_id: str, conversation_id: str, title_hint: str | None = 
                 NlChatSession(
                     id=cid,
                     user_id=uid,
+                    created_by_user_id=uid,
+                    visibility="private",
                     title=hint,
                     preview_text=hint,
                     message_count=0,
@@ -124,16 +128,30 @@ def list_chat_sessions_for_user(
     uid = _uid(user_id)
     db = PlatformSessionLocal()
     try:
-        q = db.query(NlChatSession).filter(NlChatSession.user_id == uid)
-        total = q.count()
-        rows = (
-            q.order_by(
-                func.coalesce(NlChatSession.updated_at, NlChatSession.created_at).desc(),
+        own_q = db.query(NlChatSession).filter(NlChatSession.user_id == uid)
+        shared_q = (
+            db.query(NlChatSession)
+            .join(
+                NlChatAccess,
+                and_(
+                    NlChatAccess.conversation_id == NlChatSession.id,
+                    NlChatAccess.user_id == uid,
+                ),
             )
-            .offset(offset)
-            .limit(limit)
-            .all()
+            .filter(NlChatSession.user_id != uid)
         )
+        rows_map: dict[str, NlChatSession] = {}
+        for row in own_q.all():
+            rows_map[str(row.id)] = row
+        for row in shared_q.all():
+            rows_map[str(row.id)] = row
+        rows = sorted(
+            rows_map.values(),
+            key=lambda x: x.updated_at or x.created_at,
+            reverse=True,
+        )
+        total = len(rows)
+        rows = rows[offset : offset + limit]
         out: list[dict[str, Any]] = []
         for row in rows:
             out.append(
@@ -143,6 +161,7 @@ def list_chat_sessions_for_user(
                     "title": row.title,
                     "preview_text": row.preview_text,
                     "chat_type": "chat",
+                    "access_role": "owner" if row.user_id == uid else "viewer",
                     "message_count": row.message_count or 0,
                     "created_at": row.created_at,
                     "updated_at": row.updated_at,
@@ -282,11 +301,22 @@ def list_messages(user_id: str, conversation_id: str) -> list[dict[str, Any]]:
     try:
         sess = (
             db.query(NlChatSession)
-            .filter(NlChatSession.id == cid, NlChatSession.user_id == uid)
+            .filter(NlChatSession.id == cid)
             .one_or_none()
         )
         if sess is None:
             return []
+        if sess.user_id != uid:
+            allowed = (
+                db.query(NlChatAccess)
+                .filter(
+                    NlChatAccess.conversation_id == cid,
+                    NlChatAccess.user_id == uid,
+                )
+                .one_or_none()
+            )
+            if allowed is None:
+                return []
         rows = (
             db.query(NlChatMessage)
             .filter(NlChatMessage.session_id == cid)
@@ -366,20 +396,276 @@ def get_session_for_user(user_id: str, conversation_id: str) -> Optional[dict[st
     cid = _uid(conversation_id)
     db = PlatformSessionLocal()
     try:
-        row = (
-            db.query(NlChatSession)
-            .filter(NlChatSession.id == cid, NlChatSession.user_id == uid)
-            .one_or_none()
-        )
+        row = db.query(NlChatSession).filter(NlChatSession.id == cid).one_or_none()
         if row is None:
             return None
+        access_role = "owner"
+        if row.user_id != uid:
+            access = (
+                db.query(NlChatAccess)
+                .filter(
+                    NlChatAccess.conversation_id == cid,
+                    NlChatAccess.user_id == uid,
+                )
+                .one_or_none()
+            )
+            if access is None:
+                return None
+            access_role = access.access_role or "viewer"
         return {
             "conversation_id": str(row.id),
             "title": row.title,
             "preview_text": row.preview_text,
             "chat_type": "chat",
+            "access_role": access_role,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
+    finally:
+        db.close()
+
+
+def user_can_write_chat(user_id: str, conversation_id: str) -> bool:
+    uid = _uid(user_id)
+    cid = _uid(conversation_id)
+    db = PlatformSessionLocal()
+    try:
+        row = db.query(NlChatSession).filter(NlChatSession.id == cid).one_or_none()
+        if row is None:
+            return False
+        return row.user_id == uid
+    finally:
+        db.close()
+
+
+def create_chat_invites(
+    owner_user_id: str,
+    conversation_id: str,
+    emails: list[str],
+    *,
+    owner_email: str | None = None,
+) -> list[dict[str, Any]]:
+    owner_uid = _uid(owner_user_id)
+    cid = _uid(conversation_id)
+    owner_mail = (owner_email or "").strip().lower() or None
+    db = PlatformSessionLocal()
+    try:
+        session = (
+            db.query(NlChatSession)
+            .filter(NlChatSession.id == cid, NlChatSession.user_id == owner_uid)
+            .one_or_none()
+        )
+        if session is None:
+            raise ValueError("chat session not found")
+        chat_title = (session.title or session.preview_text or "").strip() or None
+        created: list[dict[str, Any]] = []
+        for email in emails:
+            e = str(email or "").strip().lower()
+            if not e or "@" not in e:
+                continue
+            inv = NlChatInvite(
+                conversation_id=cid,
+                owner_user_id=owner_uid,
+                invitee_email=e,
+                owner_invite_email=owner_mail,
+                access_mode="view_only",
+                status="pending",
+            )
+            db.add(inv)
+            db.flush()
+            created.append(
+                {
+                    "invite_id": str(inv.id),
+                    "conversation_id": str(inv.conversation_id),
+                    "owner_user_id": str(owner_uid),
+                    "owner_email": owner_mail,
+                    "invitee_email": inv.invitee_email,
+                    "chat_title": chat_title,
+                    "status": inv.status,
+                    "created_at": inv.created_at,
+                }
+            )
+        db.commit()
+        return created
+    finally:
+        db.close()
+
+
+def list_incoming_invites(user_email: str, user_id: str | None = None) -> list[dict[str, Any]]:
+    email = (user_email or "").strip().lower()
+    uid = _uid(user_id) if user_id else None
+    db = PlatformSessionLocal()
+    try:
+        q = db.query(NlChatInvite).filter(
+            NlChatInvite.status == "pending",
+            NlChatInvite.invitee_email == email,
+        )
+        rows = q.order_by(NlChatInvite.created_at.desc()).all()
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            sess = (
+                db.query(NlChatSession)
+                .filter(NlChatSession.id == row.conversation_id)
+                .one_or_none()
+            )
+            title = None
+            if sess is not None:
+                title = (sess.title or sess.preview_text or "").strip() or None
+            own_mail = getattr(row, "owner_invite_email", None) or None
+            if isinstance(own_mail, str):
+                own_mail = own_mail.strip().lower() or None
+            out.append(
+                {
+                    "invite_id": str(row.id),
+                    "conversation_id": str(row.conversation_id),
+                    "owner_user_id": str(row.owner_user_id),
+                    "owner_email": own_mail,
+                    "invitee_email": row.invitee_email,
+                    "chat_title": title,
+                    "status": row.status,
+                    "created_at": row.created_at,
+                    "is_for_current_user": bool(uid is not None),
+                }
+            )
+        return out
+    finally:
+        db.close()
+
+
+def _clone_chat_for_user(db, source_session: NlChatSession, user_uuid: uuid.UUID) -> str:
+    """Копия сессии + сообщений для другого пользователя.
+
+    Сообщения вставляем через Core ``insert().values(...)`` по одной строке: batched ORM-insert
+    (insertmanyvalues) в SQLAlchemy 2.0 в сочетании с новой сессией давал FK violation на
+    ``session_id`` (в БД уходил не тот UUID).
+    """
+    clone_id = uuid.uuid4()
+    new_sess = NlChatSession(
+        id=clone_id,
+        user_id=user_uuid,
+        created_by_user_id=source_session.created_by_user_id or source_session.user_id,
+        visibility="private",
+        title=source_session.title,
+        preview_text=source_session.preview_text,
+        chat_type=source_session.chat_type,
+        message_count=0,
+    )
+    db.add(new_sess)
+    db.flush()
+
+    rows = (
+        db.query(NlChatMessage)
+        .filter(NlChatMessage.session_id == source_session.id)
+        .order_by(NlChatMessage.created_at.asc())
+        .all()
+    )
+    msg_table = NlChatMessage.__table__
+    for row in rows:
+        payload_val = (
+            row.payload
+            if isinstance(row.payload, dict)
+            else dict(row.payload or {})
+        )
+        db.execute(
+            insert(msg_table).values(
+                id=uuid.uuid4(),
+                session_id=clone_id,
+                role=row.role,
+                client_message_id=row.client_message_id,
+                payload=payload_val,
+                created_at=row.created_at,
+            )
+        )
+    new_sess.message_count = len(rows)
+    return str(clone_id)
+
+
+def accept_chat_invite(invite_id: str, user_id: str, user_email: str) -> dict[str, Any]:
+    iid = _uid(invite_id)
+    uid = _uid(user_id)
+    email = (user_email or "").strip().lower()
+    db = PlatformSessionLocal()
+    try:
+        invite = db.query(NlChatInvite).filter(NlChatInvite.id == iid).one_or_none()
+        if invite is None or invite.status != "pending":
+            raise ValueError("invite not found")
+        if invite.invitee_email.strip().lower() != email:
+            raise PermissionError("invite belongs to another user")
+        session = (
+            db.query(NlChatSession).filter(NlChatSession.id == invite.conversation_id).one_or_none()
+        )
+        if session is None:
+            raise ValueError("chat session not found")
+        result_conversation_id = str(session.id)
+        existing = (
+            db.query(NlChatAccess)
+            .filter(
+                NlChatAccess.conversation_id == invite.conversation_id,
+                NlChatAccess.user_id == uid,
+            )
+            .one_or_none()
+        )
+        if existing is None:
+            db.add(
+                NlChatAccess(
+                    conversation_id=invite.conversation_id,
+                    owner_user_id=invite.owner_user_id,
+                    user_id=uid,
+                    access_role="viewer",
+                )
+            )
+        invite.status = "accepted"
+        invite.invitee_user_id = uid
+        invite.accepted_at = datetime.utcnow()
+        db.commit()
+        return {
+            "invite_id": str(invite.id),
+            "conversation_id": result_conversation_id,
+            "status": invite.status,
+        }
+    finally:
+        db.close()
+
+
+def reject_chat_invite(invite_id: str, user_id: str, user_email: str) -> dict[str, Any]:
+    iid = _uid(invite_id)
+    email = (user_email or "").strip().lower()
+    db = PlatformSessionLocal()
+    try:
+        invite = db.query(NlChatInvite).filter(NlChatInvite.id == iid).one_or_none()
+        if invite is None or invite.status != "pending":
+            raise ValueError("invite not found")
+        if invite.invitee_email.strip().lower() != email:
+            raise PermissionError("invite belongs to another user")
+        invite.status = "rejected"
+        db.commit()
+        return {"invite_id": str(invite.id), "status": "rejected"}
+    finally:
+        db.close()
+
+
+def clone_shared_chat_for_viewer(user_id: str, conversation_id: str) -> dict[str, Any]:
+    """Клон для пользователя с доступом viewer (не владельца сессии)."""
+    uid = _uid(user_id)
+    cid = _uid(conversation_id)
+    db = PlatformSessionLocal()
+    try:
+        session = (
+            db.query(NlChatSession).filter(NlChatSession.id == cid).one_or_none()
+        )
+        if session is None:
+            raise ValueError("chat session not found")
+        if session.user_id == uid:
+            raise PermissionError("owner should use their own chat, not clone")
+        access = (
+            db.query(NlChatAccess)
+            .filter(NlChatAccess.conversation_id == cid, NlChatAccess.user_id == uid)
+            .one_or_none()
+        )
+        if access is None:
+            raise PermissionError("no viewer access to this chat")
+        new_id = _clone_chat_for_user(db, session, uid)
+        db.commit()
+        return {"conversation_id": new_id}
     finally:
         db.close()

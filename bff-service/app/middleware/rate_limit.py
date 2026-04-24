@@ -24,6 +24,24 @@ def _client_ip(request: Request) -> str:
 
 def _bucket_key(request: Request) -> str:
     s = get_settings()
+    # EventSource на /api/notification/stream не шлёт Authorization — токен в query.
+    path = request.url.path
+    if path == "/api/notification/stream" or path.endswith("/notification/stream"):
+        token = request.query_params.get("token") or ""
+        if (token or "").strip():
+            try:
+                payload = jwt.decode(
+                    token.strip(),
+                    s.SECRET_KEY,
+                    algorithms=[s.ALGORITHM],
+                )
+                uid = payload.get("uuid") or payload.get("sub")
+                if uid:
+                    return f"u:{uid}"
+            except Exception:
+                pass
+        return f"ip:{_client_ip(request)}"
+
     auth = request.headers.get("authorization") or ""
     if auth.lower().startswith("bearer "):
         token = auth[7:].strip()

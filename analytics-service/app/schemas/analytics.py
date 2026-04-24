@@ -131,6 +131,7 @@ class AnalyticsHistoryItem(BaseModel):
     chat_title: Optional[str] = None
     message_count: Optional[int] = None
     chat_type: Optional[Literal["chat"]] = None
+    access_role: Optional[Literal["owner", "viewer"]] = None
 
 
 class AnalyticsHistoryResponse(BaseModel):
@@ -171,6 +172,66 @@ class NlChatMessageApi(BaseModel):
 
 class NlChatTranscriptResponse(BaseModel):
     items: list[NlChatMessageApi]
+
+
+class CreateChatInvitesBody(BaseModel):
+    emails: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Email приглашённых; совместный просмотр (viewer), клон — отдельно после принятия.",
+    )
+
+    @model_validator(mode="after")
+    def _normalize_emails(self) -> "CreateChatInvitesBody":
+        seen: set[str] = set()
+        out: list[str] = []
+        for raw in self.emails:
+            e = str(raw or "").strip().lower()
+            if len(e) < 3 or "@" not in e or e in seen:
+                continue
+            seen.add(e)
+            out.append(e)
+        if not out:
+            raise ValueError("At least one valid email required")
+        object.__setattr__(self, "emails", out[:50])
+        return self
+
+
+class ChatInviteItem(BaseModel):
+    invite_id: str
+    conversation_id: str
+    owner_user_id: str
+    owner_email: Optional[str] = None
+    invitee_email: str
+    chat_title: Optional[str] = None
+    status: Literal["pending", "accepted", "revoked", "rejected"] = "pending"
+    created_at: datetime
+
+
+class ChatInvitesListResponse(BaseModel):
+    items: list[ChatInviteItem]
+
+
+class ChatInviteAnswerBody(BaseModel):
+    decision: Literal["accept", "reject"]
+
+
+class ChatInviteAnswerResponse(BaseModel):
+    invite_id: str
+    status: Literal["accepted", "rejected"]
+    conversation_id: Optional[str] = None
+
+
+class CloneSharedChatResponse(BaseModel):
+    conversation_id: str
+
+
+class NlChatSessionMetaResponse(BaseModel):
+    conversation_id: str
+    title: Optional[str] = None
+    preview_text: Optional[str] = None
+    access_role: Literal["owner", "viewer"]
 
 
 class NlChatDeleteMessagesBody(BaseModel):

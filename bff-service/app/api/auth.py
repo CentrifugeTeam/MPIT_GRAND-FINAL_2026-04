@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import httpx
 from app.schemas.auth import (
@@ -120,6 +120,36 @@ async def get_all_users(current_user: dict = Depends(get_current_user)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get users",
+        )
+
+
+@router.get(
+    "/users/search",
+    response_model=UserListResponse,
+    summary="Поиск пользователей по email",
+    description="Доступно для любого валидного JWT.",
+    responses={401: {"description": "Нет JWT"}},
+)
+async def search_users(
+    query: str = Query(..., min_length=1, max_length=255),
+    limit: int = Query(20, ge=1, le=100),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: dict = Depends(get_current_user),
+):
+    _ = current_user
+    try:
+        users = await auth_service.search_users_by_email(
+            query=query,
+            limit=limit,
+            access_token=credentials.credentials,
+        )
+        return UserListResponse(users=users)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search users",
         )
 
 

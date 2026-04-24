@@ -105,11 +105,11 @@ async def _sync_chat_event(
     conversation_id: str,
     client_message_id: Optional[str],
     payload: Dict[str, Any],
-) -> None:
+) -> bool:
     s = get_settings()
     base = (s.ANALYTICS_SERVICE_URL or "").strip().rstrip("/")
     if not base or not s.INTERNAL_NL_CHAT_SYNC_TOKEN:
-        return
+        return False
     url = f"{base}/api/analytics/internal/nl-chat-sync"
     body = {
         "action": action,
@@ -126,8 +126,10 @@ async def _sync_chat_event(
                 headers={"X-Chat-Sync-Token": s.INTERNAL_NL_CHAT_SYNC_TOKEN},
             )
             r.raise_for_status()
+            return True
     except Exception as e:
         logger.warning("chat history sync failed: %s", e)
+        return False
 
 
 async def _send_report_notification(
@@ -363,7 +365,19 @@ async def _handle_chat_incoming(
         if not conv or not content:
             return
         if conv != "__report_run__":
-            await _sync_chat_event("user_message", uid, conv, mid, {"text": content})
+            synced = await _sync_chat_event(
+                "user_message", uid, conv, mid, {"text": content}
+            )
+            if synced:
+                await _publish_json(
+                    pub_channel,
+                    {
+                        "type": "chat_user",
+                        "conversation_id": conv,
+                        "message_id": mid,
+                        "text": content,
+                    },
+                )
         raw_source = data.get("analytics_source_key")
         sk_key = (
             str(raw_source).strip()

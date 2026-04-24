@@ -62,12 +62,57 @@ def _migrate_nl_sql_jobs_max_rows() -> None:
         conn.execute(text("ALTER TABLE nl_sql_jobs ADD COLUMN max_rows INTEGER"))
 
 
+def _has_column(table_name: str, column_name: str) -> bool:
+    with _engine.connect() as conn:
+        row = conn.execute(
+            text(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = :table_name
+                  AND column_name = :column_name
+                """
+            ),
+            {"table_name": table_name, "column_name": column_name},
+        ).fetchone()
+        return bool(row)
+
+
+def _migrate_nl_chat_sessions_team_fields() -> None:
+    with _engine.begin() as conn:
+        if not _has_column("nl_chat_sessions", "visibility"):
+            conn.execute(text("ALTER TABLE nl_chat_sessions ADD COLUMN visibility VARCHAR(32)"))
+            conn.execute(text("UPDATE nl_chat_sessions SET visibility='private' WHERE visibility IS NULL"))
+            conn.execute(text("ALTER TABLE nl_chat_sessions ALTER COLUMN visibility SET DEFAULT 'private'"))
+        if not _has_column("nl_chat_sessions", "created_by_user_id"):
+            conn.execute(text("ALTER TABLE nl_chat_sessions ADD COLUMN created_by_user_id UUID"))
+            conn.execute(
+                text(
+                    "UPDATE nl_chat_sessions SET created_by_user_id=user_id "
+                    "WHERE created_by_user_id IS NULL"
+                )
+            )
+        if not _has_column("nl_chat_sessions", "team_space_id"):
+            conn.execute(text("ALTER TABLE nl_chat_sessions ADD COLUMN team_space_id UUID"))
+
+
+def _migrate_nl_chat_invites_owner_email() -> None:
+    with _engine.begin() as conn:
+        if not _has_column("nl_chat_invites", "owner_invite_email"):
+            conn.execute(
+                text("ALTER TABLE nl_chat_invites ADD COLUMN owner_invite_email VARCHAR(255)")
+            )
+
+
 def init_platform_tables():
     from app.db.platform_base import PlatformBase
     from app.db.platform_models import (  # noqa: F401
         AnalyticsChatSuggestion,
         AnalyticsAccessPolicy,
         AnalyticsDataSource,
+        NlChatAccess,
+        NlChatInvite,
         NlChatMessage,
         NlChatSession,
         NlSqlJob,
@@ -81,6 +126,8 @@ def init_platform_tables():
     PlatformBase.metadata.create_all(bind=_engine)
     _migrate_nl_sql_jobs_user_id_to_uuid()
     _migrate_nl_sql_jobs_max_rows()
+    _migrate_nl_chat_sessions_team_fields()
+    _migrate_nl_chat_invites_owner_email()
     from app.services.data_sources_store import (
         seed_data_sources_if_empty,
         sync_analytics_sources_from_env,

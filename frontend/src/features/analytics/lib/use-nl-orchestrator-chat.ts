@@ -25,7 +25,11 @@ export type NlChatSendOptions = {
   conversationIdOverride?: string | null;
 };
 
-export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
+export function useNlOrchestratorChat(
+  t: TFn,
+  conversationId: string | null,
+  readOnly: boolean = false,
+) {
   const [lines, setLines] = useState<NlChatLine[]>([]);
   const [nlChatBusy, setNlChatBusy] = useState(false);
   const linesRef = useRef<NlChatLine[]>([]);
@@ -43,6 +47,10 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
   useEffect(() => {
     joinedRef.current = false;
   }, [conversationId]);
+
+  useEffect(() => {
+    if (readOnly) setNlChatBusy(false);
+  }, [readOnly]);
 
   useEffect(() => {
     setNlChatBusy(false);
@@ -359,7 +367,14 @@ export function useNlOrchestratorChat(t: TFn, conversationId: string | null) {
         });
       }
     },
-    [appendLine, conversationId, ensureWsConnected, joinChatRoom, nlChatBusy],
+    [
+      appendLine,
+      conversationId,
+      ensureWsConnected,
+      joinChatRoom,
+      nlChatBusy,
+      readOnly,
+    ],
   );
 
   return {

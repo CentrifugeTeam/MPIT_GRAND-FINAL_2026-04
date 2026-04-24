@@ -157,16 +157,31 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif message_type == "join_chat":
                     cid = data.get("conversation_id")
                     if cid:
-                        room = f"chat:{cid}"
-                        await manager.join_room(websocket, room)
-                        await _safe_send_json(
-                            websocket,
-                            {
-                                "type": "join_chat_ack",
-                                "conversation_id": cid,
-                                "room": room,
-                            },
-                        )
+                        try:
+                            await _analytics_proxy.get_nl_chat_messages(
+                                str(user_id),
+                                str(cid),
+                                user_role=user_role,
+                            )
+                        except HTTPException:
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "error",
+                                    "message": "No access to this chat",
+                                },
+                            )
+                        else:
+                            room = f"chat:{cid}"
+                            await manager.join_room(websocket, room)
+                            await _safe_send_json(
+                                websocket,
+                                {
+                                    "type": "join_chat_ack",
+                                    "conversation_id": cid,
+                                    "room": room,
+                                },
+                            )
                     else:
                         await _safe_send_json(
                             websocket,
@@ -193,85 +208,110 @@ async def websocket_endpoint(websocket: WebSocket):
                             },
                         )
                     else:
-                        ask = data.get("analytics_source_key")
-                        sk = (
-                            str(ask).strip()
-                            if isinstance(ask, str) and str(ask).strip()
-                            else None
-                        )
-                        explicit_source_key = sk is not None
-                        if not sk:
-                            dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
-                            if dk:
-                                sk = dk
-                        blocked = _nl_chat_blocked_source_keys()
-                        # Blocklist avoids accidental NL against platform DB when no key is sent.
-                        # If the client explicitly sends analytics_source_key (UI source), honor it.
-                        if (
-                            sk
-                            and blocked
-                            and sk.lower() in blocked
-                            and not explicit_source_key
-                        ):
-                            dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
-                            if dk and dk.lower() != sk.lower():
-                                logger.info(
-                                    "chat_message analytics_source_key %r coerced to %r (blocked for NL)",
-                                    sk,
-                                    dk,
-                                )
-                                sk = dk
                         try:
-                            schema_tables = await fetch_public_schema(
-                                sk, user_id=str(user_id), user_role=user_role
+                            meta = await _analytics_proxy.get_nl_chat_meta(
+                                str(user_id),
+                                str(conv),
+                                user_role=user_role,
+                                user_email=user_email or None,
                             )
-                        except Exception as e:
+                        except HTTPException:
                             await _safe_send_json(
                                 websocket,
                                 {
                                     "type": "error",
-                                    "message": f"schema: {e}",
+                                    "message": "No access to this chat",
                                 },
                             )
                         else:
-                            mid = data.get("message_id") or str(uuid.uuid4())
-                            max_rows = data.get("max_rows")
-                            max_rows_out: int | None = None
-                            if isinstance(max_rows, int) and max_rows > 0:
-                                max_rows_out = min(50_000_000, max_rows)
-                            gc = data.get("glossary_context")
-                            glossary_context = (
-                                str(gc) if isinstance(gc, str) and gc.strip() else None
-                            )
-                            incoming: dict = {
-                                "message_id": mid,
-                                "user_id": user_id,
-                                "user_role": user_role,
-                                "conversation_id": str(conv),
-                                "content": str(content),
-                                "history": history
-                                if isinstance(history, list)
-                                else [],
-                                "schema_tables": schema_tables,
-                            }
-                            if max_rows_out is not None:
-                                incoming["max_rows"] = max_rows_out
-                            if glossary_context is not None:
-                                incoming["glossary_context"] = glossary_context
-                            if sk is not None:
-                                incoming["analytics_source_key"] = sk
-                            raw_lbl = data.get("analytics_source_label")
-                            if isinstance(raw_lbl, str) and raw_lbl.strip():
-                                incoming["analytics_source_label"] = raw_lbl.strip()
-                            await chat_bus.publish_incoming(incoming)
-                            await _safe_send_json(
-                                websocket,
-                                {
-                                    "type": "chat_message_ack",
-                                    "message_id": mid,
-                                    "conversation_id": str(conv),
-                                },
-                            )
+                            if meta.get("access_role") == "viewer":
+                                await _safe_send_json(
+                                    websocket,
+                                    {
+                                        "type": "error",
+                                        "message": "Shared chat is read-only for guests",
+                                    },
+                                )
+                            else:
+                                ask = data.get("analytics_source_key")
+                                sk = (
+                                    str(ask).strip()
+                                    if isinstance(ask, str) and str(ask).strip()
+                                    else None
+                                )
+                                explicit_source_key = sk is not None
+                                if not sk:
+                                    dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
+                                    if dk:
+                                        sk = dk
+                                blocked = _nl_chat_blocked_source_keys()
+                                # Blocklist avoids accidental NL against platform DB when no key is sent.
+                                # If the client explicitly sends analytics_source_key (UI source), honor it.
+                                if (
+                                    sk
+                                    and blocked
+                                    and sk.lower() in blocked
+                                    and not explicit_source_key
+                                ):
+                                    dk = (settings.DEFAULT_ANALYTICS_SOURCE_KEY or "").strip()
+                                    if dk and dk.lower() != sk.lower():
+                                        logger.info(
+                                            "chat_message analytics_source_key %r coerced to %r (blocked for NL)",
+                                            sk,
+                                            dk,
+                                        )
+                                        sk = dk
+                                try:
+                                    schema_tables = await fetch_public_schema(
+                                        sk, user_id=str(user_id), user_role=user_role
+                                    )
+                                except Exception as e:
+                                    await _safe_send_json(
+                                        websocket,
+                                        {
+                                            "type": "error",
+                                            "message": f"schema: {e}",
+                                        },
+                                    )
+                                else:
+                                    mid = data.get("message_id") or str(uuid.uuid4())
+                                    max_rows = data.get("max_rows")
+                                    max_rows_out: int | None = None
+                                    if isinstance(max_rows, int) and max_rows > 0:
+                                        max_rows_out = min(50_000_000, max_rows)
+                                    gc = data.get("glossary_context")
+                                    glossary_context = (
+                                        str(gc) if isinstance(gc, str) and gc.strip() else None
+                                    )
+                                    incoming: dict = {
+                                        "message_id": mid,
+                                        "user_id": user_id,
+                                        "user_role": user_role,
+                                        "conversation_id": str(conv),
+                                        "content": str(content),
+                                        "history": history
+                                        if isinstance(history, list)
+                                        else [],
+                                        "schema_tables": schema_tables,
+                                    }
+                                    if max_rows_out is not None:
+                                        incoming["max_rows"] = max_rows_out
+                                    if glossary_context is not None:
+                                        incoming["glossary_context"] = glossary_context
+                                    if sk is not None:
+                                        incoming["analytics_source_key"] = sk
+                                    raw_lbl = data.get("analytics_source_label")
+                                    if isinstance(raw_lbl, str) and raw_lbl.strip():
+                                        incoming["analytics_source_label"] = raw_lbl.strip()
+                                    await chat_bus.publish_incoming(incoming)
+                                    await _safe_send_json(
+                                        websocket,
+                                        {
+                                            "type": "chat_message_ack",
+                                            "message_id": mid,
+                                            "conversation_id": str(conv),
+                                        },
+                                    )
                 elif message_type == "delete_chat_messages":
                     conv = data.get("conversation_id")
                     anchor_raw = data.get("from_message_id")

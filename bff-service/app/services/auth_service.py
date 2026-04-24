@@ -92,6 +92,29 @@ class AuthService:
             _raise_auth_error(response)
             return response.json()
 
+    async def search_users_by_email(
+        self,
+        query: str,
+        limit: int = 20,
+        access_token: str | None = None,
+    ) -> list[Dict[str, Any]]:
+        """Поиск пользователей по части email через auth-service."""
+        async with httpx.AsyncClient() as client:
+            headers: Dict[str, str] = {}
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+            response = await client.get(
+                f"{self.auth_service_url}/users/search",
+                params={"query": query, "limit": limit},
+                headers=headers,
+            )
+            _raise_auth_error(response)
+            data = response.json()
+            if isinstance(data, dict):
+                users = data.get("users", [])
+                return users if isinstance(users, list) else []
+            return []
+
     async def update_user(self, email: str, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Обновить пользователя через auth-service"""
         async with httpx.AsyncClient() as client:

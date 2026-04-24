@@ -78,6 +78,7 @@ class AnalyticsHistoryItem(BaseModel):
     chat_title: Optional[str] = Field(default=None, description="Заголовок чата")
     message_count: Optional[int] = Field(default=None, description="Число сообщений в чате")
     chat_type: Optional[Literal["chat"]] = None
+    access_role: Optional[Literal["owner", "viewer"]] = None
 
 
 class AnalyticsHistoryResponse(BaseModel):
@@ -114,6 +115,51 @@ class NlChatTranscriptResponse(BaseModel):
         default_factory=list,
         description="Сообщения в хронологическом порядке",
     )
+
+
+class CreateChatInvitesBody(BaseModel):
+    emails: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Email приглашённых",
+    )
+
+
+class ChatInviteItem(BaseModel):
+    invite_id: str
+    conversation_id: str
+    owner_user_id: str
+    owner_email: Optional[str] = None
+    invitee_email: str
+    chat_title: Optional[str] = None
+    status: Literal["pending", "accepted", "revoked", "rejected"] = "pending"
+    created_at: datetime
+
+
+class ChatInvitesListResponse(BaseModel):
+    items: list[ChatInviteItem]
+
+
+class ChatInviteAnswerBody(BaseModel):
+    decision: Literal["accept", "reject"]
+
+
+class ChatInviteAnswerResponse(BaseModel):
+    invite_id: str
+    status: Literal["accepted", "rejected"]
+    conversation_id: Optional[str] = None
+
+
+class CloneSharedChatResponse(BaseModel):
+    conversation_id: str
+
+
+class NlChatSessionMetaResponse(BaseModel):
+    conversation_id: str
+    title: Optional[str] = None
+    preview_text: Optional[str] = None
+    access_role: Literal["owner", "viewer"]
 
 
 class DataSourcePublic(BaseModel):

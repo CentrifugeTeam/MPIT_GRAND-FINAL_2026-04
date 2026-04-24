@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 
 import type { AnalyticsSidebarProps } from '../analytics-panel/analytics-sidebar';
+import type { AppNotification } from '@/shared/api/notifications-api';
 import {
   FIGMA_SIDEBAR_COLLAPSED_PX,
   FIGMA_SIDEBAR_EXPANDED_PX,
@@ -22,6 +23,7 @@ import {
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
   onToggle: () => void;
+  onChatInviteNotification?: (notification: AppNotification) => void;
 };
 
 export function FigmaAnalyticsSidebar({
@@ -46,6 +48,7 @@ export function FigmaAnalyticsSidebar({
   onStartEditingRow,
   onDeleteHistoryEntry,
   t,
+  onChatInviteNotification,
 }: FigmaAnalyticsSidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -163,6 +166,7 @@ export function FigmaAnalyticsSidebar({
                 isOpen={isOpen}
                 t={t}
                 onOpenSettings={() => setSettingsOpen(true)}
+                onChatInviteNotification={onChatInviteNotification}
               />
             </div>
           </div>

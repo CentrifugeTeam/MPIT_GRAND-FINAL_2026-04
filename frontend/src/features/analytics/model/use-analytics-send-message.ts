@@ -23,6 +23,8 @@ type Params = {
   sendChat: SendChatFn;
   setInterpretationHint: (h: InterpretationHint | null) => void;
   maxRowsStr: string;
+  /** Совместный просмотр — без отправки в чужой чат */
+  nlReadOnly?: boolean;
 };
 
 export function useAnalyticsSendMessage({
@@ -41,13 +43,14 @@ export function useAnalyticsSendMessage({
   sendChat,
   setInterpretationHint,
   maxRowsStr,
+  nlReadOnly = false,
 }: Params) {
   const [interpretBusy, setInterpretBusy] = useState(false);
 
   const sendMessageWithText = useCallback(
     async (rawText: string) => {
       const q = rawText.trim();
-      if (!q || nlChatBusy || interpretBusy) return;
+      if (nlReadOnly || !q || nlChatBusy || interpretBusy) return;
       if (dataSourcesLoaded && dataSourcesLength > 0 && !selectedSourceKey) return;
 
       let cid = nlConversationId;
@@ -101,6 +104,7 @@ export function useAnalyticsSendMessage({
       maxRowsStr,
       nlChatBusy,
       nlConversationId,
+      nlReadOnly,
       selectedSourceKey,
       selectedSourceLabel,
       sendChat,
@@ -112,11 +116,12 @@ export function useAnalyticsSendMessage({
   );
 
   const sendComposerMessage = useCallback(async () => {
+    if (nlReadOnly) return;
     const q = question.trim();
     if (!q) return;
     await sendMessageWithText(q);
     setQuestion("");
-  }, [question, sendMessageWithText, setQuestion]);
+  }, [nlReadOnly, question, sendMessageWithText, setQuestion]);
 
   return { sendComposerMessage, sendMessageWithText, interpretBusy };
 }

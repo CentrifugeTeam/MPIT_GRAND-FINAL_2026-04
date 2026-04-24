@@ -1,13 +1,20 @@
+import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.auth import get_current_user
 from app.schemas.openapi_analytics import (
+    ChatInviteAnswerBody,
+    ChatInviteAnswerResponse,
+    CloneSharedChatResponse,
+    NlChatSessionMetaResponse,
     ChatSuggestionsResponse,
     AllowedDataSourceKeysResponse,
     AnalyticsHistoryResponse,
+    ChatInvitesListResponse,
+    CreateChatInvitesBody,
     CreateNlChatBody,
     CreateNlChatResponse,
     DataSourcesListResponse,
@@ -17,9 +24,17 @@ from app.schemas.openapi_analytics import (
     QueryQualityResponse,
 )
 from app.services.analytics_service import AnalyticsProxy
+from app.services.auth_service import AuthService
+from app.services.notification_service import NotificationService
+from app.services.notification_realtime import publish_notification_touch
+from app.schemas.notification import NotificationCreate, NotificationType
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 _proxy = AnalyticsProxy()
+_auth_proxy = AuthService()
+_notification_proxy = NotificationService()
 
 _AUTH_DESC = (
     "Требуется заголовок Authorization: Bearer с access-токеном; "
@@ -251,6 +266,137 @@ async def create_nl_chat(
     payload = body.model_dump(exclude_none=True) if body else {}
     raw = await _proxy.create_nl_chat(uid, user_role=role, json_body=payload or None)
     return CreateNlChatResponse.model_validate(raw)
+
+
+@router.post(
+    "/chats/{conversation_id}/share-invites",
+    response_model=ChatInvitesListResponse,
+    summary="Создать инвайты на чат по email",
+    description="Список email; совместный просмотр. Уведомление с названием чата и email владельца.",
+)
+async def create_chat_share_invites(
+    conversation_id: str,
+    body: CreateChatInvitesBody,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> ChatInvitesListResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    email = str(current_user.get("email") or "").strip()
+    raw = await _proxy.create_chat_invites(
+        uid,
+        conversation_id,
+        emails=list(body.emails),
+        user_role=role,
+        user_email=email,
+    )
+    for invite in raw.get("items", []):
+        invitee_email = str(invite.get("invitee_email") or "").strip().lower()
+        if not invitee_email:
+            continue
+        try:
+            invitee_user = await _auth_proxy.get_user_by_email(invitee_email)
+            invitee_id = str(invitee_user.get("uuid") or "")
+            if not invitee_id:
+                continue
+            chat_title = (invite.get("chat_title") or "").strip() or "Chat"
+            owner_disp = (invite.get("owner_email") or email or "").strip() or "Someone"
+            await _notification_proxy.send_notification_to_queue(
+                invitee_id,
+                NotificationCreate(
+                    type=NotificationType.CHAT_INVITE,
+                    title=chat_title,
+                    message=f"{owner_disp} invited you to collaborate on this chat.",
+                    payload={
+                        "invite_id": invite.get("invite_id"),
+                        "conversation_id": conversation_id,
+                        "owner_user_id": uid,
+                        "owner_email": owner_disp,
+                        "chat_title": chat_title,
+                    },
+                ).model_dump(),
+            )
+            await publish_notification_touch(
+                getattr(request.app.state, "redis_client", None), invitee_id
+            )
+        except Exception as e:
+            logger.warning(
+                "chat_invite notification failed for %s: %s",
+                invitee_email,
+                e,
+                exc_info=True,
+            )
+    return ChatInvitesListResponse.model_validate(raw)
+
+
+@router.post(
+    "/chats/{conversation_id}/clone-for-me",
+    response_model=CloneSharedChatResponse,
+    summary="Склонировать расшаренный чат в свой",
+)
+async def clone_shared_chat(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> CloneSharedChatResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    em = str(current_user.get("email") or "")
+    raw = await _proxy.clone_shared_chat(uid, conversation_id, user_role=role, user_email=em)
+    return CloneSharedChatResponse.model_validate(raw)
+
+
+@router.get(
+    "/chats/{conversation_id}/meta",
+    response_model=NlChatSessionMetaResponse,
+    summary="Метаданные NL-чата и роль доступа",
+)
+async def get_nl_chat_meta(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> NlChatSessionMetaResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    em = str(current_user.get("email") or "")
+    raw = await _proxy.get_nl_chat_meta(uid, conversation_id, user_role=role, user_email=em)
+    return NlChatSessionMetaResponse.model_validate(raw)
+
+
+@router.get(
+    "/chat-invites",
+    response_model=ChatInvitesListResponse,
+    summary="Список входящих инвайтов на чаты",
+)
+async def list_chat_invites(
+    current_user: dict = Depends(get_current_user),
+) -> ChatInvitesListResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    email = str(current_user.get("email") or "")
+    raw = await _proxy.list_chat_invites(uid, user_role=role, user_email=email)
+    return ChatInvitesListResponse.model_validate(raw)
+
+
+@router.post(
+    "/chat-invites/{invite_id}/answer",
+    response_model=ChatInviteAnswerResponse,
+    summary="Принять или отклонить инвайт на чат",
+)
+async def answer_chat_invite(
+    invite_id: str,
+    body: ChatInviteAnswerBody,
+    current_user: dict = Depends(get_current_user),
+) -> ChatInviteAnswerResponse:
+    uid = str(current_user.get("uuid") or "")
+    role = str(current_user.get("role") or "USER")
+    email = str(current_user.get("email") or "")
+    raw = await _proxy.answer_chat_invite(
+        uid,
+        invite_id,
+        body.decision,
+        user_role=role,
+        user_email=email,
+    )
+    return ChatInviteAnswerResponse.model_validate(raw)
 
 
 @router.get(

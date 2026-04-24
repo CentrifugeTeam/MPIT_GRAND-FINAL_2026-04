@@ -7,7 +7,12 @@ from app.core.config import get_settings
 from app.schemas.analytics import (
     AnalyticsHistoryItem,
     AnalyticsHistoryResponse,
+    ChatInviteAnswerBody,
+    ChatInviteAnswerResponse,
+    ChatInvitesListResponse,
+    CloneSharedChatResponse,
     ChatSuggestionsResponse,
+    CreateChatInvitesBody,
     CreateNlChatBody,
     CreateNlChatResponse,
     GlossaryMatchItem,
@@ -16,6 +21,7 @@ from app.schemas.analytics import (
     NlChatDeleteMessagesResponse,
     NlChatDeleteTailBody,
     NlChatMessageApi,
+    NlChatSessionMetaResponse,
     NlChatSyncAck,
     NlChatTitlePatch,
     NlChatTranscriptResponse,
@@ -38,7 +44,11 @@ from app.services.sensitive_redaction import redact_sensitive_text
 from app.services.access_policy import admin_bypass, filter_schema_tables
 from app.services import access_policy_store as access_policy_store_mod
 from app.services.chat_store import (
+    accept_chat_invite,
+    reject_chat_invite,
     append_message,
+    clone_shared_chat_for_viewer,
+    create_chat_invites,
     create_empty_session,
     delete_all_sessions_for_user,
     delete_messages_by_keys,
@@ -47,7 +57,9 @@ from app.services.chat_store import (
     ensure_session,
     get_session_for_user,
     list_messages,
+    list_incoming_invites,
     update_session_title,
+    user_can_write_chat,
 )
 from app.services.history_unified import list_unified_history
 from app.services.job_store import delete_all_jobs_for_user, delete_job
@@ -293,6 +305,8 @@ async def internal_nl_chat_sync(
     if not uid or not cid:
         raise HTTPException(status_code=400, detail="user_id and conversation_id required")
     if body.action == "user_message":
+        if not user_can_write_chat(uid, cid):
+            raise HTTPException(status_code=403, detail="Chat is read-only for current user")
         tx = redact_sensitive_text(str(body.payload.get("text") or "").strip())
         if tx:
             ensure_session(uid, cid, title_hint=tx[:200])
@@ -303,6 +317,93 @@ async def internal_nl_chat_sync(
         pl = _slim_assistant_payload_for_db(dict(body.payload))
         append_message(uid, cid, "assistant", pl, body.client_message_id)
     return NlChatSyncAck()
+
+
+@router.post(
+    "/chats/{conversation_id}/share-invites",
+    response_model=ChatInvitesListResponse,
+    summary="Создать инвайты на чат по email",
+    description="Только email; доступ — совместный просмотр (viewer). Клон — отдельная операция после принятия.",
+)
+async def create_chat_invites_route(
+    conversation_id: uuid.UUID,
+    body: CreateChatInvitesBody,
+    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_email: str = Header("", alias="X-User-Email"),
+):
+    try:
+        rows = create_chat_invites(
+            owner_user_id=x_user_id,
+            conversation_id=str(conversation_id),
+            emails=body.emails,
+            owner_email=x_user_email.strip() or None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail="Чат не найден") from e
+    return ChatInvitesListResponse(items=rows)
+
+
+@router.post(
+    "/chats/{conversation_id}/clone-for-me",
+    response_model=CloneSharedChatResponse,
+    summary="Склонировать расшаренный чат в свой",
+    description="Только для пользователя с доступом viewer к чужой сессии.",
+)
+async def clone_shared_chat_route(
+    conversation_id: uuid.UUID,
+    x_user_id: str = Header(..., alias="X-User-Id"),
+):
+    try:
+        out = clone_shared_chat_for_viewer(x_user_id, str(conversation_id))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Cannot clone this chat")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    return CloneSharedChatResponse(**out)
+
+
+@router.get(
+    "/chat-invites",
+    response_model=ChatInvitesListResponse,
+    summary="Входящие инвайты в чат",
+)
+async def list_chat_invites_route(
+    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_email: str = Header(..., alias="X-User-Email"),
+):
+    rows = list_incoming_invites(user_email=x_user_email, user_id=x_user_id)
+    return ChatInvitesListResponse(items=rows)
+
+
+@router.post(
+    "/chat-invites/{invite_id}/answer",
+    response_model=ChatInviteAnswerResponse,
+    summary="Принять или отклонить инвайт на чат",
+)
+async def answer_chat_invite_route(
+    invite_id: uuid.UUID,
+    body: ChatInviteAnswerBody,
+    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_email: str = Header(..., alias="X-User-Email"),
+):
+    try:
+        if body.decision == "accept":
+            out = accept_chat_invite(str(invite_id), user_id=x_user_id, user_email=x_user_email)
+            return ChatInviteAnswerResponse(
+                invite_id=out["invite_id"],
+                status="accepted",
+                conversation_id=out["conversation_id"],
+            )
+        out = reject_chat_invite(str(invite_id), user_id=x_user_id, user_email=x_user_email)
+        return ChatInviteAnswerResponse(
+            invite_id=out["invite_id"],
+            status="rejected",
+            conversation_id=None,
+        )
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Invite belongs to another user")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Invite not found")
 
 
 @router.post(
@@ -323,6 +424,30 @@ async def create_nl_chat_route(
     return CreateNlChatResponse(
         conversation_id=cid,
         created_at=meta["created_at"],
+    )
+
+
+@router.get(
+    "/chats/{conversation_id}/meta",
+    response_model=NlChatSessionMetaResponse,
+    summary="Метаданные NL-чата и роль доступа",
+)
+async def get_nl_chat_meta_route(
+    conversation_id: uuid.UUID,
+    x_user_id: str = Header(..., alias="X-User-Id"),
+):
+    cid = str(conversation_id)
+    meta = get_session_for_user(x_user_id, cid)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Чат не найден")
+    ar = meta.get("access_role") or "owner"
+    if ar not in ("owner", "viewer"):
+        ar = "owner"
+    return NlChatSessionMetaResponse(
+        conversation_id=cid,
+        title=meta.get("title"),
+        preview_text=meta.get("preview_text"),
+        access_role=ar,
     )
 
 

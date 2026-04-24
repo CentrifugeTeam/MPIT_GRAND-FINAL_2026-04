@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { useMemo, useState } from 'react';
 import { Dropdown } from '@heroui/react';
 import { Icon } from '@iconify/react';
 
@@ -35,6 +36,10 @@ export type FigmaSidebarHistorySectionProps = {
   t: (key: string) => string;
 };
 
+function isSharedViewerEntry(e: AnalyticsChatEntry): boolean {
+  return e.kind === 'nl_chat' && e.accessRole === 'viewer';
+}
+
 export function FigmaSidebarHistorySection({
   historyOpen,
   onToggleHistory,
@@ -58,6 +63,33 @@ export function FigmaSidebarHistorySection({
   onRequestDeleteRow,
   t,
 }: FigmaSidebarHistorySectionProps) {
+  const [sharedOpen, setSharedOpen] = useState(true);
+  const ownEntries = useMemo(
+    () => entries.filter(e => !isSharedViewerEntry(e)),
+    [entries],
+  );
+  const sharedEntries = useMemo(
+    () => entries.filter(e => isSharedViewerEntry(e)),
+    [entries],
+  );
+
+  const rowBlockProps = {
+    titles,
+    activeId,
+    editingRowId,
+    renameDraft,
+    renameFieldFocused,
+    renameInputRef,
+    onRenameDraft,
+    onRenameFocus,
+    onCommitRename,
+    onCancelRename,
+    onSelectEntry,
+    onStartEditingRow,
+    onRequestDeleteRow,
+    t,
+  } as const;
+
   return (
     <div className='flex min-h-0 flex-1 flex-col gap-[8px] pt-1 pb-[16px]'>
       <div className='flex shrink-0 items-center gap-[4px] pl-[12px]'>
@@ -133,29 +165,47 @@ export function FigmaSidebarHistorySection({
       </div>
 
       {historyOpen && (
-        <div className='flex min-h-0 flex-1 flex-col gap-[4px] overflow-y-auto'>
-          {entries.length === 0 && (
-            <p className='px-[12px] py-3 font-sans text-xs text-[#71717a]'>
-              {t('home.analytics.sidebarEmpty')}
-            </p>
-          )}
-          <FigmaSidebarHistoryRows
-            entries={entries}
-            titles={titles}
-            activeId={activeId}
-            editingRowId={editingRowId}
-            renameDraft={renameDraft}
-            renameFieldFocused={renameFieldFocused}
-            renameInputRef={renameInputRef}
-            onRenameDraft={onRenameDraft}
-            onRenameFocus={onRenameFocus}
-            onCommitRename={onCommitRename}
-            onCancelRename={onCancelRename}
-            onSelectEntry={onSelectEntry}
-            onStartEditingRow={onStartEditingRow}
-            onRequestDeleteRow={onRequestDeleteRow}
-            t={t}
-          />
+        <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto'>
+          <div className='flex min-h-0 flex-1 flex-col gap-[4px]'>
+            {ownEntries.length === 0 && (
+              <p className='px-[12px] py-2 font-sans text-xs text-[#71717a]'>
+                {t('home.analytics.sidebarEmpty')}
+              </p>
+            )}
+            <FigmaSidebarHistoryRows
+              entries={ownEntries}
+              {...rowBlockProps}
+            />
+          </div>
+
+          <div className='flex shrink-0 flex-col gap-[4px] border-t border-[#28282c] pt-2'>
+            <button
+              type='button'
+              onClick={() => setSharedOpen(v => !v)}
+              className='flex w-full cursor-pointer items-center gap-[4px] pl-[12px] font-sans text-[13px] font-medium text-[#e4e4e7] transition-opacity duration-150 hover:opacity-70'
+            >
+              {t('home.figma.sharedChats')}
+              <Icon
+                icon='mdi:chevron-down'
+                width={16}
+                className={`text-[#e4e4e7] transition-transform ${sharedOpen ? '' : '-rotate-90'}`}
+              />
+            </button>
+            {sharedOpen && (
+              <div className='flex flex-col gap-[4px]'>
+                {sharedEntries.length === 0 ? (
+                  <p className='px-[12px] py-2 font-sans text-[11px] text-[#71717a]'>
+                    {t('home.figma.sharedChatsEmpty')}
+                  </p>
+                ) : (
+                  <FigmaSidebarHistoryRows
+                    entries={sharedEntries}
+                    {...rowBlockProps}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

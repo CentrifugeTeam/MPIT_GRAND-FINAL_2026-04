@@ -13,6 +13,7 @@ import { DotsVertical } from '@/shared/ui/assets/icons';
 export type FigmaChatHeaderRowProps = {
   t: FigmaTranslateFn;
   nlConversationId: string | null;
+  nlChatAccessRole?: 'owner' | 'viewer' | null;
   onShareChat: () => void;
   historyBusy: boolean;
   onRefreshHistory: () => void;
@@ -22,40 +23,45 @@ export type FigmaChatHeaderRowProps = {
 export function FigmaChatHeaderRow({
   t,
   nlConversationId,
+  nlChatAccessRole = 'owner',
   onShareChat,
   historyBusy,
   onRefreshHistory,
   onStartNewChat,
 }: FigmaChatHeaderRowProps) {
+  const isViewer = nlChatAccessRole === 'viewer';
+
   return (
     <div className='absolute right-5 top-5 flex items-center gap-1.5 z-50'>
-      <FigmaSimpleTooltip
-        label={
-          nlConversationId
-            ? t('home.figma.shareTooltip')
-            : t('home.figma.shareDisabledTooltip')
-        }
-        side='bottom'
-      >
-        <span className='inline-flex shrink-0'>
-          <button
-            type='button'
-            disabled={!nlConversationId}
-            onClick={() => void onShareChat()}
-            className='relative flex size-10 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/40 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40'
-          >
-            <Icon
-              icon='mdi:share-variant-outline'
-              className='text-[#fcfcfc]'
-              width={20}
-            />
-            <span
-              aria-hidden='true'
-              className='pointer-events-none absolute inset-0 rounded-[24px] border border-solid border-[#28282c]'
-            />
-          </button>
-        </span>
-      </FigmaSimpleTooltip>
+      {!isViewer ? (
+        <FigmaSimpleTooltip
+          label={
+            nlConversationId
+              ? t('home.figma.shareTooltip')
+              : t('home.figma.shareDisabledTooltip')
+          }
+          side='bottom'
+        >
+          <span className='inline-flex shrink-0'>
+            <button
+              type='button'
+              disabled={!nlConversationId}
+              onClick={() => void onShareChat()}
+              className='relative flex size-10 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/40 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40'
+            >
+              <Icon
+                icon='mdi:share-variant-outline'
+                className='text-[#fcfcfc]'
+                width={20}
+              />
+              <span
+                aria-hidden='true'
+                className='pointer-events-none absolute inset-0 rounded-[24px] border border-solid border-[#28282c]'
+              />
+            </button>
+          </span>
+        </FigmaSimpleTooltip>
+      ) : null}
       <Dropdown.Root>
         <FigmaSimpleTooltip
           label={t('home.figma.chatMenuTooltip')}

@@ -15,6 +15,8 @@ export interface AnalyticsChatEntry {
   createdAt: number;
   jobId?: string;
   conversationId?: string;
+  /** nl_chat: owner — свой чат; viewer — совместный просмотр */
+  accessRole?: 'owner' | 'viewer' | null;
   result: NlSqlWsPayload | null;
 }
 

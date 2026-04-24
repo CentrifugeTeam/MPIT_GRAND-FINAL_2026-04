@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, Enum, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Text, Enum as SAEnum, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -11,21 +12,42 @@ class NotificationType(str, enum.Enum):
     SYSTEM = "system"
     EMAIL = "email"
     REPORT = "report"
+    CHAT_INVITE = "chat_invite"
 
 class NotificationStatus(str, enum.Enum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
 
+def _enum_values(enum_cls):
+    return [e.value for e in enum_cls]
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    type = Column(Enum(NotificationType), nullable=False)
+    type = Column(
+        SAEnum(
+            NotificationType,
+            name="notificationtype",
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+    )
     title = Column(String, nullable=False)
     message = Column(Text, nullable=False)
-    status = Column(Enum(NotificationStatus), default=NotificationStatus.PENDING, nullable=False)
+    payload = Column(JSONB, nullable=True)
+    status = Column(
+        SAEnum(
+            NotificationStatus,
+            name="notificationstatus",
+            values_callable=_enum_values,
+        ),
+        default=NotificationStatus.PENDING,
+        nullable=False,
+    )
     email = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     sent_at = Column(DateTime(timezone=True), nullable=True)
