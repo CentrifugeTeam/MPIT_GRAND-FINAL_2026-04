@@ -14,7 +14,11 @@ import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 import { FigmaSidebarHistorySection } from './figma-sidebar-history-section';
 import { FigmaSidebarPrimaryNav } from './figma-sidebar-primary-nav';
 import { FigmaSidebarProfileButton } from './figma-sidebar-profile-button';
-import { ArrowChevronLeft, Logo } from '@/shared/ui/assets/icons';
+import {
+  ArrowChevronLeft,
+  ArrowChevronRight,
+  Logo,
+} from '@/shared/ui/assets/icons';
 
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
@@ -149,8 +153,7 @@ export function FigmaAnalyticsSidebar({
                     onClick={onToggle}
                     className='flex size-8 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/60 active:scale-[0.97]'
                   >
-                    <Icon
-                      icon='mdi:chevron-double-right'
+                    <ArrowChevronRight
                       className='text-[#fcfcfc]'
                       width={20}
                     />

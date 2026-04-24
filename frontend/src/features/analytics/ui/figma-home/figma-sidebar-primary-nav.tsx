@@ -63,8 +63,7 @@ export function FigmaSidebarPrimaryNav({
             onClick={onOpenSearch}
             className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
           >
-            <Icon
-              icon='mdi:magnify'
+            <SearchIcon
               className='text-[#a1a1aa]'
               width={18}
             />
@@ -101,8 +100,7 @@ export function FigmaSidebarPrimaryNav({
             onClick={() => void onStartNewChat()}
             className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
           >
-            <Icon
-              icon='mdi:message-plus-outline'
+            <NewChatIcon
               className='text-[#a1a1aa]'
               width={18}
             />
@@ -138,8 +136,7 @@ export function FigmaSidebarPrimaryNav({
               onClick={handleNavigateToReports}
               className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} justify-center p-2`}
             >
-              <Icon
-                icon='mdi:file-chart-outline'
+              <GearIcon
                 className='text-[#a1a1aa]'
                 width={18}
               />

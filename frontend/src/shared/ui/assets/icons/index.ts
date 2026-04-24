@@ -22,3 +22,4 @@ export { default as CloseIcon } from './xmark.svg';
 export { default as PersonIcon } from './person.svg';
 export { default as GearIcon } from './gear.svg';
 export { default as ArrowRightFromSquareIcon } from './arrow-right-from-square.svg';
+export { default as ArrowChevronRight } from './arrow-chevron-right.svg';
