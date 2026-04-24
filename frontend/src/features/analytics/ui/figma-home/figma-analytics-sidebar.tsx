@@ -14,7 +14,7 @@ import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 import { FigmaSidebarHistorySection } from './figma-sidebar-history-section';
 import { FigmaSidebarPrimaryNav } from './figma-sidebar-primary-nav';
 import { FigmaSidebarProfileButton } from './figma-sidebar-profile-button';
-import { Logo } from '@/shared/ui/assets/icons';
+import { ArrowChevronLeft, Logo } from '@/shared/ui/assets/icons';
 
 export type FigmaAnalyticsSidebarProps = AnalyticsSidebarProps & {
   isOpen: boolean;
@@ -82,13 +82,6 @@ export function FigmaAnalyticsSidebar({
                 }}
               >
                 <Logo className='size-7' />
-                {/* <div className='flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3f3f46] to-[#18181b]'>
-                  <Icon
-                    icon='mdi:account'
-                    className='text-[#fcfcfc]'
-                    width={18}
-                  />
-                </div> */}
                 {isOpen && (
                   <button
                     type='button'
@@ -96,8 +89,7 @@ export function FigmaAnalyticsSidebar({
                     className='flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all duration-200 hover:bg-[#27272a]/60 active:scale-[0.97]'
                     title={t('home.figma.openSidebar')}
                   >
-                    <Icon
-                      icon='mdi:chevron-double-left'
+                    <ArrowChevronLeft
                       className='text-[#fcfcfc]'
                       width={20}
                     />

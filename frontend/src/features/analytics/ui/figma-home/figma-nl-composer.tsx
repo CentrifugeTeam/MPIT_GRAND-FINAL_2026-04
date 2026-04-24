@@ -4,6 +4,8 @@ import { Icon } from '@iconify/react';
 import type { AnalyticsDataSourceItem } from '../../api/analytics-api';
 import type { FigmaTranslateFn } from '../../config/figma-analytics-faq';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
+import { MicrophoneIcon } from '@/shared/ui/assets/icons';
+import { Button } from '@heroui/react';
 
 export type FigmaNlComposerProps = {
   t: FigmaTranslateFn;
@@ -132,21 +134,17 @@ export function FigmaNlComposer({
               label={t('home.figma.voiceTooltip')}
               side='top'
             >
-              <button
-                type='button'
+              <Button
+                variant='outline'
+                size='md'
                 onClick={onVoiceOpen}
-                className='relative flex size-9 cursor-pointer items-center justify-center rounded-3xl transition-colors hover:bg-surface/60 active:scale-[0.97]'
+                className='relative flex size-9 cursor-pointer items-center justify-center rounded-3xl transition-colors hover:bg-surface/60 active:scale-[0.97] border-border border'
               >
-                <Icon
-                  icon='mdi:microphone'
+                <MicrophoneIcon
                   className='text-foreground'
                   width={18}
                 />
-                <span
-                  aria-hidden='true'
-                  className='pointer-events-none absolute inset-0 rounded-3xl border border-border'
-                />
-              </button>
+              </Button>
             </FigmaSimpleTooltip>
           </div>
         </div>

@@ -8,6 +8,7 @@ import {
   FIGMA_DROPDOWN_POPOVER,
 } from './figma-heroui-dropdown-classes';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
+import { DotsVertical } from '@/shared/ui/assets/icons';
 
 export type FigmaChatHeaderRowProps = {
   t: FigmaTranslateFn;
@@ -64,10 +65,10 @@ export function FigmaChatHeaderRow({
             aria-label={t('home.figma.chatMenuAria')}
             className='relative inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[24px] transition-all hover:bg-[#27272a]/40 active:scale-[0.97]'
           >
-            <Icon
-              icon='mdi:dots-vertical'
+            <DotsVertical
               className='text-[#fcfcfc]'
-              width={22}
+              width={14}
+              height={14}
             />
             <span
               aria-hidden='true'

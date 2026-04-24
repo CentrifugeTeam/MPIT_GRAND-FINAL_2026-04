@@ -1,4 +1,10 @@
-import { Surface, Separator } from '@heroui/react';
+import {
+  ArrowsIcon,
+  CommentIcon,
+  PauseIcon,
+  PlayIcon,
+} from '@/shared/ui/assets/icons';
+import { Surface, Separator, Button } from '@heroui/react';
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
 
@@ -50,15 +56,16 @@ export function ReportTaskItem({
           {hovered ? (
             isActive ? (
               <button
-                className='flex items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-foreground'
+                className='flex items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-foreground cursor-pointer'
                 onClick={e => {
                   e.stopPropagation();
                   onPause?.(id);
                 }}
               >
-                <Icon
-                  icon='mdi:pause-circle-outline'
+                <PauseIcon
                   width={16}
+                  height={16}
+                  className='text-default-foreground'
                 />
               </button>
             ) : (
@@ -69,28 +76,28 @@ export function ReportTaskItem({
                   onResume?.(id);
                 }}
               >
-                <Icon
-                  icon='mdi:play-circle-outline'
+                <PlayIcon
                   width={16}
+                  height={16}
                   className='text-muted'
                 />
               </button>
             )
           ) : !isActive ? (
             <>
-              <Icon
-                icon='mdi:pause-circle-outline'
+              <PauseIcon
                 width={16}
+                height={16}
                 className='shrink-0 text-warning'
               />
               <span className='text-[14px] text-warning'>Приостановлено</span>
             </>
           ) : (
             <>
-              <span className='text-[14px] text-muted'>{schedule}</span>
-              <Icon
-                icon='mdi:repeat'
+              <span className='text-[14px]'>{schedule}</span>
+              <ArrowsIcon
                 width={16}
+                height={16}
                 className='shrink-0 text-muted'
               />
             </>
@@ -103,10 +110,10 @@ export function ReportTaskItem({
           <Separator className='my-2' />
           <div className='flex w-full items-center justify-between'>
             <div className='flex items-center gap-1.5'>
-              <Icon
-                icon='mdi:comment-outline'
+              <CommentIcon
                 width={14}
-                className='shrink-0 text-muted'
+                height={14}
+                className='shrink-0 text-muted self-start mt-1'
               />
               {description && (
                 <span className='text-[14px] text-muted'>{description}</span>

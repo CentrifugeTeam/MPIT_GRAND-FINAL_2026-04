@@ -30,6 +30,7 @@ import {
   type CreateReportTaskBody,
   type ReportTaskScheduleType,
 } from '@/features/analytics/api/analytics-api';
+import { PlusIcon } from '@/shared/ui/assets/icons';
 
 /* ------------------------------------------------------------------ */
 /* Types & helpers                                                      */
@@ -188,9 +189,7 @@ function ReportFormBody({
 }: FormBodyProps) {
   const { t } = useTranslation();
 
-  const [reportName, setReportName] = useState(
-    initialValues?.reportName ?? '',
-  );
+  const [reportName, setReportName] = useState(initialValues?.reportName ?? '');
   const [query, setQuery] = useState(initialValues?.query ?? '');
   const [monthDay, setMonthDay] = useState(initialValues?.monthDay ?? 1);
   const [scheduleTab, setScheduleTab] = useState<ReportTaskScheduleType>(
@@ -455,20 +454,20 @@ function ReportFormBody({
             aria-label={t('reports.modal.tabsAriaLabel')}
             className='w-full rounded-[28px] bg-zinc-800 py-1 gap-0.5'
           >
-            {(
-              ['once', 'daily', 'weekly', 'monthly', 'yearly'] as const
-            ).map(key => (
-              <Tabs.Tab
-                key={key}
-                id={key}
-                className='rounded-[20px] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-zinc-400 data-[selected=true]:text-foreground'
-              >
-                {t(
-                  `reports.modal.tab${key.charAt(0).toUpperCase()}${key.slice(1)}`,
-                )}
-                <Tabs.Indicator className='rounded-[20px] bg-zinc-700 shadow-md' />
-              </Tabs.Tab>
-            ))}
+            {(['once', 'daily', 'weekly', 'monthly', 'yearly'] as const).map(
+              key => (
+                <Tabs.Tab
+                  key={key}
+                  id={key}
+                  className='rounded-[20px] px-3 py-1.5 text-sm font-medium whitespace-nowrap text-zinc-400 data-[selected=true]:text-foreground'
+                >
+                  {t(
+                    `reports.modal.tab${key.charAt(0).toUpperCase()}${key.slice(1)}`,
+                  )}
+                  <Tabs.Indicator className='rounded-[20px] bg-zinc-700 shadow-md' />
+                </Tabs.Tab>
+              ),
+            )}
           </Tabs.List>
         </Tabs.ListContainer>
 
@@ -817,9 +816,9 @@ export function CreateReportModal({
         variant='outline'
         onPress={() => setIsOpen(true)}
       >
-        <Icon
-          icon='mdi:plus'
+        <PlusIcon
           width={16}
+          height={16}
           className='mr-1'
         />
         {t('reports.addReport')}

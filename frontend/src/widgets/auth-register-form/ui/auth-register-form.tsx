@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Icon } from '@iconify/react';
 import { Button, Checkbox, ErrorMessage, Input, Tabs } from '@heroui/react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,6 +8,11 @@ import z from 'zod';
 
 import { useRegister } from '@/entities/auth';
 import i18n from '@/shared/lib/i18n';
+import {
+  ArrowRightToSquareIcon,
+  EyeIcon,
+  PersonPlusIcon,
+} from '@/shared/ui/assets/icons';
 
 const registerSchema = z
   .object({
@@ -90,9 +94,9 @@ export function AuthRegisterForm() {
                   className='rounded-full h-9 text-sm text-zinc-400 aria-selected:text-zinc-50 flex-1'
                 >
                   <span className='flex items-center gap-1.5'>
-                    <Icon
-                      icon='mdi:lock-outline'
+                    <ArrowRightToSquareIcon
                       width={16}
+                      height={16}
                     />
                     {t('auth.signIn')}
                   </span>
@@ -103,9 +107,9 @@ export function AuthRegisterForm() {
                   className='rounded-full h-9 text-sm text-zinc-400 aria-selected:text-zinc-50 flex-1'
                 >
                   <span className='flex items-center gap-1.5'>
-                    <Icon
-                      icon='mdi:account-outline'
+                    <PersonPlusIcon
                       width={16}
+                      height={16}
                     />
                     {t('auth.signUp')}
                   </span>
@@ -158,8 +162,8 @@ export function AuthRegisterForm() {
                         onPress={() => setShowPassword(p => !p)}
                         className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400'
                       >
-                        <Icon
-                          icon={showPassword ? 'mdi:eye-off' : 'mdi:eye'}
+                        <EyeIcon
+                          height={16}
                           width={18}
                         />
                       </Button>
@@ -191,8 +195,8 @@ export function AuthRegisterForm() {
                         onPress={() => setShowConfirm(p => !p)}
                         className='absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400'
                       >
-                        <Icon
-                          icon={showConfirm ? 'mdi:eye-off' : 'mdi:eye'}
+                        <EyeIcon
+                          height={16}
                           width={18}
                         />
                       </Button>

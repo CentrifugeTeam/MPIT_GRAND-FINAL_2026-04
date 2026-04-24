@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { useAnalyticsChatStore } from '../../model/analytics-chat-store';
 import { FIGMA_SIDEBAR_NAV_BUTTON_CLASS } from '../../config/figma-sidebar-styles';
 import { FigmaSimpleTooltip } from './figma-simple-tooltip';
+import { NewChatIcon, ReportsIcon, SearchIcon } from '@/shared/ui/assets/icons';
 
 export type FigmaSidebarPrimaryNavProps = {
   isOpen: boolean;
@@ -35,8 +36,7 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
-            <Icon
-              icon='mdi:magnify'
+            <SearchIcon
               className='shrink-0 text-[#a1a1aa]'
               width={16}
             />
@@ -77,8 +77,7 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
-            <Icon
-              icon='mdi:message-plus-outline'
+            <NewChatIcon
               className='shrink-0 text-[#a1a1aa]'
               width={16}
             />
@@ -113,8 +112,7 @@ export function FigmaSidebarPrimaryNav({
           className={`${FIGMA_SIDEBAR_NAV_BUTTON_CLASS} text-left`}
         >
           <div className='flex min-h-[inherit] w-full items-center gap-[12px] px-[12px] py-[6px]'>
-            <Icon
-              icon='mdi:file-chart-outline'
+            <ReportsIcon
               className='shrink-0 text-[#a1a1aa]'
               width={16}
             />

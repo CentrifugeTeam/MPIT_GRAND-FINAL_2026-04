@@ -15,7 +15,15 @@ import {
 import { FigmaConfirmDialog } from '@/features/analytics/ui/figma-home/figma-confirm-dialog';
 import type { ChartPayloadShape } from '@/entities/analytics';
 import { AnalyticsCharts } from '@/features/analytics';
-import { Archive, ArrowsRotateLeft } from '@/shared/ui/assets/icons';
+import {
+  Archive,
+  ArrowsRotateLeft,
+  CloseIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+  TrashIcon,
+} from '@/shared/ui/assets/icons';
 
 /* ------------------------------------------------------------------ */
 /* RunItem                                                             */
@@ -51,8 +59,12 @@ function RunItem({ run, defaultExpanded = false }: RunItemProps) {
     !!run.result_summary ||
     !!run.result_payload;
 
-  const resultPayload = fullRun?.result_payload as Record<string, unknown> | null;
-  const chartPayload = (resultPayload?.chart_payload ?? null) as ChartPayloadShape | null;
+  const resultPayload = fullRun?.result_payload as Record<
+    string,
+    unknown
+  > | null;
+  const chartPayload = (resultPayload?.chart_payload ??
+    null) as ChartPayloadShape | null;
 
   return (
     <div
@@ -130,11 +142,14 @@ function RunItem({ run, defaultExpanded = false }: RunItemProps) {
             </div>
           )}
 
-          {!isLoading && !fullRun?.result_summary && !chartPayload && fullRun?.status !== 'failed' && (
-            <p className='text-sm text-muted text-center py-4'>
-              {t('reports.detail.noContent')}
-            </p>
-          )}
+          {!isLoading &&
+            !fullRun?.result_summary &&
+            !chartPayload &&
+            fullRun?.status !== 'failed' && (
+              <p className='text-sm text-muted text-center py-4'>
+                {t('reports.detail.noContent')}
+              </p>
+            )}
         </div>
       )}
     </div>
@@ -210,7 +225,7 @@ export function TaskDetailPanel({
               className='text-foreground'
               onPress={() => setIsDeleteOpen(true)}
             >
-              <Archive
+              <TrashIcon
                 width={16}
                 height={16}
               />
@@ -223,16 +238,16 @@ export function TaskDetailPanel({
               onPress={onClose}
               className='text-foreground'
             >
-              <Icon
-                icon='mdi:close'
+              <CloseIcon
                 width={16}
+                height={16}
               />
             </Button>
           </div>
         </div>
 
         {/* Schedule row: left = schedule + edit/pause, right = generate */}
-        <div className='mt-3 flex items-center justify-between gap-2'>
+        <div className='mt-3 flex items-center justify-start gap-2'>
           <div className='flex items-center gap-2'>
             <div className='flex items-center gap-1 text-sm text-foreground'>
               <ArrowsRotateLeft
@@ -244,20 +259,20 @@ export function TaskDetailPanel({
             <div className='flex items-center gap-0.5'>
               <Button
                 isIconOnly
-                variant='ghost'
+                variant='outline'
                 size='sm'
                 aria-label={t('reports.detail.edit')}
                 onPress={onEdit}
                 className='h-7 w-7 min-w-7 text-muted hover:text-foreground'
               >
-                <Icon
-                  icon='mdi:pencil-outline'
+                <PencilIcon
                   width={14}
+                  height={14}
                 />
               </Button>
               <Button
                 isIconOnly
-                variant='ghost'
+                variant='outline'
                 size='sm'
                 aria-label={
                   currentTask.is_active
@@ -267,10 +282,18 @@ export function TaskDetailPanel({
                 onPress={onTogglePause}
                 className='h-7 w-7 min-w-7 text-muted hover:text-foreground'
               >
-                <Icon
-                  icon={currentTask.is_active ? 'mdi:pause' : 'mdi:play'}
-                  width={14}
-                />
+                {currentTask.is_active ? (
+                  <PauseIcon
+                    width={14}
+                    height={14}
+                    className='text-default-foreground'
+                  />
+                ) : (
+                  <PlayIcon
+                    width={14}
+                    height={14}
+                  />
+                )}
               </Button>
             </div>
           </div>
@@ -283,9 +306,9 @@ export function TaskDetailPanel({
             className='h-8 shrink-0 border-border px-3 text-sm font-medium'
           >
             {!dispatchMutation.isPending && (
-              <Icon
-                icon='mdi:play-circle-outline'
+              <PlayIcon
                 width={14}
+                height={14}
               />
             )}
             {t('reports.detail.generateReport')}
@@ -327,9 +350,7 @@ export function TaskDetailPanel({
         title={t('reports.detail.deleteConfirmTitle')}
         message={t('reports.detail.deleteConfirmBody')}
         confirmLabel={
-          deleteMutation.isPending
-            ? '…'
-            : t('reports.detail.deleteConfirmOk')
+          deleteMutation.isPending ? '…' : t('reports.detail.deleteConfirmOk')
         }
         cancelLabel={t('reports.detail.deleteConfirmCancel')}
         danger
