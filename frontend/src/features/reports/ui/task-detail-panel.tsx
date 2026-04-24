@@ -5,12 +5,14 @@ import { Button, ScrollShadow, Spinner } from '@heroui/react';
 import { Icon } from '@iconify/react';
 
 import {
+  deleteAnalyticsTask,
   dispatchReportTask,
   fetchReportById,
   fetchReportTaskById,
   type ReportRun,
   type ReportTask,
 } from '@/features/analytics/api/analytics-api';
+import { FigmaConfirmDialog } from '@/features/analytics/ui/figma-home/figma-confirm-dialog';
 import type { ChartPayloadShape } from '@/entities/analytics';
 import { AnalyticsCharts } from '@/features/analytics';
 import { Archive, ArrowsRotateLeft } from '@/shared/ui/assets/icons';
@@ -149,6 +151,7 @@ interface TaskDetailPanelProps {
   onClose: () => void;
   onEdit?: () => void;
   onTogglePause?: () => void;
+  onDelete?: () => void;
 }
 
 export function TaskDetailPanel({
@@ -157,8 +160,10 @@ export function TaskDetailPanel({
   onClose,
   onEdit,
   onTogglePause,
+  onDelete,
 }: TaskDetailPanelProps) {
   const { t } = useTranslation();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const { data: freshTask, refetch } = useQuery({
     queryKey: ['report-task', task.id],
@@ -173,6 +178,15 @@ export function TaskDetailPanel({
     mutationFn: () => dispatchReportTask(task.id),
     onSuccess: () => {
       setTimeout(refetch, 10000);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteAnalyticsTask(task.id),
+    onSuccess: () => {
+      setIsDeleteOpen(false);
+      onClose();
+      onDelete?.();
     },
   });
 
@@ -194,6 +208,7 @@ export function TaskDetailPanel({
               size='sm'
               aria-label={t('reports.detail.archive')}
               className='text-foreground'
+              onPress={() => setIsDeleteOpen(true)}
             >
               <Archive
                 width={16}
@@ -306,6 +321,25 @@ export function TaskDetailPanel({
           )}
         </div>
       </ScrollShadow>
+
+      <FigmaConfirmDialog
+        open={isDeleteOpen}
+        title={t('reports.detail.deleteConfirmTitle')}
+        message={t('reports.detail.deleteConfirmBody')}
+        confirmLabel={
+          deleteMutation.isPending
+            ? '…'
+            : t('reports.detail.deleteConfirmOk')
+        }
+        cancelLabel={t('reports.detail.deleteConfirmCancel')}
+        danger
+        onConfirm={() => {
+          if (!deleteMutation.isPending) deleteMutation.mutate();
+        }}
+        onCancel={() => {
+          if (!deleteMutation.isPending) setIsDeleteOpen(false);
+        }}
+      />
     </div>
   );
 }

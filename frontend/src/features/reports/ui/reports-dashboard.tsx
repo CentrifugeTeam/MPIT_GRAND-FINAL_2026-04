@@ -271,6 +271,10 @@ export function ReportsDashboard() {
                   resumeMutation.mutate(selectedTask.id);
                 }
               }}
+              onDelete={() => {
+                setSelectedTaskId(null);
+                void queryClient.invalidateQueries({ queryKey: ['report-tasks'] });
+              }}
             />
           )}
         </div>
