@@ -1,8 +1,5 @@
 .gitnexus
 
-# --- локальные секреты и окружение ---
-.env
-
 # --- ОС ---
 .DS_Store
 .AppleDouble

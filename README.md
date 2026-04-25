@@ -1,33 +1,28 @@
-# MPIT Grand Final — платформа аналитики и NL→SQL
+# MPIT Grand Final — платформа NL→SQL и аналитики (кейс Drivee)
 
-Монорепозиторий кейса **Drivee (MPIT)**: микросервисный backend с BFF, отдельным фронтендом на React, двумя базами PostgreSQL, RabbitMQ для чат-оркестрации и SQL-воркера, опционально Redis (rate limit) и LLM для интерпретации запросов и генерации SQL.
+Пользователь задаёт вопрос на естественном языке; система строит SQL с учётом схемы и политик, выполняет запрос и возвращает таблицу и графики; есть отчёты по расписанию, уведомления и совместные NL-чаты.
 
-## Документация
+Монорепозиторий: **BFF** (HTTP, WebSocket, SSE), микросервисы **auth**, **analytics**, **report-task**, **notification**, воркеры **nl-orchestrator** и **sql-generator**, **React (Vite)** на фронте, две **PostgreSQL** (платформа и витрина), **RabbitMQ**, опционально **Redis**.
 
-| Раздел | Описание |
-|--------|----------|
-| [docs/README.md](docs/README.md) | Оглавление и ссылки на описание каждого сервиса |
-| [docs/architecture.md](docs/architecture.md) | Архитектура всего решения и диаграммы Mermaid |
-| [docs/implementation-scope.md](docs/implementation-scope.md) | Перечень реализованных возможностей и ссылки в код |
-| [docs/requirements/case-drivee.md](docs/requirements/case-drivee.md) | Место под текст кейса из ТЗ |
-| [docs/operations/local-run.md](docs/operations/local-run.md) | Локальный запуск через Docker Compose |
+## Куда смотреть дальше
 
-Структура **по сервисам**: каталоги `docs/auth-service/`, `docs/bff-service/`, … — в каждом `README.md`, `architecture.md`, `modules.md`, `files.md`. У каждого сервиса в дереве кода (`bff-service/`, `nl-orchestrator-worker/` и т.д.) — краткий **`README.md`** у корня каталога со ссылкой в `docs/`.
+Вся подробная документация собрана в каталоге **[`docs/`](docs/README.md)** — начните с оглавления там.
+
+| Если нужно… | Документ |
+|-------------|----------|
+| Запустить локально, порты, `dataset/train.csv`, `.env` | [`docs/operations/local-run.md`](docs/operations/local-run.md) |
+| Контейнеры, очереди, Mermaid-флоу NL→SQL, SSE, отчёты | [`docs/architecture.md`](docs/architecture.md) |
+| Что реализовано и ссылки в код | [`docs/implementation-scope.md`](docs/implementation-scope.md) |
+| Термины (BFF, очереди, guardrails, SSE…) | [`docs/glossary.md`](docs/glossary.md) |
+| Кейс Drivee и экспертное сопоставление с ТЗ | [`docs/requirements/case-drivee.md`](docs/requirements/case-drivee.md), [`docs/requirements/EXPERT_REVIEW_DRIVEE.md`](docs/requirements/EXPERT_REVIEW_DRIVEE.md) |
+| NL-чат, WS, отчёты, PDF, шаринг | [`docs/frontend/nl-chat-and-reports.md`](docs/frontend/nl-chat-and-reports.md) |
+
+По каждому сервису в **`docs/<имя-сервис>/`** есть краткий `README.md` (роль, порты, границы); в дереве кода у сервиса — только короткий `README.md` со ссылкой в `docs/`.
 
 ## Быстрый старт
 
-1. Скопируйте [`.example.env`](.example.env) в `.env` и задайте как минимум `LLM_API_KEY` (и при необходимости `CLOUDPUB_TOKEN`).
-2. Из корня репозитория (рядом с этим файлом и `docker-compose.yml`):
+Инструкция по запуску, данным `dataset/train.csv`, переменным окружения и URL: **[`docs/operations/local-run.md`](docs/operations/local-run.md)**.
 
-```bash
-docker compose up --build
-```
+## Репозиторий (каталоги верхнего уровня)
 
-3. Дождитесь healthy для БД и RabbitMQ и успешного завершения `main-db-bootstrap`.
-4. Откройте фронтенд на [http://localhost:5173](http://localhost:5173) или API BFF на [http://localhost:8000/docs](http://localhost:8000/docs).
-
-Подробности портов и сервисов: [docs/operations/local-run.md](docs/operations/local-run.md).
-
-## Репозиторий
-
-Основные каталоги: `bff-service`, `auth-service`, `analytics-service`, `report-task-service`, `sql-generator-worker`, `nl-orchestrator-worker`, `notification-service`, `frontend`, `infrastructure`, `scripts`.
+`bff-service`, `auth-service`, `analytics-service`, `report-task-service`, `sql-generator-worker`, `nl-orchestrator-worker`, `notification-service`, `frontend`, `infrastructure`, `scripts`, `docs`, `dataset`.

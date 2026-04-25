@@ -1,4 +1,4 @@
-# NL-чат, WebSocket (BFF) и модалка отчётов
+# NL-чат, WebSocket (BFF), PDF, совместный доступ и модалка отчётов
 
 Сквозное описание поведения, которое затрагивает [frontend](../../frontend/), BFF, analytics-service и [nl-orchestrator-worker](../../nl-orchestrator-worker/). Код — источник истины; здесь — навигация и контракты.
 
@@ -85,14 +85,54 @@ sequenceDiagram
 
 [`../../frontend/src/features/reports/ui/create-report-modal.tsx`](../../frontend/src/features/reports/ui/create-report-modal.tsx): панель диалога с `role="dialog"`, `aria-modal="true"`; при `open` фокус переносится с элемента вне модалки (в т.ч. с поля чата) на первый `input`/`textarea` внутри — для доступности при переходе «из чата в отчёт».
 
+## Экспорт ответа ассистента в PDF
+
+- **HTTP (не WebSocket):** `GET /api/analytics/chats/{conversation_id}/export/pdf?message_id={uuid}` на BFF с JWT. Параметр `message_id` — **id строки assistant** из ответа `GET /api/analytics/chats/{conversation_id}/messages` (первичный ключ сообщения в транскрипте, тот же, что используется как ключ списка на фронте для assistant).
+- **BFF:** проксирует транскрипт из analytics-service и собирает PDF в [`../../bff-service/app/services/nl_chat_pdf.py`](../../bff-service/app/services/nl_chat_pdf.py) (ReportLab; подбор шрифтов для кириллицы и Unicode). Заголовок `Content-Disposition` задаёт имя файла (часто из текста вопроса пользователя); клиент дополнительно может подставить локальное имя через [`sanitizeLocalPdfFilename`](../../frontend/src/features/analytics/api/analytics-api.ts).
+- **Фронт:** [`fetchNlChatPdfBlob`](../../frontend/src/features/analytics/api/analytics-api.ts) → blob → скачивание; очередь тостов [`downloadQueue`](../../frontend/src/shared/lib/download-queue.ts). Кнопка в тулбаре ответа — см. ниже.
+
+## Совместный доступ к чату (инвайты)
+
+Владелец чата приглашает пользователей по **email**; приглашённый видит pending-инвайты, принимает или отклоняет; при просмотре чужого расшаренного чата доступ может быть **только чтение** — тогда UI предлагает **клонировать** сессию к себе (`clone-for-me`).
+
+**REST через BFF** (префикс `/api/analytics`):
+
+| Метод и путь | Назначение |
+|--------------|------------|
+| `POST /chats/{conversation_id}/share-invites` | Тело со списком email; создание инвайтов в analytics + для каждого найденного пользователя — уведомление в notification-service (`CHAT_INVITE`) и Redis touch для UI. |
+| `GET /chat-invites` | Список входящих (pending) и принятых инвайтов для текущего пользователя. |
+| `POST /chat-invites/{invite_id}/answer` | Тело с решением accept/reject. |
+| `POST /chats/{conversation_id}/clone-for-me` | Клон расшаренного чата в «свои» чаты приглашённого. |
+| `GET /chats/{conversation_id}/meta` | Метаданные сессии и роль доступа (в т.ч. viewer vs owner). |
+
+Реализация upstream: [`../../analytics-service/app/api/analytics.py`](../../analytics-service/app/api/analytics.py), [`../../analytics-service/app/services/chat_store.py`](../../analytics-service/app/services/chat_store.py). Прокси и сайд-эффект уведомлений: [`../../bff-service/app/api/analytics.py`](../../bff-service/app/api/analytics.py).
+
+```mermaid
+sequenceDiagram
+  participant UI as Frontend
+  participant BFF as bff_service
+  participant AN as analytics_service
+  participant NS as notification_service
+  UI->>BFF: POST chats cid share_invites
+  BFF->>AN: create invites
+  BFF->>NS: notification CHAT_INVITE
+  UI->>BFF: GET chat_invites
+  UI->>BFF: POST chat_invites id answer
+  BFF->>AN: accept or reject
+  UI->>BFF: POST chats cid clone_for_me
+  BFF->>AN: clone shared chat
+```
+
+**UI (Figma-home и панель):** шаринг и выбор email — [`figma-share-chat-emails-modal.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-share-chat-emails-modal.tsx), [`figma-share-access-modal.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-share-access-modal.tsx); полоска pending — [`figma-pending-invites-strip.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-pending-invites-strip.tsx); кнопка уведомлений в сайдбаре — [`figma-sidebar-notifications-button.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-sidebar-notifications-button.tsx); секция «совместные чаты» в истории — [`figma-sidebar-history-section.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-sidebar-history-section.tsx); хуки — [`use-pending-chat-invites.ts`](../../frontend/src/features/analytics/model/use-pending-chat-invites.ts), [`use-accepted-chat-invites.ts`](../../frontend/src/features/analytics/model/use-accepted-chat-invites.ts). Обработчики `onShareChat` / `onCloneSharedChat` пробрасываются из виджета воркспейса в [`figma-analytics-main.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-analytics-main.tsx).
+
 ## Тулбар у ответа ассистента (Grok)
 
 [`../../frontend/src/features/analytics/ui/analytics-panel/nl-chat-transcript-block.tsx`](../../frontend/src/features/analytics/ui/analytics-panel/nl-chat-transcript-block.tsx) + [`figma-analytics-main.tsx`](../../frontend/src/features/analytics/ui/figma-home/figma-analytics-main.tsx).
 
-- Действия: копирование, retry, «создать задачу» (обработчики из `analytics-workspace`).
+- Действия: копирование, **скачивание PDF** ответа (если есть предыдущий user-контекст и `nlConversationId`), retry, «создать задачу» (обработчики из `analytics-workspace`).
 - Пока **идёт запрос** (`composerBusy` = `nlChatBusy` или интерпретация): проп `assistantActionsLocked` отключает кнопки и меняет подсказки.
 
-**Ключи i18n** (префикс `home.analytics.`): `chatActionCopy`, `chatActionRetry`, `chatActionCreateTask`, `chatCopied`, `chatActionsLocked` — см. `frontend/src/shared/config/locales/`.
+**Ключи i18n** (префикс `home.analytics.`): `chatActionCopy`, `chatActionRetry`, `chatActionCreateTask`, `chatCopied`, `chatActionsLocked`, `download`, `downloadToastLoading` / `downloadToastSuccess` / `downloadToastError`; для шаринга и клона — ключи вроде `shareTooltip`, `shareModalTitle`, `cloneSharedCta` — см. `frontend/src/shared/config/locales/`.
 
 ## См. также
 
