@@ -268,6 +268,137 @@ flowchart LR
     SqlW --> Plat
 ```
 
+## NL-чат (team work space): создание сессии, инвайт, совместный просмотр и клон
+
+Данные в **postgres-db** (платформа): сессия `nl_chat_sessions` (владелец `user_id`), сообщения `nl_chat_messages`, приглашения `nl_chat_invites`, выданный доступ гостя `nl_chat_access` (`access_role`, обычно `viewer`). Код: [chat_store.py](../analytics-service/app/services/chat_store.py), HTTP в [analytics.py (AN)](../analytics-service/app/api/analytics.py) и [analytics.py (BFF)](../bff-service/app/api/analytics.py), WS [websocket.py](../bff-service/app/api/websocket.py), рассылка ответов чата [chat_mq.py](../bff-service/app/services/chat_mq.py).
+
+### Создание пустого чата
+
+Клиент получает `conversation_id` до первого сообщения; сообщения по-прежнему идут через WebSocket и (для персиста) sync в analytics.
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant BFF as bff-service
+    participant AN as analytics-service
+    participant PgP as postgres-db
+    FE->>BFF: POST /api/analytics/chats JWT
+    BFF->>AN: POST /api/analytics/chats X-User-Id X-User-Role
+    AN->>PgP: INSERT nl_chat_sessions новый UUID владелец X-User-Id chat_type chat
+    PgP-->>AN: OK
+    AN-->>BFF: conversation_id created_at
+    BFF-->>FE: CreateNlChatResponse
+    Note over FE: открытие чата join_chat history пустой
+```
+
+### Инвайт по email: добавление пользователя с доступом viewer
+
+Владелец создаёт строки в `nl_chat_invites` со статусом `pending`; BFF при известном пользователе по email шлёт уведомление в очередь и (при Redis) touch для SSE. Приглашённый принимает инвайт — создаётся `nl_chat_access` для пары (conversation_id, invitee_user_id).
+
+```mermaid
+sequenceDiagram
+    participant Own as Владелец FE
+    participant BFF as bff-service
+    participant AN as analytics-service
+    participant Auth as auth-service
+    participant NT as notification-service
+    participant RMQ as RabbitMQ
+    participant PgP as postgres-db
+    participant Gst as Гость FE
+    Own->>BFF: POST .../chats/{cid}/share-invites emails JWT
+    BFF->>AN: POST share-invites X-User-Id X-User-Email
+    AN->>PgP: INSERT nl_chat_invites pending invitee_email access_mode view_only
+    PgP-->>AN: invite_id rows
+    AN-->>BFF: список инвайтов
+    loop по каждому invitee_email
+        BFF->>Auth: GET user по email
+        Auth-->>BFF: uuid приглашённого
+        BFF->>NT: очередь уведомления CHAT_INVITE payload invite_id conversation_id
+        NT->>RMQ: email_queue при необходимости
+        BFF->>BFF: Redis publish touch для SSE гостя
+    end
+    BFF-->>Own: ChatInvitesListResponse
+    Gst->>BFF: GET /api/analytics/chat-invites JWT
+    BFF-->>Gst: pending по email пользователя
+    Gst->>BFF: POST .../chat-invites/{invite_id}/answer accept JWT
+    BFF->>AN: answer invite X-User-Id X-User-Email
+    AN->>PgP: проверка email совпадает с invite
+    AN->>PgP: INSERT nl_chat_access viewer если ещё нет
+    AN->>PgP: UPDATE invite accepted invitee_user_id accepted_at
+    AN-->>BFF: conversation_id исходной сессии
+    BFF-->>Gst: гость может открыть тот же conversation_id
+```
+
+### Совместный просмотр: владелец и гость одновременно
+
+Оба подключаются к одной WebSocket-комнате `chat:{conversation_id}` после успешной проверки доступа (владелец по `nl_chat_sessions.user_id`, гость по `nl_chat_access`). События `nl_chat_out` из RabbitMQ BFF рассылает **всем** подписчикам комнаты. Отправка новых сообщений (`chat_message`) разрешена только владельцу; гость получает ошибку read-only.
+
+```mermaid
+sequenceDiagram
+    participant Own as Владелец WS
+    participant BFF as bff-service BFF WS hub
+    participant Gst as Гость WS
+    participant AN as analytics-service
+    participant RMQ as RabbitMQ
+    participant OR as nl-orchestrator-worker
+    Own->>BFF: join_chat conversation_id
+    BFF->>AN: GET .../chats/{cid}/messages проверка доступа
+    AN-->>BFF: 200 owner
+    BFF->>BFF: join room chat:cid
+    BFF-->>Own: join_chat_ack
+    Gst->>BFF: join_chat тот же conversation_id
+    BFF->>AN: GET messages для гостя
+    AN-->>BFF: 200 viewer через nl_chat_access
+    BFF->>BFF: join room chat:cid
+    BFF-->>Gst: join_chat_ack
+    Note over Own,Gst: оба в одной комнате manager.send_message_to_room
+    Own->>BFF: chat_message content history
+    BFF->>AN: GET .../chats/{cid}/meta
+    AN-->>BFF: access_role owner
+    BFF->>RMQ: publish nl_chat_incoming
+    RMQ->>OR: обработка LLM SQL см NL-чат детально
+    OR->>RMQ: publish nl_chat_out
+    RMQ->>BFF: consume nl_chat_out
+    BFF->>BFF: send_message_to_room chat:cid тело события
+    par доставка подписчикам
+        BFF-->>Own: chat_assistant chat_thinking и т.д.
+        BFF-->>Gst: те же события только чтение в UI
+    end
+    Gst->>BFF: chat_message попытка отправки
+    BFF->>AN: meta
+    AN-->>BFF: access_role viewer
+    BFF-->>Gst: error Shared chat is read-only for guests
+```
+
+### Клон чата для гостя (clone-for-me)
+
+Копируется **сессия** и **все сообщения** в новую сессию, где `user_id` = приглашённый (он становится владельцем копии). Исходный расшаренный чат не меняется; `NlChatAccess` на старый `conversation_id` остаётся.
+
+```mermaid
+sequenceDiagram
+    participant Gst as Гость FE
+    participant BFF as bff-service
+    participant AN as analytics-service
+    participant PgP as postgres-db
+    Gst->>BFF: POST .../chats/{source_cid}/clone-for-me JWT
+    BFF->>AN: POST clone-for-me X-User-Id
+    AN->>PgP: SELECT nl_chat_sessions source по source_cid
+    AN->>PgP: SELECT nl_chat_access где user гость и conversation source_cid
+    alt нет строки viewer доступа
+        AN-->>BFF: 403 PermissionError
+        BFF-->>Gst: ошибка
+    else доступ viewer подтверждён
+        AN->>PgP: INSERT nl_chat_sessions новый id user_id гость копия title preview
+        AN->>PgP: INSERT nl_chat_messages по одному новые id session_id новый session копии payload role client_message_id created_at
+        AN->>PgP: UPDATE message_count новой сессии
+        AN-->>BFF: conversation_id новой сессии
+        BFF-->>Gst: CloneSharedChatResponse
+    end
+    Note over Gst: дальше работа с новым conversation_id как со своим чатом owner
+```
+
+Исходники операций: `create_empty_session`, `create_chat_invites`, `accept_chat_invite`, `clone_shared_chat_for_viewer`, `_clone_chat_for_user` в [chat_store.py](../analytics-service/app/services/chat_store.py).
+
 ## Внешние зависимости
 
 - **LLM API** (OpenAI-совместимый endpoint): analytics-service, sql-generator-worker, nl-orchestrator-worker — переменные `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`.

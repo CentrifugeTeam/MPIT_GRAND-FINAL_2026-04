@@ -297,8 +297,12 @@ def find_assistant_payload_and_question(
     items_in = transcript.get("items") or []
     items = _sort_items([i for i in items_in if isinstance(i, dict)])
     idx: int | None = None
+    mid = message_id.strip()
     for i, it in enumerate(items):
-        if str(it.get("id") or "") == message_id:
+        row_id = str(it.get("id") or "").strip()
+        client_id = str(it.get("client_message_id") or "").strip()
+        # UI до refetch берёт id из WS (= client_message_id в БД); GET /messages отдаёт pk в id.
+        if row_id == mid or client_id == mid:
             idx = i
             break
     if idx is None:
