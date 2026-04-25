@@ -20,7 +20,7 @@ function applyTheme(theme: Theme) {
 }
 
 export const useThemeStore = create<ThemeState>()((set) => ({
-  theme: "system",
+  theme: "dark",
   setTheme: (theme) => {
     applyTheme(theme);
     set({ theme });
