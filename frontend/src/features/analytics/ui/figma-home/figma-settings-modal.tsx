@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card, ListBox, Select } from '@heroui/react';
+import { Card, ListBox, Select, Switch } from '@heroui/react';
 import { useTranslation } from 'react-i18next';
+
+import { useThemeStore } from '@/shared/lib/theme-store';
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -12,6 +14,13 @@ export type FigmaSettingsModalProps = {
 
 export function FigmaSettingsModal({ t, onClose }: FigmaSettingsModalProps) {
   const { i18n } = useTranslation();
+  const { theme, setTheme } = useThemeStore();
+
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const langKey = i18n.language?.toLowerCase().startsWith('ru') ? 'ru' : 'en';
 
@@ -80,6 +89,32 @@ export function FigmaSettingsModal({ t, onClose }: FigmaSettingsModalProps) {
         </div>
 
         <div className='max-h-[min(60vh,480px)] space-y-4 overflow-y-auto px-5 py-4'>
+          <Card className='p-4'>
+            <div className='flex items-center justify-between gap-3'>
+              <div className='flex min-w-0 items-center gap-3'>
+                <span className='text-xl'>{isDark ? '🌙' : '☀️'}</span>
+                <div className='min-w-0'>
+                  <Card.Title>{t('settings.darkMode')}</Card.Title>
+                  <Card.Description>
+                    {theme === 'system'
+                      ? t('settings.darkModeSystem')
+                      : isDark
+                        ? t('settings.darkModeOn')
+                        : t('settings.darkModeOff')}
+                  </Card.Description>
+                </div>
+              </div>
+              <Switch
+                isSelected={isDark}
+                onChange={selected => setTheme(selected ? 'dark' : 'light')}
+              >
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+              </Switch>
+            </div>
+          </Card>
+
           <Card className='p-4'>
             <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <div className='flex min-w-0 items-center gap-3'>
