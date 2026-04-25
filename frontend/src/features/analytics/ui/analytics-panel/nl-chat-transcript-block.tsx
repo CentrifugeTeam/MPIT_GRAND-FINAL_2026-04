@@ -472,11 +472,9 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
               </pre>
             </div>
           ))}
-        <pre className={preClass}>
-          {l.answerPending && !l.text.trim()
-            ? t('home.analytics.chatAnswerComposing')
-            : l.text}
-        </pre>
+        {!(l.answerPending && !l.text.trim()) && (
+          <pre className={preClass}>{l.text}</pre>
+        )}
         {l.sql && <pre className={sqlBox}>{l.sql}</pre>}
         {l.role === 'assistant' &&
           l.chartPayload &&

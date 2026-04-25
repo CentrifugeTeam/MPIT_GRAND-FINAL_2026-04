@@ -1,6 +1,35 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 
+function usePositiveChartLayout(ref: React.RefObject<HTMLElement | null>) {
+  const [ready, setReady] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setReady(width > 0 && height > 0);
+    };
+
+    update();
+
+    const ro = new ResizeObserver(() => {
+      update();
+    });
+    ro.observe(el);
+
+    const id = requestAnimationFrame(update);
+    return () => {
+      cancelAnimationFrame(id);
+      ro.disconnect();
+    };
+  }, [ref]);
+
+  return ready;
+}
+
 const THEMES = { light: "", dark: ".dark" } as const;
 
 export type ChartConfig = {
@@ -40,19 +69,32 @@ export function ChartContainer({
 }) {
   const uniqueId = React.useId();
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const layoutReady = usePositiveChartLayout(containerRef);
+
+  const mergedClassName = ["relative w-full min-h-0", className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={containerRef}
         data-slot="chart"
         data-chart={chartId}
-        className={className}
+        className={mergedClassName}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%">
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        {layoutReady ? (
+          <RechartsPrimitive.ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+          >
+            {children}
+          </RechartsPrimitive.ResponsiveContainer>
+        ) : null}
       </div>
     </ChartContext.Provider>
   );

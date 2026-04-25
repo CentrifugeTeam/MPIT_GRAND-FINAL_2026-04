@@ -41,7 +41,6 @@
       "chatReasoningLabel": "Chain of thought",
       "chatThinking": "Thinking...",
       "chatReasoningLoading": "Plan is ready, waiting for SQL to run…",
-      "chatAnswerComposing": "Composing the answer…",
       "chatSqlQueued": "Database query queued…",
       "chatWsError": "WebSocket connection failed.",
       "chatSendError": "Failed to send message.",

@@ -55,7 +55,10 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
   const chartData = useMemo(() => {
     if (!hasSeries) return null;
     try {
-      return buildChartData(mode === "area" ? "area" : mode === "pie" ? "pie" : kind, payload);
+      return buildChartData(
+        mode === "area" ? "area" : mode === "pie" ? "pie" : kind,
+        payload,
+      );
     } catch {
       return null;
     }
@@ -76,8 +79,12 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
           <Button
             key={k}
             size="sm"
-            variant={kind === k ? "primary" : "ghost"}
-            className="rounded-full capitalize"
+            variant="ghost"
+            className={`rounded-full capitalize ${
+              kind === k
+                ? "border border-border bg-white text-black data-[hover=true]:bg-white data-[hover=true]:text-black data-[pressed=true]:bg-white data-[pressed=true]:text-black"
+                : ""
+            }`}
             onPress={() => setKind(k)}
           >
             {t(`home.analytics.viz.${k}`)}
@@ -85,9 +92,22 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         ))}
       </div>
 
-      <ChartContainer config={config} className={`${mode === 'pie' ? 'h-[260px]' : 'h-[360px]'} w-full min-w-0 [&_svg]:outline-none`}>
+      <div className="min-w-0 overflow-x-auto">
+        <ChartContainer
+          config={config}
+          className={`${mode === "pie" ? "h-[260px]" : "h-[360px]"} w-full shrink-0 [&_svg]:outline-none`}
+        >
         {mode === "bar" && (
-          <BarChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
+          <BarChart
+            data={data}
+            margin={{
+              top: 8,
+              right: 16,
+              bottom: rotateLabels ? 40 : 8,
+              left: 0,
+            }}
+            style={{ outline: "none" }}
+          >
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -111,7 +131,16 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "line" && (
-          <LineChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
+          <LineChart
+            data={data}
+            margin={{
+              top: 8,
+              right: 16,
+              bottom: rotateLabels ? 40 : 8,
+              left: 0,
+            }}
+            style={{ outline: "none" }}
+          >
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -137,7 +166,16 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
         )}
 
         {mode === "area" && (
-          <AreaChart data={data} margin={{ top: 8, right: 16, bottom: rotateLabels ? 40 : 8, left: 0 }} style={{ outline: "none" }}>
+          <AreaChart
+            data={data}
+            margin={{
+              top: 8,
+              right: 16,
+              bottom: rotateLabels ? 40 : 8,
+              left: 0,
+            }}
+            style={{ outline: "none" }}
+          >
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis
               dataKey="label"
@@ -191,7 +229,9 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
                 if (!active || !payload?.length) return null;
                 const item = payload[0];
                 if (!item) return null;
-                const pct = total ? Math.round((Number(item.value) / total) * 100) : 0;
+                const pct = total
+                  ? Math.round((Number(item.value) / total) * 100)
+                  : 0;
                 return (
                   <div className="rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-md">
                     <p className="font-medium">{String(item.name)}</p>
@@ -204,14 +244,16 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
             />
           </PieChart>
         )}
-
-
-      </ChartContainer>
+        </ChartContainer>
+      </div>
 
       {mode === "pie" && (
         <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 pt-1">
           {data.map((entry, i) => (
-            <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <li
+              key={i}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
               <span
                 className="inline-block size-2.5 shrink-0 rounded-[2px]"
                 style={{ background: PALETTE[i % PALETTE.length] }}
@@ -224,3 +266,4 @@ export function AnalyticsCharts({ payload }: { payload: ChartPayloadShape }) {
     </div>
   );
 }
+
