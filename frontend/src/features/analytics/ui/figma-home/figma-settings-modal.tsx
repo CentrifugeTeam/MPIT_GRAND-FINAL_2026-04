@@ -4,6 +4,7 @@ import { Card, ListBox, Select, Switch } from '@heroui/react';
 import { useTranslation } from 'react-i18next';
 
 import { useThemeStore } from '@/shared/lib/theme-store';
+import { FigmaSimpleTooltip } from './figma-simple-tooltip';
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -104,14 +105,19 @@ export function FigmaSettingsModal({ t, onClose }: FigmaSettingsModalProps) {
                   </Card.Description>
                 </div>
               </div>
-              <Switch
-                isSelected={isDark}
-                onChange={selected => setTheme(selected ? 'dark' : 'light')}
-              >
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-              </Switch>
+              <FigmaSimpleTooltip label={t('settings.darkModeWip')} side='top'>
+                <span className='cursor-not-allowed opacity-40'>
+                  <Switch
+                    isSelected={isDark}
+                    isDisabled
+                    onChange={selected => setTheme(selected ? 'dark' : 'light')}
+                  >
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
+                </span>
+              </FigmaSimpleTooltip>
             </div>
           </Card>
 
