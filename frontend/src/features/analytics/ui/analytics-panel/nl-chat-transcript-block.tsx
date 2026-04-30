@@ -166,6 +166,7 @@ function GrokAssistantToolbar({
   assistantLineId,
   handlers,
   actionsLocked,
+  retryLocked,
   nlConversationId,
 }: {
   t: TFn;
@@ -174,6 +175,7 @@ function GrokAssistantToolbar({
   assistantLineId: string;
   handlers: NlChatAssistantActionHandlers;
   actionsLocked: boolean;
+  retryLocked: boolean;
   nlConversationId: string | null;
 }) {
   const [copyFlash, setCopyFlash] = useState(false);
@@ -209,21 +211,21 @@ function GrokAssistantToolbar({
     <div className='mt-3 flex flex-wrap items-center gap-0.5 mx-2.5'>
       {userCtx?.text?.trim() ? (
         <FigmaSimpleTooltip
-          label={actionsLocked ? lockHint : t('home.analytics.chatActionRetry')}
+          label={retryLocked ? lockHint : t('home.analytics.chatActionRetry')}
           side='top'
         >
           <motion.span
             className='inline-flex'
-            whileHover={actionsLocked ? undefined : { scale: 1.06 }}
-            whileTap={actionsLocked ? undefined : { scale: 0.94 }}
+            whileHover={retryLocked ? undefined : { scale: 1.06 }}
+            whileTap={retryLocked ? undefined : { scale: 0.94 }}
             transition={iconMotionTransition}
           >
             <button
               type='button'
-              className={`${iconWrap} ${actionsLocked ? iconWrapDisabled : ''}`}
+              className={`${iconWrap} ${retryLocked ? iconWrapDisabled : ''}`}
               aria-label={t('home.analytics.chatActionRetry')}
-              aria-disabled={actionsLocked}
-              disabled={actionsLocked}
+              aria-disabled={retryLocked}
+              disabled={retryLocked}
               onClick={() =>
                 void handlers.onRetry({
                   assistantLineId,
@@ -400,6 +402,7 @@ type ChatMessageBubbleProps = {
   showAssistantToolbar: boolean;
   assistantActionHandlers: NlChatAssistantActionHandlers | null | undefined;
   assistantActionsLocked: boolean;
+  assistantRetryLocked: boolean;
   t: TFn;
   /** Примитивы для toolbar: стабильны для завершённых сообщений → memo работает */
   userCtxText: string | null;
@@ -423,6 +426,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   showAssistantToolbar,
   assistantActionHandlers,
   assistantActionsLocked,
+  assistantRetryLocked,
   t,
   userCtxText,
   userCtxLineId,
@@ -525,6 +529,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
               assistantLineId={l.id}
               handlers={assistantActionHandlers}
               actionsLocked={assistantActionsLocked}
+              retryLocked={assistantRetryLocked}
               nlConversationId={nlConversationId}
             />
           )}
@@ -542,6 +547,7 @@ export function NlChatTranscriptBlock({
   emptyLabel,
   assistantActionHandlers,
   assistantActionsLocked = false,
+  assistantRetryLocked = false,
   scrollerEl,
   nlConversationId = null,
 }: {
@@ -551,6 +557,7 @@ export function NlChatTranscriptBlock({
   emptyLabel: string;
   assistantActionHandlers?: NlChatAssistantActionHandlers | null;
   assistantActionsLocked?: boolean;
+  assistantRetryLocked?: boolean;
   /** Внешний scroll-контейнер — передаётся для варианта grok из родителя. */
   scrollerEl?: HTMLElement | null;
   /** ID чата для экспорта PDF на BFF. */
@@ -663,6 +670,7 @@ export function NlChatTranscriptBlock({
           showAssistantToolbar={showAssistantToolbar}
           assistantActionHandlers={assistantActionHandlers}
           assistantActionsLocked={assistantActionsLocked}
+          assistantRetryLocked={assistantRetryLocked}
           t={t}
           userCtxText={rawUserCtx?.text ?? null}
           userCtxLineId={rawUserCtx?.lineId ?? null}
@@ -685,6 +693,7 @@ export function NlChatTranscriptBlock({
       reasoningLabel,
       assistantActionHandlers,
       assistantActionsLocked,
+      assistantRetryLocked,
       t,
       nlConversationId,
     ],

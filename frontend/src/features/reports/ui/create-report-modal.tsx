@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -55,6 +55,7 @@ type FormValues = {
   query: string;
   monthDay: number;
   scheduleTab: ReportTaskScheduleType;
+  timezone: string;
   sourceKey: string;
   time: Time | null;
   dateOnce: DateValue | null;
@@ -89,12 +90,22 @@ function parseTime(str: string | null | undefined): Time | null {
   return new Time(h, m);
 }
 
+function detectBrowserTimezone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof tz === 'string' && tz.trim() ? tz.trim() : 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 type ScheduleFormSource = Pick<
   ReportTask,
   | 'title'
   | 'instruction'
   | 'analytics_source_key'
   | 'schedule_type'
+  | 'timezone'
   | 'once_at'
   | 'daily_time'
   | 'weekly_day'
@@ -113,6 +124,7 @@ function scheduleEntityToFormValues(
     query: entity.instruction,
     sourceKey: entity.analytics_source_key,
     scheduleTab: entity.schedule_type,
+    timezone: entity.timezone || detectBrowserTimezone(),
     weekday:
       entity.weekly_day != null
         ? (ISO_TO_WEEKDAY[entity.weekly_day] ?? 'monday')
@@ -188,6 +200,7 @@ function ReportFormBody({
   isPending,
 }: FormBodyProps) {
   const { t } = useTranslation();
+  const browserTimezone = useMemo(() => detectBrowserTimezone(), []);
 
   const [reportName, setReportName] = useState(initialValues?.reportName ?? '');
   const [query, setQuery] = useState(initialValues?.query ?? '');
@@ -195,6 +208,7 @@ function ReportFormBody({
   const [scheduleTab, setScheduleTab] = useState<ReportTaskScheduleType>(
     initialValues?.scheduleTab ?? 'once',
   );
+  const [timezone] = useState(initialValues?.timezone ?? browserTimezone);
   const [sourceKey, setSourceKey] = useState(
     initialValues?.sourceKey ?? dataSources?.[0]?.key ?? '',
   );
@@ -217,20 +231,20 @@ function ReportFormBody({
       case 'once': {
         if (!dateOnce) return;
         const once_at = `${dateOnce.year}-${String(dateOnce.month).padStart(2, '0')}-${String(dateOnce.day).padStart(2, '0')}T${timeStr}:00`;
-        schedule = { schedule_type: 'once', timezone: 'UTC', once_at };
+        schedule = { schedule_type: 'once', timezone, once_at };
         break;
       }
       case 'daily':
         schedule = {
           schedule_type: 'daily',
-          timezone: 'UTC',
+          timezone,
           daily_time: timeStr,
         };
         break;
       case 'weekly':
         schedule = {
           schedule_type: 'weekly',
-          timezone: 'UTC',
+          timezone,
           weekly_day: WEEKDAY_ISO[weekday],
           weekly_time: timeStr,
         };
@@ -238,7 +252,7 @@ function ReportFormBody({
       case 'monthly':
         schedule = {
           schedule_type: 'monthly',
-          timezone: 'UTC',
+          timezone,
           monthly_day: monthDay,
           monthly_time: timeStr,
         };
@@ -248,7 +262,7 @@ function ReportFormBody({
         const yearly_date_ddmm = `${String(dateYearly.day).padStart(2, '0')}:${String(dateYearly.month).padStart(2, '0')}`;
         schedule = {
           schedule_type: 'yearly',
-          timezone: 'UTC',
+          timezone,
           yearly_date_ddmm,
           yearly_time: timeStr,
         };

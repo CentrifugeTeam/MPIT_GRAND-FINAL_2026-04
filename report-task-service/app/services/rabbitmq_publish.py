@@ -16,8 +16,14 @@ class RabbitPublishService:
     def __init__(self) -> None:
         self._conn: aio_pika.RobustConnection | None = None
         self._channel: aio_pika.Channel | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     async def _ensure(self) -> aio_pika.Channel:
+        current_loop = asyncio.get_running_loop()
+        if self._loop is not None and self._loop is not current_loop:
+            self._conn = None
+            self._channel = None
+            self._loop = None
         if self._channel and not self._channel.is_closed:
             return self._channel
         s = get_settings()
@@ -27,6 +33,7 @@ class RabbitPublishService:
         )
         self._conn = await aio_pika.connect_robust(url)
         self._channel = await self._conn.channel()
+        self._loop = current_loop
         return self._channel
 
     async def wait_until_connected(
@@ -66,6 +73,7 @@ class RabbitPublishService:
                     except Exception:
                         pass
                 self._conn = None
+                self._loop = None
         assert last_err is not None
         raise last_err
 

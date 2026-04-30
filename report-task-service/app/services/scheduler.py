@@ -63,6 +63,9 @@ def start_scheduler() -> None:
         seconds=interval,
         id="report_dispatch",
         replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=max(120, interval * 3),
     )
     _scheduler.start()
 

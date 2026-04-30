@@ -233,7 +233,8 @@ export function FigmaAnalyticsMain({
                         assistantActionHandlers={
                           nlAssistantActionHandlers ?? null
                         }
-                        assistantActionsLocked={composerBusy || isNlViewer}
+                        assistantActionsLocked={composerBusy}
+                        assistantRetryLocked={composerBusy || isNlViewer}
                         scrollerEl={scrollerEl}
                         nlConversationId={nlConversationId}
                       />,

@@ -308,6 +308,7 @@ async def create_chat_share_invites(
                     type=NotificationType.CHAT_INVITE,
                     title=chat_title,
                     message=f"{owner_disp} invited you to collaborate on this chat.",
+                    email=invitee_email,
                     payload={
                         "invite_id": invite.get("invite_id"),
                         "conversation_id": conversation_id,

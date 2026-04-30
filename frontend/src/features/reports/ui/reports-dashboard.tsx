@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useLocation, useNavigate } from "react-router";
 import { ScrollShadow, Spinner } from "@heroui/react";
@@ -90,6 +90,10 @@ export function ReportsDashboard() {
   const userUuid = useAuthStore((s) => s.userUuid);
   const accessToken = useAuthStore((s) => s.accessToken);
   const { notifications } = useNotificationsSse(accessToken);
+  const inviteNotifications = useMemo(
+    () => notifications.filter((n) => n.type === "chat_invite"),
+    [notifications],
+  );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<ReportTask | null>(null);
@@ -222,7 +226,7 @@ export function ReportsDashboard() {
           onStartEditingRow={p.startEditingRow}
           onDeleteHistoryEntry={(id) => void p.deleteHistoryEntry(id)}
           t={p.t}
-          notifications={notifications}
+          notifications={inviteNotifications}
           onNotificationAccept={handleInviteModalAccept}
           onNotificationReject={handleInviteModalReject}
         />

@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import timedelta
+from uuid import UUID
 from app.database import get_db
 from app.schemas import (
     UserCreate,
@@ -59,7 +60,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
         )
 
 @router.get("/{user_uuid:uuid}", response_model=UserResponse, summary="Пользователь по UUID")
-async def get_user(user_uuid: str, db: Session = Depends(get_db)):
+async def get_user(user_uuid: UUID, db: Session = Depends(get_db)):
     user = user_crud.get_user_by_uuid(db, user_uuid)
     if not user:
         raise HTTPException(
@@ -117,7 +118,7 @@ async def search_users_by_email(
     description="Только ADMIN.",
 )
 async def update_user(
-    user_uuid: str,
+    user_uuid: UUID,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_admin),
@@ -157,7 +158,7 @@ async def update_user_by_email(
     return UserResponse.model_validate(user, from_attributes=True)
 
 @router.post("/{user_uuid:uuid}/verify", response_model=MessageResponse, summary="Подтвердить email пользователя")
-async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
+async def verify_user(user_uuid: UUID, db: Session = Depends(get_db)):
     user = user_crud.verify_user(db, user_uuid)
     if not user:
         raise HTTPException(
@@ -174,19 +175,10 @@ async def verify_user(user_uuid: str, db: Session = Depends(get_db)):
     description="Новая пара access+refresh.",
 )
 async def update_user_role(
-    user_uuid: str,
+    user_uuid: UUID,
     role_update: RoleUpdate,
     db: Session = Depends(get_db),
 ):
-    try:
-        from uuid import UUID
-        UUID(user_uuid)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-
     user = user_crud.update_user_role(db, user_uuid, role_update.role)
     if not user:
         raise HTTPException(

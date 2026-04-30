@@ -903,7 +903,7 @@ async def _handle_sql_chat_result(
                     result_summary=_normalize_report_error(raw_err),
                     result_payload=_failed_report_payload("sql_generation_failed", sql_s),
                 )
-        if status == "done" and ctx.scheduled_report:
+        if status == "done" and ctx.report_id:
             has_table = bool(rows_ws)
             has_chart = (
                 (chart_out.get("type") in ("bar", "line"))

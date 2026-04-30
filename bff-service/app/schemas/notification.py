@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
+from pydantic import EmailStr
 from datetime import datetime
 from enum import Enum
 
@@ -40,6 +41,7 @@ class NotificationCreate(BaseModel):
     type: NotificationType = Field(..., description="Тип уведомления")
     title: str = Field(..., min_length=1, description="Заголовок")
     message: str = Field(..., min_length=1, description="Текст уведомления")
+    email: Optional[EmailStr] = Field(default=None, description="Email получателя (опционально)")
     payload: Optional[dict] = Field(default=None, description="Дополнительные данные уведомления")
 
 class NotificationResponse(BaseModel):
